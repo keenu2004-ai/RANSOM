@@ -89,9 +89,16 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
 WHERE r.name = 'HR_MANAGER' AND p.key IN (
-  'employees:read', 'employees:create', 'employees:update', 'employees:delete',
-  'attendance:checkin', 'attendance:read_all', 'leaves:apply', 'leaves:approve',
-  'expenses:create', 'expenses:approve', 'payroll:manage', 'payroll:view_self'
+  'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'employees:export',
+  'attendance:checkin', 'attendance:view', 'attendance:manage',
+  'leave:apply', 'leave:view', 'leave:approve', 'leave:manage',
+  'holidays:view', 'holidays:manage', 'shifts:view', 'shifts:manage',
+  'expenses:create', 'expenses:view', 'expenses:approve',
+  'timesheets:create', 'timesheets:view',
+  'payroll:manage', 'payroll:view_self',
+  'compliance:view', 'compliance:manage',
+  'documents:view', 'announcements:view', 'announcements:create',
+  'helpdesk:create', 'helpdesk:view', 'notifications:view', 'reports:view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -100,8 +107,13 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
 WHERE r.name = 'MANAGER' AND p.key IN (
-  'employees:read', 'attendance:checkin', 'leaves:apply', 'leaves:approve',
-  'expenses:create', 'expenses:approve', 'payroll:view_self'
+  'employees:view', 'attendance:checkin', 'attendance:view',
+  'leave:apply', 'leave:view', 'leave:approve',
+  'holidays:view', 'shifts:view',
+  'expenses:create', 'expenses:view', 'expenses:approve',
+  'timesheets:create', 'timesheets:view',
+  'payroll:view_self', 'documents:view', 'announcements:view',
+  'helpdesk:create', 'helpdesk:view', 'notifications:view', 'reports:view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -110,7 +122,10 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
 WHERE r.name = 'EMPLOYEE' AND p.key IN (
-  'attendance:checkin', 'leaves:apply', 'expenses:create', 'payroll:view_self'
+  'attendance:checkin', 'leave:apply', 'leave:view', 'holidays:view',
+  'expenses:create', 'expenses:view', 'timesheets:create', 'timesheets:view',
+  'payroll:view_self', 'documents:view', 'announcements:view',
+  'helpdesk:create', 'helpdesk:view', 'notifications:view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 

@@ -5,7 +5,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
+let Pool;
+try {
+  Pool = require('pg').Pool;
+} catch (e) {
+  Pool = require(path.join(__dirname, '../../backend/node_modules/pg')).Pool;
+}
 
 // Load environment variables if dotenv is present
 try {

@@ -4,7 +4,12 @@
  */
 
 const path = require('path');
-const { Pool } = require('pg');
+let Pool;
+try {
+  Pool = require('pg').Pool;
+} catch (e) {
+  Pool = require(path.join(__dirname, '../../backend/node_modules/pg')).Pool;
+}
 
 try {
   require('dotenv').config({ path: path.join(__dirname, '../../backend/.env') });
