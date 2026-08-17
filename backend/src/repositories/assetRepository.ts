@@ -123,6 +123,15 @@ export class AssetRepository {
   // Create asset with initial history & audit log
   static async create(organizationId: string, userId: string, data: any) {
     return withTransaction(async (client) => {
+      // Validate Category
+      const checkCat = await client.query(
+        `SELECT id FROM asset_categories WHERE id = $1 AND organization_id = $2`,
+        [data.categoryId, organizationId]
+      );
+      if (checkCat.rows.length === 0) {
+        throw new Error('Please select a valid asset category.');
+      }
+
       // Check unique asset_code
       const checkCode = await client.query(
         `SELECT id FROM assets WHERE organization_id = $1 AND asset_code = $2 AND deleted_at IS NULL`,
@@ -142,14 +151,35 @@ export class AssetRepository {
         }
       }
 
+      const isAssigned = data.assignmentStatus === 'ASSIGNED' && data.assignedEmployeeId;
+      let assignedEmp: any = null;
+
+      if (isAssigned) {
+        const empRes = await client.query(
+          `SELECT id, first_name, last_name, employee_code, status FROM employees WHERE id = $1 AND organization_id = $2`,
+          [data.assignedEmployeeId, organizationId]
+        );
+        if (empRes.rows.length === 0 || empRes.rows[0].status !== 'ACTIVE') {
+          throw new Error('Please select a valid active employee for assignment.');
+        }
+        assignedEmp = empRes.rows[0];
+      }
+
+      const status = isAssigned ? 'ASSIGNED' : 'AVAILABLE';
+      const assignedEmployeeId = isAssigned ? data.assignedEmployeeId : null;
+      const assignedDate = isAssigned ? (data.assignedDate || new Date().toISOString().split('T')[0]) : null;
+      const expectedReturnDate = isAssigned ? (data.expectedReturnDate || null) : null;
+      const condition = isAssigned && data.assignmentCondition ? data.assignmentCondition : (data.condition || 'NEW');
+
       const res = await client.query(`
         INSERT INTO assets (
           organization_id, asset_code, asset_name, category_id, asset_type,
           brand, model, serial_number, purchase_date, purchase_price,
           current_value, warranty_start_date, warranty_end_date, vendor,
-          invoice_number, condition, status, location, description, created_by
+          invoice_number, condition, status, location, description,
+          assigned_employee_id, assigned_date, expected_return_date, created_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
         ) RETURNING *
       `, [
         organizationId,
@@ -167,21 +197,40 @@ export class AssetRepository {
         data.warrantyEndDate || null,
         data.vendor || null,
         data.invoiceNumber || null,
-        data.condition || 'NEW',
-        'AVAILABLE',
+        condition,
+        status,
         data.location || 'HQ Main Office',
         data.description || null,
+        assignedEmployeeId,
+        assignedDate,
+        expectedReturnDate,
         userId
       ]);
 
       const newAsset = res.rows[0];
 
-      // Record Asset History
+      // Record Initial Creation History
       await client.query(`
         INSERT INTO asset_history (
           organization_id, asset_id, action, previous_status, new_status, performed_by, notes
-        ) VALUES ($1, $2, 'CREATED', NULL, 'AVAILABLE', $3, 'Asset registered into system inventory')
-      `, [organizationId, newAsset.id, userId]);
+        ) VALUES ($1, $2, 'CREATED', NULL, $3, $4, 'Asset registered into inventory')
+      `, [organizationId, newAsset.id, status, userId]);
+
+      // If created as assigned directly, log assignment history
+      if (isAssigned && assignedEmp) {
+        await client.query(`
+          INSERT INTO asset_history (
+            organization_id, asset_id, action, previous_status, new_status, employee_id, performed_by, notes, metadata
+          ) VALUES ($1, $2, 'ASSIGNED', 'AVAILABLE', 'ASSIGNED', $3, $4, $5, $6)
+        `, [
+          organizationId,
+          newAsset.id,
+          assignedEmp.id,
+          userId,
+          data.assignmentNotes || `Assigned to ${assignedEmp.first_name} ${assignedEmp.last_name} (${assignedEmp.employee_code}) upon registration`,
+          JSON.stringify({ assignedDate, expectedReturnDate })
+        ]);
+      }
 
       // Record System Audit Log
       await client.query(`
@@ -275,10 +324,12 @@ export class AssetRepository {
       }
 
       const empRes = await client.query(
-        `SELECT id, first_name, last_name, employee_code FROM employees WHERE id = $1 AND organization_id = $2`,
+        `SELECT id, first_name, last_name, employee_code, status FROM employees WHERE id = $1 AND organization_id = $2`,
         [data.employeeId, organizationId]
       );
-      if (empRes.rows.length === 0) throw new Error('Selected employee does not exist.');
+      if (empRes.rows.length === 0 || empRes.rows[0].status !== 'ACTIVE') {
+        throw new Error('Selected employee is inactive or does not exist.');
+      }
       const emp = empRes.rows[0];
 
       const res = await client.query(`
@@ -568,11 +619,13 @@ export class AssetRepository {
       SELECT 
         COUNT(id)::int as total_assets,
         COUNT(CASE WHEN status = 'AVAILABLE' THEN 1 END)::int as available_count,
+        COUNT(CASE WHEN assigned_employee_id IS NULL AND status = 'AVAILABLE' THEN 1 END)::int as in_stock_count,
         COUNT(CASE WHEN status = 'ASSIGNED' THEN 1 END)::int as assigned_count,
         COUNT(CASE WHEN status = 'UNDER_MAINTENANCE' THEN 1 END)::int as maintenance_count,
         COUNT(CASE WHEN status = 'DAMAGED' THEN 1 END)::int as damaged_count,
         COUNT(CASE WHEN status = 'LOST' THEN 1 END)::int as lost_count,
         COUNT(CASE WHEN status = 'RETIRED' THEN 1 END)::int as retired_count,
+        COUNT(CASE WHEN status = 'DISPOSED' THEN 1 END)::int as disposed_count,
         COALESCE(SUM(purchase_price), 0)::numeric(12, 2) as total_purchase_value,
         COALESCE(SUM(current_value), 0)::numeric(12, 2) as total_current_value,
         COALESCE(SUM(CASE WHEN status = 'ASSIGNED' THEN current_value END), 0)::numeric(12, 2) as assigned_current_value

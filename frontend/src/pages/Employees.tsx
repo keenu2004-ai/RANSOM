@@ -172,7 +172,9 @@ export const Employees: React.FC = () => {
     }
   };
 
-  const openEditModal = (emp: any) => {
+  const [empAssets, setEmpAssets] = useState<any[]>([]);
+
+  const openEditModal = async (emp: any) => {
     setEditingEmployee(emp);
     setEditFormData({
       first_name: emp.first_name || '',
@@ -184,6 +186,12 @@ export const Employees: React.FC = () => {
       designation_id: emp.designation_id || ''
     });
     setEditFormError(null);
+    try {
+      const res = await apiFetch(`/assets?assignedEmployeeId=${emp.id}`);
+      setEmpAssets(res.data?.assets || []);
+    } catch (err) {
+      setEmpAssets([]);
+    }
   };
 
   const handleEditSave = async (e: React.FormEvent) => {
@@ -705,6 +713,54 @@ export const Employees: React.FC = () => {
                   <option value="CONTRACT">Contract</option>
                   <option value="INTERN">Internship</option>
                 </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] flex items-center justify-between">
+                  <span>Assigned Company Assets</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">Total: {empAssets.length}</span>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-800 rounded-xl max-h-36 overflow-y-auto">
+                  <table className="w-full text-left text-[11px] text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[9px] sticky top-0">
+                      <tr>
+                        <th className="p-2">Code & Name</th>
+                        <th className="p-2">Category</th>
+                        <th className="p-2">Serial</th>
+                        <th className="p-2">Condition</th>
+                        <th className="p-2">Assigned Date</th>
+                        <th className="p-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {empAssets.map(ast => (
+                        <tr key={ast.id} className="hover:bg-slate-800/30">
+                          <td className="p-2 font-bold text-white">
+                            <div>{ast.asset_code}</div>
+                            <span className="text-[10px] text-slate-400 font-normal">{ast.asset_name}</span>
+                          </td>
+                          <td className="p-2 text-slate-300">{ast.category_name}</td>
+                          <td className="p-2 font-mono text-slate-400">{ast.serial_number || '-'}</td>
+                          <td className="p-2"><span className="px-1.5 py-0.5 bg-slate-950 rounded text-[9px] font-mono">{ast.condition}</span></td>
+                          <td className="p-2 font-mono text-slate-400">{ast.assigned_date ? ast.assigned_date.split('T')[0] : '-'}</td>
+                          <td className="p-2">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
+                              {ast.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {empAssets.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-slate-500 italic">
+                            No company assets currently assigned to this employee.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

@@ -4,9 +4,9 @@ import { AssetRepository } from '../repositories/assetRepository';
 import { z } from 'zod';
 
 const createAssetSchema = z.object({
-  assetCode: z.string().min(2, 'Asset code is required'),
-  assetName: z.string().min(2, 'Asset name is required'),
-  categoryId: z.string().uuid('Valid category is required'),
+  assetCode: z.string().min(2, 'Asset code is required.'),
+  assetName: z.string().min(2, 'Asset name is required.'),
+  categoryId: z.string().uuid('Please select a valid asset category.'),
   assetType: z.string().optional(),
   brand: z.string().optional(),
   model: z.string().optional(),
@@ -20,7 +20,13 @@ const createAssetSchema = z.object({
   invoiceNumber: z.string().optional(),
   condition: z.enum(['NEW', 'EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'DAMAGED']).optional(),
   location: z.string().optional(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  assignmentStatus: z.enum(['IN_STOCK', 'ASSIGNED']).optional().default('IN_STOCK'),
+  assignedEmployeeId: z.string().uuid('Please select a valid employee.').nullable().optional(),
+  assignedDate: z.string().optional(),
+  expectedReturnDate: z.string().optional(),
+  assignmentCondition: z.string().optional(),
+  assignmentNotes: z.string().optional()
 });
 
 const assignAssetSchema = z.object({

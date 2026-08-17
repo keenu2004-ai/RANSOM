@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck, 
   RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2, 
-  AlertTriangle, Clock, X, Edit3, Trash2, Tag, Calendar, User, DollarSign
+  AlertTriangle, Clock, X, Edit3, Trash2, Tag, Calendar, User, DollarSign,
+  Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye
 } from 'lucide-react';
 
 export const Assets: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'ASSETS' | 'CATEGORIES' | 'REPORTS'>('ASSETS');
+  const [activeTab, setActiveTab] = useState<'ASSETS' | 'CATEGORIES'>('ASSETS');
 
   const [assets, setAssets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -21,15 +22,15 @@ export const Assets: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [conditionFilter, setConditionFilter] = useState('');
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingAsset, setEditingAsset] = useState<any | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showMaintModal, setShowMaintModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [assetHistory, setAssetHistory] = useState<any[]>([]);
@@ -52,7 +53,13 @@ export const Assets: React.FC = () => {
     invoiceNumber: '',
     condition: 'NEW',
     location: 'HQ Main Office',
-    description: ''
+    description: '',
+    assignmentStatus: 'IN_STOCK' as 'IN_STOCK' | 'ASSIGNED',
+    assignedEmployeeId: '',
+    assignedDate: new Date().toISOString().split('T')[0],
+    expectedReturnDate: '',
+    assignmentCondition: 'NEW',
+    assignmentNotes: ''
   });
 
   const [assignForm, setAssignForm] = useState({
@@ -85,6 +92,7 @@ export const Assets: React.FC = () => {
   });
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
@@ -100,9 +108,15 @@ export const Assets: React.FC = () => {
       ]);
 
       setSummary(sumRes.data || null);
-      setCategories(catsRes.data || []);
+      const fetchedCats = catsRes.data || [];
+      setCategories(fetchedCats);
       setAssets(assetsRes.data?.assets || []);
       setEmployees(empRes.employees || []);
+
+      // If form has no category selected yet, set first category ID
+      if (fetchedCats.length > 0) {
+        setAssetForm(prev => prev.categoryId ? prev : { ...prev, categoryId: fetchedCats[0].id });
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -114,29 +128,130 @@ export const Assets: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleCreateOrUpdateAsset = async (e: React.FormEvent) => {
+  const handleOpenAddAsset = () => {
+    setFormError(null);
+    const defaultCatId = categories.length > 0 ? categories[0].id : '';
+    setAssetForm({
+      assetCode: `TE-AST-${Math.floor(1000 + Math.random() * 9000)}`,
+      assetName: '',
+      categoryId: defaultCatId,
+      assetType: 'HARDWARE',
+      brand: '',
+      model: '',
+      serialNumber: '',
+      purchaseDate: new Date().toISOString().split('T')[0],
+      purchasePrice: 0,
+      currentValue: 0,
+      warrantyStartDate: '',
+      warrantyEndDate: '',
+      vendor: '',
+      invoiceNumber: '',
+      condition: 'NEW',
+      location: 'HQ Main Office',
+      description: '',
+      assignmentStatus: 'IN_STOCK',
+      assignedEmployeeId: employees.length > 0 ? employees[0].id : '',
+      assignedDate: new Date().toISOString().split('T')[0],
+      expectedReturnDate: '',
+      assignmentCondition: 'NEW',
+      assignmentNotes: ''
+    });
+    setShowAddModal(true);
+  };
+
+  const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (!assetForm.categoryId || assetForm.categoryId.trim() === '') {
+      setFormError('Please select a valid asset category.');
+      return;
+    }
+
+    if (assetForm.assignmentStatus === 'ASSIGNED' && (!assetForm.assignedEmployeeId || assetForm.assignedEmployeeId.trim() === '')) {
+      setFormError('Please select a valid employee for assignment.');
+      return;
+    }
+
     try {
-      if (editingAsset) {
-        await apiFetch(`/assets/${editingAsset.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(assetForm)
-        });
-        setSuccessMsg('Asset metadata updated successfully.');
+      const payload: any = {
+        assetCode: assetForm.assetCode,
+        assetName: assetForm.assetName,
+        categoryId: assetForm.categoryId,
+        assetType: assetForm.assetType,
+        brand: assetForm.brand || undefined,
+        model: assetForm.model || undefined,
+        serialNumber: assetForm.serialNumber || undefined,
+        purchaseDate: assetForm.purchaseDate || undefined,
+        purchasePrice: Number(assetForm.purchasePrice) || 0,
+        currentValue: Number(assetForm.currentValue) || Number(assetForm.purchasePrice) || 0,
+        warrantyStartDate: assetForm.warrantyStartDate || undefined,
+        warrantyEndDate: assetForm.warrantyEndDate || undefined,
+        vendor: assetForm.vendor || undefined,
+        invoiceNumber: assetForm.invoiceNumber || undefined,
+        condition: assetForm.condition,
+        location: assetForm.location || 'HQ Main Office',
+        description: assetForm.description || undefined,
+        assignmentStatus: assetForm.assignmentStatus
+      };
+
+      if (assetForm.assignmentStatus === 'ASSIGNED') {
+        payload.assignedEmployeeId = assetForm.assignedEmployeeId;
+        payload.assignedDate = assetForm.assignedDate;
+        payload.expectedReturnDate = assetForm.expectedReturnDate || undefined;
+        payload.assignmentCondition = assetForm.assignmentCondition;
+        payload.assignmentNotes = assetForm.assignmentNotes || undefined;
       } else {
-        await apiFetch('/assets', {
-          method: 'POST',
-          body: JSON.stringify(assetForm)
-        });
-        setSuccessMsg('New asset registered into inventory.');
+        payload.assignedEmployeeId = null;
       }
+
+      await apiFetch('/assets', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
       setShowAddModal(false);
-      setEditingAsset(null);
+      setSuccessMsg(assetForm.assignmentStatus === 'ASSIGNED' 
+        ? 'Asset created and allocated to employee successfully.' 
+        : 'Asset created and added to In Stock inventory.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save asset.');
+      setFormError(err.message || 'Failed to register asset.');
+    }
+  };
+
+  const handleCreateCategoryFromModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCategoryError(null);
+    if (!categoryForm.name || !categoryForm.code) {
+      setCategoryError('Category Name and Code are required.');
+      return;
+    }
+
+    try {
+      const res = await apiFetch('/assets/categories', {
+        method: 'POST',
+        body: JSON.stringify(categoryForm)
+      });
+      const newCategory = res.data;
+
+      // Refresh categories list
+      const catsRes = await apiFetch('/assets/categories');
+      const updatedCats = catsRes.data || [];
+      setCategories(updatedCats);
+
+      // Automatically select the newly created category in asset form
+      if (newCategory?.id) {
+        setAssetForm(prev => ({ ...prev, categoryId: newCategory.id }));
+      }
+
+      setShowCategoryModal(false);
+      setCategoryForm({ name: '', code: '', description: '' });
+      setSuccessMsg(`Category '${newCategory.name}' created and selected.`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setCategoryError(err.message || 'Failed to create asset category.');
     }
   };
 
@@ -170,11 +285,11 @@ export const Assets: React.FC = () => {
       });
       setShowReturnModal(false);
       setSelectedAsset(null);
-      setSuccessMsg('Asset returned to available inventory.');
+      setSuccessMsg('Asset returned to available stock.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to return asset.');
+      setFormError(err.message || 'Failed to process return.');
     }
   };
 
@@ -189,7 +304,7 @@ export const Assets: React.FC = () => {
       });
       setShowMaintModal(false);
       setSelectedAsset(null);
-      setSuccessMsg('Maintenance ticket logged. Asset status updated to UNDER_MAINTENANCE.');
+      setSuccessMsg('Maintenance ticket logged. Asset status set to UNDER_MAINTENANCE.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -197,48 +312,39 @@ export const Assets: React.FC = () => {
     }
   };
 
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    try {
-      await apiFetch('/assets/categories', {
-        method: 'POST',
-        body: JSON.stringify(categoryForm)
-      });
-      setShowCategoryModal(false);
-      setCategoryForm({ name: '', code: '', description: '' });
-      setSuccessMsg('Asset category created successfully.');
-      fetchData();
-      setTimeout(() => setSuccessMsg(null), 4000);
-    } catch (err: any) {
-      setFormError(err.message || 'Failed to create category.');
-    }
-  };
-
-  const openHistory = async (asset: any) => {
+  const openAssetDetails = async (asset: any) => {
     setSelectedAsset(asset);
     try {
-      const res = await apiFetch(`/assets/${asset.id}/history`);
-      setAssetHistory(res.data || []);
-      setShowHistoryModal(true);
+      const histRes = await apiFetch(`/assets/${asset.id}/history`);
+      setAssetHistory(histRes.data || []);
+      setShowDetailsModal(true);
     } catch (err: any) {
-      alert(err.message || 'Failed to load history');
+      console.error(err);
+      setShowDetailsModal(true);
     }
   };
 
   const filteredAssets = useMemo(() => {
     return assets.filter(a => {
+      let matchesStatus = true;
+      if (statusFilter === 'IN_STOCK') {
+        matchesStatus = !a.assigned_employee_id && a.status === 'AVAILABLE';
+      } else if (statusFilter) {
+        matchesStatus = a.status === statusFilter;
+      }
+
       const matchesSearch = !searchTerm || (
         a.asset_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (a.serial_number && a.serial_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (a.employee_first_name && `${a.employee_first_name} ${a.employee_last_name}`.toLowerCase().includes(searchTerm.toLowerCase()))
       );
-      const matchesStatus = !statusFilter || a.status === statusFilter;
       const matchesCategory = !categoryFilter || a.category_id === categoryFilter;
-      return matchesSearch && matchesStatus && matchesCategory;
+      const matchesCondition = !conditionFilter || a.condition === conditionFilter;
+
+      return matchesStatus && matchesSearch && matchesCategory && matchesCondition;
     });
-  }, [assets, searchTerm, statusFilter, categoryFilter]);
+  }, [assets, searchTerm, statusFilter, categoryFilter, conditionFilter]);
 
   const exportCSV = () => {
     const headers = ['Asset Code', 'Asset Name', 'Category', 'Status', 'Condition', 'Assigned Employee', 'Purchase Price', 'Current Value', 'Serial Number'];
@@ -263,32 +369,33 @@ export const Assets: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'AVAILABLE':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">AVAILABLE</span>;
+  const getStatusBadge = (asset: any) => {
+    if (!asset.assigned_employee_id && asset.status === 'AVAILABLE') {
+      return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">IN STOCK</span>;
+    }
+    switch (asset.status) {
       case 'ASSIGNED':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/60">ASSIGNED</span>;
       case 'UNDER_MAINTENANCE':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-950 text-amber-400 border border-amber-800/60">IN MAINTENANCE</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-950 text-amber-400 border border-amber-800/60">MAINTENANCE</span>;
       case 'DAMAGED':
       case 'LOST':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-950 text-rose-400 border border-rose-800/60">{status}</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-950 text-rose-400 border border-rose-800/60">{asset.status}</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">{status}</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">{asset.status}</span>;
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <Package className="w-6 h-6 text-cyan-400" />
             <span>Asset Management</span>
           </h1>
-          <p className="text-xs text-slate-400">Enterprise hardware, equipment, licensing, allocations, and maintenance lifecycle tracking</p>
+          <p className="text-xs text-slate-400">Enterprise hardware inventory, stock management, allocations, and lifecycle audit log</p>
         </div>
 
         {isManagerOrAdmin && (
@@ -302,57 +409,29 @@ export const Assets: React.FC = () => {
             </button>
 
             <button
-              onClick={() => {
-                setEditingAsset(null);
-                setAssetForm({
-                  assetCode: `TE-AST-${Math.floor(1000 + Math.random() * 9000)}`,
-                  assetName: '',
-                  categoryId: categories[0]?.id || '',
-                  assetType: 'HARDWARE',
-                  brand: '',
-                  model: '',
-                  serialNumber: '',
-                  purchaseDate: new Date().toISOString().split('T')[0],
-                  purchasePrice: 0,
-                  currentValue: 0,
-                  warrantyStartDate: '',
-                  warrantyEndDate: '',
-                  vendor: '',
-                  invoiceNumber: '',
-                  condition: 'NEW',
-                  location: 'HQ Main Office',
-                  description: ''
-                });
-                setShowAddModal(true);
-              }}
+              onClick={handleOpenAddAsset}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Asset</span>
+              <span>Register New Asset</span>
             </button>
           </div>
         )}
       </div>
 
       {successMsg && (
-        <div className="p-4 bg-emerald-950/50 border border-emerald-800/80 rounded-xl text-emerald-300 text-xs flex items-center gap-2 shadow">
+        <div className="p-4 bg-emerald-950/60 border border-emerald-800 rounded-xl text-emerald-300 text-xs flex items-center gap-2 shadow">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{successMsg}</span>
+          <span className="font-semibold">{successMsg}</span>
         </div>
       )}
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* KPI Cards — Derived Stock Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
           <span className="text-[11px] text-slate-400 font-medium">Total Assets</span>
           <p className="text-xl font-extrabold text-white">{summary?.total_assets || 0}</p>
           <span className="text-[10px] text-cyan-400 font-mono">Valuation: ₹{(Number(summary?.total_current_value || 0)).toLocaleString()}</span>
-        </div>
-
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">Available</span>
-          <p className="text-xl font-extrabold text-emerald-400">{summary?.available_count || 0}</p>
-          <span className="text-[10px] text-slate-500">Ready for allocation</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
@@ -362,9 +441,15 @@ export const Assets: React.FC = () => {
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">Maintenance</span>
+          <span className="text-[11px] text-slate-400 font-medium">In Stock</span>
+          <p className="text-xl font-extrabold text-emerald-400">{summary?.in_stock_count || summary?.available_count || 0}</p>
+          <span className="text-[10px] text-slate-500">Unassigned pool</span>
+        </div>
+
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+          <span className="text-[11px] text-slate-400 font-medium">Under Maintenance</span>
           <p className="text-xl font-extrabold text-amber-400">{summary?.maintenance_count || 0}</p>
-          <span className="text-[10px] text-slate-500">Under repair</span>
+          <span className="text-[10px] text-slate-500">In service</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
@@ -378,6 +463,12 @@ export const Assets: React.FC = () => {
           <p className="text-xl font-extrabold text-slate-400">{summary?.retired_count || 0}</p>
           <span className="text-[10px] text-slate-500">Decommissioned</span>
         </div>
+
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+          <span className="text-[11px] text-slate-400 font-medium">Disposed</span>
+          <p className="text-xl font-extrabold text-slate-500">{summary?.disposed_count || 0}</p>
+          <span className="text-[10px] text-slate-600">Written off</span>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -388,7 +479,7 @@ export const Assets: React.FC = () => {
             activeTab === 'ASSETS' ? 'border-cyan-400 text-cyan-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Asset Inventory List ({filteredAssets.length})
+          Asset Inventory & Stock ({filteredAssets.length})
         </button>
         <button
           onClick={() => setActiveTab('CATEGORIES')}
@@ -396,38 +487,39 @@ export const Assets: React.FC = () => {
             activeTab === 'CATEGORIES' ? 'border-cyan-400 text-cyan-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Categories ({categories.length})
+          Asset Categories Matrix ({categories.length})
         </button>
       </div>
 
       {activeTab === 'ASSETS' && (
         <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-          {/* Controls Bar */}
+          {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Search asset code, name, serial, brand, employee..."
+                placeholder="Search asset code, asset name, serial number, employee name..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500"
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
                 className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300"
               >
                 <option value="">All Statuses</option>
-                <option value="AVAILABLE">AVAILABLE</option>
-                <option value="ASSIGNED">ASSIGNED</option>
-                <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
-                <option value="DAMAGED">DAMAGED</option>
-                <option value="LOST">LOST</option>
-                <option value="RETIRED">RETIRED</option>
+                <option value="IN_STOCK">In Stock (Unassigned)</option>
+                <option value="ASSIGNED">Assigned</option>
+                <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+                <option value="DAMAGED">Damaged</option>
+                <option value="LOST">Lost</option>
+                <option value="RETIRED">Retired</option>
+                <option value="DISPOSED">Disposed</option>
               </select>
 
               <select
@@ -439,6 +531,20 @@ export const Assets: React.FC = () => {
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+              </select>
+
+              <select
+                value={conditionFilter}
+                onChange={e => setConditionFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300"
+              >
+                <option value="">All Conditions</option>
+                <option value="NEW">NEW</option>
+                <option value="EXCELLENT">EXCELLENT</option>
+                <option value="GOOD">GOOD</option>
+                <option value="FAIR">FAIR</option>
+                <option value="POOR">POOR</option>
+                <option value="DAMAGED">DAMAGED</option>
               </select>
             </div>
           </div>
@@ -455,7 +561,7 @@ export const Assets: React.FC = () => {
                   <th className="p-3">Assigned Employee</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Condition</th>
-                  <th className="p-3">Value (₹)</th>
+                  <th className="p-3">Valuation (₹)</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -482,10 +588,10 @@ export const Assets: React.FC = () => {
                           <span className="text-[10px] text-slate-500 font-mono">{asset.employee_code}</span>
                         </div>
                       ) : (
-                        <span className="text-slate-500 italic">Unassigned</span>
+                        <span className="text-emerald-400 font-semibold text-[11px] italic">In Stock</span>
                       )}
                     </td>
-                    <td className="p-3">{getStatusBadge(asset.status)}</td>
+                    <td className="p-3">{getStatusBadge(asset)}</td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded font-mono text-[10px]">
                         {asset.condition}
@@ -495,6 +601,14 @@ export const Assets: React.FC = () => {
                       ₹{Number(asset.current_value || 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right space-x-1">
+                      <button
+                        onClick={() => openAssetDetails(asset)}
+                        className="p-1 text-slate-400 hover:text-cyan-400"
+                        title="View Asset Details & History"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+
                       {isManagerOrAdmin && asset.status === 'AVAILABLE' && (
                         <button
                           onClick={() => {
@@ -530,35 +644,6 @@ export const Assets: React.FC = () => {
                           title="Process Return"
                         >
                           Return
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => openHistory(asset)}
-                        className="p-1 text-slate-400 hover:text-cyan-400"
-                        title="View Audit History"
-                      >
-                        <History className="w-4 h-4" />
-                      </button>
-
-                      {isManagerOrAdmin && (
-                        <button
-                          onClick={() => {
-                            setSelectedAsset(asset);
-                            setMaintForm({
-                              maintenanceType: 'REPAIR',
-                              vendor: asset.vendor || '',
-                              startDate: new Date().toISOString().split('T')[0],
-                              endDate: '',
-                              cost: 0,
-                              description: ''
-                            });
-                            setShowMaintModal(true);
-                          }}
-                          className="p-1 text-slate-400 hover:text-amber-400"
-                          title="Log Maintenance"
-                        >
-                          <Wrench className="w-4 h-4" />
                         </button>
                       )}
                     </td>
@@ -609,142 +694,386 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* Add Asset Modal */}
+      {/* 6-SECTION REGISTER NEW ASSET MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-3xl w-full space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white">
-                {editingAsset ? 'Edit Asset Record' : 'Register New Asset'}
-              </h3>
+              <div>
+                <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-cyan-400" />
+                  <span>Register New Asset</span>
+                </h3>
+                <p className="text-xs text-slate-400">Add an asset to stock inventory or assign directly to an active employee</p>
+              </div>
               <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{formError}</span>
+              </div>
             )}
 
-            <form onSubmit={handleCreateOrUpdateAsset} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Asset Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={assetForm.assetCode}
-                    onChange={e => setAssetForm({ ...assetForm, assetCode: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    placeholder="TE-IT-1001"
-                  />
+            <form onSubmit={handleCreateAsset} className="space-y-6 text-xs">
+              {/* SECTION 1 — BASIC INFORMATION */}
+              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" />
+                  <span>SECTION 1 — BASIC INFORMATION</span>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Asset Code *</label>
+                    <input
+                      type="text"
+                      required
+                      value={assetForm.assetCode}
+                      onChange={e => setAssetForm({ ...assetForm, assetCode: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                      placeholder="TE-IT-1001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Asset Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={assetForm.assetName}
+                      onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      placeholder="Dell Latitude 5440 Laptop"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-slate-300 font-medium">Category *</label>
+                      {isManagerOrAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCategoryModal(true)}
+                          className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus className="w-3 h-3" /> Add Category
+                        </button>
+                      )}
+                    </div>
+                    <select
+                      required
+                      value={assetForm.categoryId}
+                      onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-medium"
+                    >
+                      <option value="">Select Asset Category...</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Asset Type</label>
+                    <select
+                      value={assetForm.assetType}
+                      onChange={e => setAssetForm({ ...assetForm, assetType: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                    >
+                      <option value="HARDWARE">HARDWARE</option>
+                      <option value="PERIPHERAL">PERIPHERAL</option>
+                      <option value="FURNITURE">FURNITURE</option>
+                      <option value="MOBILE">MOBILE DEVICE</option>
+                      <option value="SOFTWARE">SOFTWARE LICENSE</option>
+                      <option value="VEHICLE">VEHICLE</option>
+                      <option value="ACCESS">ACCESS CARD / ID</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2 — PRODUCT INFORMATION */}
+              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Box className="w-3.5 h-3.5" />
+                  <span>SECTION 2 — PRODUCT INFORMATION</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Brand</label>
+                    <input
+                      type="text"
+                      value={assetForm.brand}
+                      onChange={e => setAssetForm({ ...assetForm, brand: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      placeholder="Dell / HP / Apple"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Model</label>
+                    <input
+                      type="text"
+                      value={assetForm.model}
+                      onChange={e => setAssetForm({ ...assetForm, model: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      placeholder="Latitude 5440"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
+                    <input
+                      type="text"
+                      value={assetForm.serialNumber}
+                      onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                      placeholder="SN-987654321"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3 — FINANCIAL INFORMATION */}
+              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>SECTION 3 — FINANCIAL INFORMATION</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Purchase Date</label>
+                    <input
+                      type="date"
+                      value={assetForm.purchaseDate}
+                      onChange={e => setAssetForm({ ...assetForm, purchaseDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Purchase Price (₹)</label>
+                    <input
+                      type="number"
+                      value={assetForm.purchasePrice}
+                      onChange={e => setAssetForm({ ...assetForm, purchasePrice: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Current Valuation (₹)</label>
+                    <input
+                      type="number"
+                      value={assetForm.currentValue}
+                      onChange={e => setAssetForm({ ...assetForm, currentValue: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Vendor / Supplier</label>
+                    <input
+                      type="text"
+                      value={assetForm.vendor}
+                      onChange={e => setAssetForm({ ...assetForm, vendor: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      placeholder="Reliance Digital / Vendor Solutions"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Invoice Number</label>
+                    <input
+                      type="text"
+                      value={assetForm.invoiceNumber}
+                      onChange={e => setAssetForm({ ...assetForm, invoiceNumber: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                      placeholder="INV-2026-0988"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4 — WARRANTY */}
+              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>SECTION 4 — WARRANTY</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Warranty Start Date</label>
+                    <input
+                      type="date"
+                      value={assetForm.warrantyStartDate}
+                      onChange={e => setAssetForm({ ...assetForm, warrantyStartDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Warranty End Date</label>
+                    <input
+                      type="date"
+                      value={assetForm.warrantyEndDate}
+                      onChange={e => setAssetForm({ ...assetForm, warrantyEndDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 5 — CONDITION & LOCATION */}
+              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>SECTION 5 — CONDITION & LOCATION</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Initial Condition</label>
+                    <select
+                      value={assetForm.condition}
+                      onChange={e => setAssetForm({ ...assetForm, condition: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                    >
+                      <option value="NEW">NEW</option>
+                      <option value="EXCELLENT">EXCELLENT</option>
+                      <option value="GOOD">GOOD</option>
+                      <option value="FAIR">FAIR</option>
+                      <option value="POOR">POOR</option>
+                      <option value="DAMAGED">DAMAGED</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-medium">Physical Location</label>
+                    <input
+                      type="text"
+                      value={assetForm.location}
+                      onChange={e => setAssetForm({ ...assetForm, location: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      placeholder="HQ Floor 3 IT Storage Bay"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Asset Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={assetForm.assetName}
-                    onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Dell Latitude Laptop 5440"
+                  <label className="block text-slate-300 mb-1 font-medium">Description & Notes</label>
+                  <textarea
+                    rows={2}
+                    value={assetForm.description}
+                    onChange={e => setAssetForm({ ...assetForm, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                    placeholder="Specification notes, special configurations, accessories included..."
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Category *</label>
-                  <select
-                    value={assetForm.categoryId}
-                    onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  >
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+              {/* SECTION 6 — ASSIGNMENT */}
+              <div className="space-y-4 p-4 bg-slate-950/80 border border-cyan-800/60 rounded-xl shadow-lg">
+                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>SECTION 6 — ASSIGNMENT STATUS</span>
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Brand</label>
-                  <input
-                    type="text"
-                    value={assetForm.brand}
-                    onChange={e => setAssetForm({ ...assetForm, brand: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Dell"
-                  />
+
+                <div className="flex items-center gap-4 border-b border-slate-800 pb-3">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-200">
+                    <input
+                      type="radio"
+                      name="assignmentStatus"
+                      value="IN_STOCK"
+                      checked={assetForm.assignmentStatus === 'IN_STOCK'}
+                      onChange={() => setAssetForm({ ...assetForm, assignmentStatus: 'IN_STOCK' })}
+                      className="w-4 h-4 text-cyan-500"
+                    />
+                    <span>In Stock (Unassigned)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-200">
+                    <input
+                      type="radio"
+                      name="assignmentStatus"
+                      value="ASSIGNED"
+                      checked={assetForm.assignmentStatus === 'ASSIGNED'}
+                      onChange={() => setAssetForm({ ...assetForm, assignmentStatus: 'ASSIGNED' })}
+                      className="w-4 h-4 text-cyan-500"
+                    />
+                    <span>Assign to Employee</span>
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Model</label>
-                  <input
-                    type="text"
-                    value={assetForm.model}
-                    onChange={e => setAssetForm({ ...assetForm, model: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Latitude 5440"
-                  />
-                </div>
+
+                {assetForm.assignmentStatus === 'ASSIGNED' && (
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label className="block text-slate-300 mb-1 font-medium">Select Employee *</label>
+                      <select
+                        required
+                        value={assetForm.assignedEmployeeId}
+                        onChange={e => setAssetForm({ ...assetForm, assignedEmployeeId: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-medium"
+                      >
+                        <option value="">Select Employee...</option>
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.first_name} {emp.last_name} ({emp.employee_code}) — {emp.email}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-medium">Assignment Date *</label>
+                        <input
+                          type="date"
+                          required
+                          value={assetForm.assignedDate}
+                          onChange={e => setAssetForm({ ...assetForm, assignedDate: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-medium">Expected Return Date</label>
+                        <input
+                          type="date"
+                          value={assetForm.expectedReturnDate}
+                          onChange={e => setAssetForm({ ...assetForm, expectedReturnDate: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 mb-1 font-medium">Condition at Assignment</label>
+                      <select
+                        value={assetForm.assignmentCondition}
+                        onChange={e => setAssetForm({ ...assetForm, assignmentCondition: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                      >
+                        <option value="NEW">NEW</option>
+                        <option value="EXCELLENT">EXCELLENT</option>
+                        <option value="GOOD">GOOD</option>
+                        <option value="FAIR">FAIR</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 mb-1 font-medium">Assignment Notes</label>
+                      <textarea
+                        rows={2}
+                        value={assetForm.assignmentNotes}
+                        onChange={e => setAssetForm({ ...assetForm, assignmentNotes: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
+                        placeholder="Purpose of allocation, peripherals included..."
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
-                  <input
-                    type="text"
-                    value={assetForm.serialNumber}
-                    onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    placeholder="SN-987654"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Purchase Price (₹)</label>
-                  <input
-                    type="number"
-                    value={assetForm.purchasePrice}
-                    onChange={e => setAssetForm({ ...assetForm, purchasePrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Current Valuation (₹)</label>
-                  <input
-                    type="number"
-                    value={assetForm.currentValue}
-                    onChange={e => setAssetForm({ ...assetForm, currentValue: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Condition</label>
-                  <select
-                    value={assetForm.condition}
-                    onChange={e => setAssetForm({ ...assetForm, condition: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  >
-                    <option value="NEW">NEW</option>
-                    <option value="EXCELLENT">EXCELLENT</option>
-                    <option value="GOOD">GOOD</option>
-                    <option value="FAIR">FAIR</option>
-                    <option value="POOR">POOR</option>
-                    <option value="DAMAGED">DAMAGED</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Location</label>
-                  <input
-                    type="text"
-                    value={assetForm.location}
-                    onChange={e => setAssetForm({ ...assetForm, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="HQ Floor 3 IT Bay"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -754,7 +1083,7 @@ export const Assets: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
+                  className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-cyan-500/20"
                 >
                   Register Asset
                 </button>
@@ -764,7 +1093,182 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* Assign Modal */}
+      {/* CREATE CATEGORY MODAL */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white">Create Asset Category</h3>
+              <button type="button" onClick={() => setShowCategoryModal(false)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {categoryError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold">
+                {categoryError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCategoryFromModal} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={categoryForm.name}
+                  onChange={e => {
+                    const name = e.target.value;
+                    const code = `CAT-${name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)}`;
+                    setCategoryForm({ ...categoryForm, name, code });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="e.g. Software License / Vehicle"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Category Code *</label>
+                <input
+                  type="text"
+                  required
+                  value={categoryForm.code}
+                  onChange={e => setCategoryForm({ ...categoryForm, code: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                  placeholder="CAT-SOFTWARE"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Description</label>
+                <textarea
+                  rows={2}
+                  value={categoryForm.description}
+                  onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="Category description..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
+                >
+                  Save Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ASSET DETAILS & HISTORY MODAL */}
+      {showDetailsModal && selectedAsset && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-lg text-white">{selectedAsset.asset_name}</h3>
+                  <span className="font-mono text-xs text-cyan-400 bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{selectedAsset.asset_code}</span>
+                </div>
+                <p className="text-xs text-slate-400">Category: {selectedAsset.category_name}</p>
+              </div>
+              <button type="button" onClick={() => setShowDetailsModal(false)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Status</span>
+                <div>{getStatusBadge(selectedAsset)}</div>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Condition</span>
+                <p className="font-bold text-slate-200">{selectedAsset.condition}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Assigned Employee</span>
+                <p className="font-bold text-cyan-400">
+                  {selectedAsset.employee_first_name ? `${selectedAsset.employee_first_name} ${selectedAsset.employee_last_name}` : 'In Stock'}
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Brand & Model</span>
+                <p className="font-semibold text-slate-200">{selectedAsset.brand || '-'} {selectedAsset.model || ''}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Serial Number</span>
+                <p className="font-mono text-slate-300">{selectedAsset.serial_number || '-'}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Location</span>
+                <p className="font-semibold text-slate-200">{selectedAsset.location || '-'}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Purchase Price</span>
+                <p className="font-mono text-slate-200">₹{Number(selectedAsset.purchase_price || 0).toLocaleString()}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Current Valuation</span>
+                <p className="font-mono text-cyan-400 font-bold">₹{Number(selectedAsset.current_value || 0).toLocaleString()}</p>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                <span className="text-[10px] text-slate-500 font-medium">Purchase Date</span>
+                <p className="font-mono text-slate-300">{selectedAsset.purchase_date ? selectedAsset.purchase_date.split('T')[0] : '-'}</p>
+              </div>
+            </div>
+
+            {/* Audit History Timeline */}
+            <div className="pt-3 border-t border-slate-800 space-y-3">
+              <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                <History className="w-4 h-4 text-cyan-400" />
+                <span>Asset Audit History Log</span>
+              </h4>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+                {assetHistory.map((h, idx) => (
+                  <div key={idx} className="relative flex items-start gap-3 pl-7 text-xs">
+                    <div className="absolute left-1.5 top-1.5 w-3 h-3 rounded-full bg-cyan-400 border-2 border-slate-900" />
+                    <div className="flex-1 p-2.5 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-cyan-400 uppercase text-[10px]">{h.action}</span>
+                        <span className="text-[10px] font-mono text-slate-500">{new Date(h.created_at).toLocaleString()}</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px]">{h.notes}</p>
+                      {h.employee_first_name && (
+                        <span className="text-[10px] text-cyan-400 block font-mono">Target Employee: {h.employee_first_name} {h.employee_last_name} ({h.employee_code})</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {assetHistory.length === 0 && (
+                  <p className="text-xs text-slate-500 italic text-center py-3">No history entries logged.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ASSIGN MODAL */}
       {showAssignModal && selectedAsset && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
@@ -781,7 +1285,7 @@ export const Assets: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
             )}
 
             <form onSubmit={handleAssignAsset} className="space-y-4 text-xs">
@@ -791,8 +1295,9 @@ export const Assets: React.FC = () => {
                   required
                   value={assignForm.employeeId}
                   onChange={e => setAssignForm({ ...assignForm, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-medium"
                 >
+                  <option value="">Select Employee...</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
                       {emp.first_name} {emp.last_name} ({emp.employee_code})
@@ -830,7 +1335,7 @@ export const Assets: React.FC = () => {
                   value={assignForm.notes}
                   onChange={e => setAssignForm({ ...assignForm, notes: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Reason for allocation or special accessories provided..."
+                  placeholder="Reason for allocation or accessories provided..."
                 />
               </div>
 
@@ -854,7 +1359,7 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* Return Modal */}
+      {/* RETURN MODAL */}
       {showReturnModal && selectedAsset && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
@@ -871,7 +1376,7 @@ export const Assets: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
             )}
 
             <form onSubmit={handleReturnAsset} className="space-y-4 text-xs">
@@ -909,7 +1414,7 @@ export const Assets: React.FC = () => {
                   value={returnForm.notes}
                   onChange={e => setReturnForm({ ...returnForm, notes: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Notes on physical condition, missing accessories, or verification..."
+                  placeholder="Physical condition inspection notes..."
                 />
               </div>
 
@@ -925,53 +1430,10 @@ export const Assets: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold shadow"
                 >
-                  Process Return
+                  Process Return to Stock
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* History Audit Modal */}
-      {showHistoryModal && selectedAsset && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-xl w-full space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <History className="w-5 h-5 text-cyan-400" />
-                  <span>Asset Timeline History</span>
-                </h3>
-                <p className="text-xs text-slate-400">{selectedAsset.asset_code} — {selectedAsset.asset_name}</p>
-              </div>
-              <button type="button" onClick={() => setShowHistoryModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-800">
-              {assetHistory.map((h, idx) => (
-                <div key={idx} className="relative flex items-start gap-4 pl-8 text-xs">
-                  <div className="absolute left-2 top-1.5 w-3 h-3 rounded-full bg-cyan-400 border-2 border-slate-900" />
-                  <div className="flex-1 p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-cyan-400 uppercase">{h.action}</span>
-                      <span className="text-[10px] font-mono text-slate-500">{new Date(h.created_at).toLocaleString()}</span>
-                    </div>
-                    <p className="text-slate-300">{h.notes}</p>
-                    {h.performed_by_email && (
-                      <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
-                        Logged by: {h.performed_by_email}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {assetHistory.length === 0 && (
-                <p className="text-xs text-slate-500 py-4 text-center">No history records logged for this asset.</p>
-              )}
-            </div>
           </div>
         </div>
       )}
