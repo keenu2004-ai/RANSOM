@@ -132,30 +132,15 @@ export const Assets: React.FC = () => {
     setFormError(null);
     const defaultCatId = categories.length > 0 ? categories[0].id : '';
     setAssetForm({
-      assetCode: `TE-AST-${Math.floor(1000 + Math.random() * 9000)}`,
       assetName: '',
-      categoryId: defaultCatId,
-      assetType: 'HARDWARE',
-      brand: '',
-      model: '',
+      assetType: 'Laptop',
       serialNumber: '',
-      purchaseDate: new Date().toISOString().split('T')[0],
-      purchasePrice: 0,
-      currentValue: 0,
-      warrantyStartDate: '',
-      warrantyEndDate: '',
-      vendor: '',
-      invoiceNumber: '',
-      condition: 'NEW',
-      location: 'HQ Main Office',
-      description: '',
+      price: 0,
+      categoryId: defaultCatId,
       assignmentStatus: 'IN_STOCK',
       assignedEmployeeId: employees.length > 0 ? employees[0].id : '',
-      assignedDate: new Date().toISOString().split('T')[0],
-      expectedReturnDate: '',
-      assignmentCondition: 'NEW',
-      assignmentNotes: ''
-    });
+      assignedDate: new Date().toISOString().split('T')[0]
+    } as any);
     setShowAddModal(true);
   };
 
@@ -163,8 +148,8 @@ export const Assets: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
-    if (!assetForm.categoryId || assetForm.categoryId.trim() === '') {
-      setFormError('Please select a valid asset category.');
+    if (!assetForm.assetName || assetForm.assetName.trim() === '') {
+      setFormError('Please enter an asset name.');
       return;
     }
 
@@ -175,32 +160,17 @@ export const Assets: React.FC = () => {
 
     try {
       const payload: any = {
-        assetCode: assetForm.assetCode,
-        assetName: assetForm.assetName,
-        categoryId: assetForm.categoryId,
+        assetName: assetForm.assetName.trim(),
         assetType: assetForm.assetType,
-        brand: assetForm.brand || undefined,
-        model: assetForm.model || undefined,
-        serialNumber: assetForm.serialNumber || undefined,
-        purchaseDate: assetForm.purchaseDate || undefined,
-        purchasePrice: Number(assetForm.purchasePrice) || 0,
-        currentValue: Number(assetForm.currentValue) || Number(assetForm.purchasePrice) || 0,
-        warrantyStartDate: assetForm.warrantyStartDate || undefined,
-        warrantyEndDate: assetForm.warrantyEndDate || undefined,
-        vendor: assetForm.vendor || undefined,
-        invoiceNumber: assetForm.invoiceNumber || undefined,
-        condition: assetForm.condition,
-        location: assetForm.location || 'HQ Main Office',
-        description: assetForm.description || undefined,
+        serialNumber: assetForm.serialNumber ? assetForm.serialNumber.trim() : undefined,
+        price: Number((assetForm as any).price) || 0,
+        categoryId: assetForm.categoryId || undefined,
         assignmentStatus: assetForm.assignmentStatus
       };
 
       if (assetForm.assignmentStatus === 'ASSIGNED') {
         payload.assignedEmployeeId = assetForm.assignedEmployeeId;
         payload.assignedDate = assetForm.assignedDate;
-        payload.expectedReturnDate = assetForm.expectedReturnDate || undefined;
-        payload.assignmentCondition = assetForm.assignmentCondition;
-        payload.assignmentNotes = assetForm.assignmentNotes || undefined;
       } else {
         payload.assignedEmployeeId = null;
       }
@@ -212,12 +182,12 @@ export const Assets: React.FC = () => {
 
       setShowAddModal(false);
       setSuccessMsg(assetForm.assignmentStatus === 'ASSIGNED' 
-        ? 'Asset created and allocated to employee successfully.' 
-        : 'Asset created and added to In Stock inventory.');
+        ? 'Asset added and assigned successfully.' 
+        : 'Asset added successfully and placed in stock.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to register asset.');
+      setFormError(err.message || 'Failed to add asset.');
     }
   };
 
@@ -694,18 +664,12 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* 6-SECTION REGISTER NEW ASSET MODAL */}
+      {/* SIMPLE ADD NEW ASSET MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-3xl w-full space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-cyan-400" />
-                  <span>Register New Asset</span>
-                </h3>
-                <p className="text-xs text-slate-400">Add an asset to stock inventory or assign directly to an active employee</p>
-              </div>
+              <h3 className="font-bold text-lg text-white">Add New Asset</h3>
               <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
@@ -718,268 +682,82 @@ export const Assets: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleCreateAsset} className="space-y-6 text-xs">
-              {/* SECTION 1 — BASIC INFORMATION */}
-              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5" />
-                  <span>SECTION 1 — BASIC INFORMATION</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Asset Code *</label>
-                    <input
-                      type="text"
-                      required
-                      value={assetForm.assetCode}
-                      onChange={e => setAssetForm({ ...assetForm, assetCode: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                      placeholder="TE-IT-1001"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Asset Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={assetForm.assetName}
-                      onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="Dell Latitude 5440 Laptop"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-slate-300 font-medium">Category *</label>
-                      {isManagerOrAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => setShowCategoryModal(true)}
-                          className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-0.5"
-                        >
-                          <Plus className="w-3 h-3" /> Add Category
-                        </button>
-                      )}
-                    </div>
-                    <select
-                      required
-                      value={assetForm.categoryId}
-                      onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-medium"
-                    >
-                      <option value="">Select Asset Category...</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Asset Type</label>
-                    <select
-                      value={assetForm.assetType}
-                      onChange={e => setAssetForm({ ...assetForm, assetType: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                    >
-                      <option value="HARDWARE">HARDWARE</option>
-                      <option value="PERIPHERAL">PERIPHERAL</option>
-                      <option value="FURNITURE">FURNITURE</option>
-                      <option value="MOBILE">MOBILE DEVICE</option>
-                      <option value="SOFTWARE">SOFTWARE LICENSE</option>
-                      <option value="VEHICLE">VEHICLE</option>
-                      <option value="ACCESS">ACCESS CARD / ID</option>
-                      <option value="OTHER">OTHER</option>
-                    </select>
-                  </div>
-                </div>
+            <form onSubmit={handleCreateAsset} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Asset Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={assetForm.assetName}
+                  onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="Dell Latitude Laptop"
+                />
               </div>
 
-              {/* SECTION 2 — PRODUCT INFORMATION */}
-              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Box className="w-3.5 h-3.5" />
-                  <span>SECTION 2 — PRODUCT INFORMATION</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Brand</label>
-                    <input
-                      type="text"
-                      value={assetForm.brand}
-                      onChange={e => setAssetForm({ ...assetForm, brand: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="Dell / HP / Apple"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Model</label>
-                    <input
-                      type="text"
-                      value={assetForm.model}
-                      onChange={e => setAssetForm({ ...assetForm, model: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="Latitude 5440"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
-                    <input
-                      type="text"
-                      value={assetForm.serialNumber}
-                      onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                      placeholder="SN-987654321"
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Asset Type *</label>
+                <select
+                  required
+                  value={assetForm.assetType}
+                  onChange={e => setAssetForm({ ...assetForm, assetType: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="Laptop">Laptop</option>
+                  <option value="Desktop">Desktop</option>
+                  <option value="Monitor">Monitor</option>
+                  <option value="Mobile">Mobile</option>
+                  <option value="Tablet">Tablet</option>
+                  <option value="Keyboard">Keyboard</option>
+                  <option value="Mouse">Mouse</option>
+                  <option value="Headset">Headset</option>
+                  <option value="Printer">Printer</option>
+                  <option value="Furniture">Furniture</option>
+                  <option value="Vehicle">Vehicle</option>
+                  <option value="ID Card">ID Card</option>
+                  <option value="Access Card">Access Card</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
 
-              {/* SECTION 3 — FINANCIAL INFORMATION */}
-              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>SECTION 3 — FINANCIAL INFORMATION</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Purchase Date</label>
-                    <input
-                      type="date"
-                      value={assetForm.purchaseDate}
-                      onChange={e => setAssetForm({ ...assetForm, purchaseDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Purchase Price (₹)</label>
-                    <input
-                      type="number"
-                      value={assetForm.purchasePrice}
-                      onChange={e => setAssetForm({ ...assetForm, purchasePrice: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Current Valuation (₹)</label>
-                    <input
-                      type="number"
-                      value={assetForm.currentValue}
-                      onChange={e => setAssetForm({ ...assetForm, currentValue: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Vendor / Supplier</label>
-                    <input
-                      type="text"
-                      value={assetForm.vendor}
-                      onChange={e => setAssetForm({ ...assetForm, vendor: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="Reliance Digital / Vendor Solutions"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Invoice Number</label>
-                    <input
-                      type="text"
-                      value={assetForm.invoiceNumber}
-                      onChange={e => setAssetForm({ ...assetForm, invoiceNumber: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                      placeholder="INV-2026-0988"
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
+                <input
+                  type="text"
+                  value={assetForm.serialNumber || ''}
+                  onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                  placeholder="SN-987654 (Optional)"
+                />
               </div>
 
-              {/* SECTION 4 — WARRANTY */}
-              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>SECTION 4 — WARRANTY</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Warranty Start Date</label>
-                    <input
-                      type="date"
-                      value={assetForm.warrantyStartDate}
-                      onChange={e => setAssetForm({ ...assetForm, warrantyStartDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Warranty End Date</label>
-                    <input
-                      type="date"
-                      value={assetForm.warrantyEndDate}
-                      onChange={e => setAssetForm({ ...assetForm, warrantyEndDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Asset Price (₹)</label>
+                <input
+                  type="number"
+                  value={(assetForm as any).price || ''}
+                  onChange={e => setAssetForm({ ...assetForm, price: parseFloat(e.target.value) || 0 } as any)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                  placeholder="55000 (Optional)"
+                />
               </div>
 
-              {/* SECTION 5 — CONDITION & LOCATION */}
-              <div className="space-y-3 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>SECTION 5 — CONDITION & LOCATION</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Initial Condition</label>
-                    <select
-                      value={assetForm.condition}
-                      onChange={e => setAssetForm({ ...assetForm, condition: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                    >
-                      <option value="NEW">NEW</option>
-                      <option value="EXCELLENT">EXCELLENT</option>
-                      <option value="GOOD">GOOD</option>
-                      <option value="FAIR">FAIR</option>
-                      <option value="POOR">POOR</option>
-                      <option value="DAMAGED">DAMAGED</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Physical Location</label>
-                    <input
-                      type="text"
-                      value={assetForm.location}
-                      onChange={e => setAssetForm({ ...assetForm, location: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="HQ Floor 3 IT Storage Bay"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Description & Notes</label>
-                  <textarea
-                    rows={2}
-                    value={assetForm.description}
-                    onChange={e => setAssetForm({ ...assetForm, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Specification notes, special configurations, accessories included..."
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Category</label>
+                <select
+                  value={assetForm.categoryId || ''}
+                  onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="">Select Category...</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
 
-              {/* SECTION 6 — ASSIGNMENT */}
-              <div className="space-y-4 p-4 bg-slate-950/80 border border-cyan-800/60 rounded-xl shadow-lg">
-                <div className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5" />
-                    <span>SECTION 6 — ASSIGNMENT STATUS</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4 border-b border-slate-800 pb-3">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-200">
+              <div className="pt-2 border-t border-slate-800 space-y-3">
+                <label className="block text-slate-300 font-bold">Asset Status</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-200">
                     <input
                       type="radio"
                       name="assignmentStatus"
@@ -988,10 +766,10 @@ export const Assets: React.FC = () => {
                       onChange={() => setAssetForm({ ...assetForm, assignmentStatus: 'IN_STOCK' })}
                       className="w-4 h-4 text-cyan-500"
                     />
-                    <span>In Stock (Unassigned)</span>
+                    <span>In Stock</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-200">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-200">
                     <input
                       type="radio"
                       name="assignmentStatus"
@@ -1007,66 +785,29 @@ export const Assets: React.FC = () => {
                 {assetForm.assignmentStatus === 'ASSIGNED' && (
                   <div className="space-y-3 pt-2">
                     <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Select Employee *</label>
+                      <label className="block text-slate-300 mb-1 font-medium">Employee *</label>
                       <select
                         required
-                        value={assetForm.assignedEmployeeId}
+                        value={assetForm.assignedEmployeeId || ''}
                         onChange={e => setAssetForm({ ...assetForm, assignedEmployeeId: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-medium"
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
                       >
                         <option value="">Select Employee...</option>
                         {employees.map(emp => (
                           <option key={emp.id} value={emp.id}>
-                            {emp.first_name} {emp.last_name} ({emp.employee_code}) — {emp.email}
+                            {emp.first_name} {emp.last_name} ({emp.employee_code})
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-300 mb-1 font-medium">Assignment Date *</label>
-                        <input
-                          type="date"
-                          required
-                          value={assetForm.assignedDate}
-                          onChange={e => setAssetForm({ ...assetForm, assignedDate: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-300 mb-1 font-medium">Expected Return Date</label>
-                        <input
-                          type="date"
-                          value={assetForm.expectedReturnDate}
-                          onChange={e => setAssetForm({ ...assetForm, expectedReturnDate: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                        />
-                      </div>
-                    </div>
-
                     <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Condition at Assignment</label>
-                      <select
-                        value={assetForm.assignmentCondition}
-                        onChange={e => setAssetForm({ ...assetForm, assignmentCondition: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                      >
-                        <option value="NEW">NEW</option>
-                        <option value="EXCELLENT">EXCELLENT</option>
-                        <option value="GOOD">GOOD</option>
-                        <option value="FAIR">FAIR</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Assignment Notes</label>
-                      <textarea
-                        rows={2}
-                        value={assetForm.assignmentNotes}
-                        onChange={e => setAssetForm({ ...assetForm, assignmentNotes: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200"
-                        placeholder="Purpose of allocation, peripherals included..."
+                      <label className="block text-slate-300 mb-1 font-medium">Assignment Date</label>
+                      <input
+                        type="date"
+                        value={assetForm.assignedDate || new Date().toISOString().split('T')[0]}
+                        onChange={e => setAssetForm({ ...assetForm, assignedDate: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
                       />
                     </div>
                   </div>
@@ -1083,9 +824,9 @@ export const Assets: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-cyan-500/20"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
                 >
-                  Register Asset
+                  Add Asset
                 </button>
               </div>
             </form>

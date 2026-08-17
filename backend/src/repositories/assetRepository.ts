@@ -123,31 +123,57 @@ export class AssetRepository {
   // Create asset with initial history & audit log
   static async create(organizationId: string, userId: string, data: any) {
     return withTransaction(async (client) => {
-      // Validate Category
-      const checkCat = await client.query(
-        `SELECT id FROM asset_categories WHERE id = $1 AND organization_id = $2`,
-        [data.categoryId, organizationId]
-      );
-      if (checkCat.rows.length === 0) {
-        throw new Error('Please select a valid asset category.');
+      // Auto-generate Asset Code if not provided
+      let assetCode = data.assetCode ? data.assetCode.trim() : '';
+      if (!assetCode) {
+        const countRes = await client.query(`SELECT COUNT(*)::int as count FROM assets WHERE organization_id = $1`, [organizationId]);
+        const seq = (countRes.rows[0]?.count || 0) + 1;
+        assetCode = `TE-AST-${String(seq).padStart(4, '0')}`;
+        let checkSeq = await client.query(`SELECT id FROM assets WHERE organization_id = $1 AND asset_code = $2 AND deleted_at IS NULL`, [organizationId, assetCode]);
+        while (checkSeq.rows.length > 0) {
+          assetCode = `TE-AST-${Math.floor(1000 + Math.random() * 9000)}`;
+          checkSeq = await client.query(`SELECT id FROM assets WHERE organization_id = $1 AND asset_code = $2 AND deleted_at IS NULL`, [organizationId, assetCode]);
+        }
+      } else {
+        // Check unique asset_code
+        const checkCode = await client.query(
+          `SELECT id FROM assets WHERE organization_id = $1 AND asset_code = $2 AND deleted_at IS NULL`,
+          [organizationId, assetCode]
+        );
+        if (checkCode.rows.length > 0) {
+          throw new Error(`Asset code '${assetCode}' already exists.`);
+        }
       }
 
-      // Check unique asset_code
-      const checkCode = await client.query(
-        `SELECT id FROM assets WHERE organization_id = $1 AND asset_code = $2 AND deleted_at IS NULL`,
-        [organizationId, data.assetCode]
-      );
-      if (checkCode.rows.length > 0) {
-        throw new Error(`Asset code '${data.assetCode}' already exists.`);
+      // Validate or auto-assign Category
+      let categoryId = data.categoryId;
+      if (!categoryId || categoryId.trim() === '') {
+        const defaultCat = await client.query(
+          `SELECT id FROM asset_categories WHERE organization_id = $1 ORDER BY name ASC LIMIT 1`,
+          [organizationId]
+        );
+        if (defaultCat.rows.length > 0) {
+          categoryId = defaultCat.rows[0].id;
+        } else {
+          throw new Error('Please select a valid asset category.');
+        }
+      } else {
+        const checkCat = await client.query(
+          `SELECT id FROM asset_categories WHERE id = $1 AND organization_id = $2`,
+          [categoryId, organizationId]
+        );
+        if (checkCat.rows.length === 0) {
+          throw new Error('Please select a valid asset category.');
+        }
       }
 
-      if (data.serialNumber) {
+      if (data.serialNumber && data.serialNumber.trim() !== '') {
         const checkSerial = await client.query(
           `SELECT id FROM assets WHERE organization_id = $1 AND serial_number = $2 AND deleted_at IS NULL`,
-          [organizationId, data.serialNumber]
+          [organizationId, data.serialNumber.trim()]
         );
         if (checkSerial.rows.length > 0) {
-          throw new Error(`Serial number '${data.serialNumber}' already exists.`);
+          throw new Error(`Serial number '${data.serialNumber.trim()}' already exists.`);
         }
       }
 
@@ -170,6 +196,7 @@ export class AssetRepository {
       const assignedDate = isAssigned ? (data.assignedDate || new Date().toISOString().split('T')[0]) : null;
       const expectedReturnDate = isAssigned ? (data.expectedReturnDate || null) : null;
       const condition = isAssigned && data.assignmentCondition ? data.assignmentCondition : (data.condition || 'NEW');
+      const priceVal = data.price !== undefined ? Number(data.price) : (data.purchasePrice !== undefined ? Number(data.purchasePrice) : 0);
 
       const res = await client.query(`
         INSERT INTO assets (
@@ -183,16 +210,16 @@ export class AssetRepository {
         ) RETURNING *
       `, [
         organizationId,
-        data.assetCode,
+        assetCode,
         data.assetName,
-        data.categoryId,
+        categoryId,
         data.assetType || 'HARDWARE',
         data.brand || null,
         data.model || null,
-        data.serialNumber || null,
+        data.serialNumber ? data.serialNumber.trim() : null,
         data.purchaseDate || null,
-        data.purchasePrice || 0,
-        data.currentValue || data.purchasePrice || 0,
+        priceVal,
+        data.currentValue !== undefined ? Number(data.currentValue) : priceVal,
         data.warrantyStartDate || null,
         data.warrantyEndDate || null,
         data.vendor || null,
