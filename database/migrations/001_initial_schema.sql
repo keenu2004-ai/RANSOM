@@ -8,6 +8,3 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     name VARCHAR(255) NOT NULL UNIQUE,
     executed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- Include base schema definition
-\i database/schema.sql
