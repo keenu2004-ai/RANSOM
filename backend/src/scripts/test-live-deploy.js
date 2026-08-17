@@ -6,7 +6,7 @@
 
 const https = require('https');
 
-const BASE_URL = 'https://theiakshi-hrms-backend.onrender.com/api';
+const BASE_URL = process.env.LIVE_BACKEND_URL || 'https://ransom-eetj.onrender.com/api';
 
 const ACCOUNTS = [
   { email: 'superadmin@theiakshi.com', expectedRole: 'SUPER_ADMIN', expectedEmp: null },
@@ -62,7 +62,7 @@ function getJson(path, token) {
 async function runLiveTest() {
   console.log('================================================================');
   console.log(' LIVE RENDER BACKEND & NEON POSTGRESQL END-TO-END AUTH TEST');
-  console.log(' Target Backend: https://theiakshi-hrms-backend.onrender.com/api');
+  console.log(` Target Backend: ${BASE_URL}`);
   console.log('================================================================\n');
 
   for (const acc of ACCOUNTS) {
@@ -74,7 +74,7 @@ async function runLiveTest() {
       console.error(`  ❌ LOGIN FAILED (${loginRes.status}):`, loginRes.body);
       continue;
     }
-    const token = loginRes.body.token;
+    const token = loginRes.body.data.token;
     console.log(`  ✓ Login Success (HTTP 200). JWT Issued.`);
 
     // 2. Auth Me
@@ -83,7 +83,7 @@ async function runLiveTest() {
       console.error(`  ❌ AUTH ME FAILED (${meRes.status}):`, meRes.body);
       continue;
     }
-    const user = meRes.body.user;
+    const user = meRes.body.data.user;
     console.log(`  ✓ Auth Me Success: Role = ${user.role}, EmployeeId = ${user.employeeId}`);
 
     // Verify Identity Rules
