@@ -125,22 +125,7 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 -- ------------------------------------------------------------
--- 4. SHIFTS & ROSTERS
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS shifts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    break_duration_minutes INT NOT NULL DEFAULT 60,
-    working_hours NUMERIC(4, 2) NOT NULL DEFAULT 8.00,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- ------------------------------------------------------------
--- 5. EMPLOYEES IDENTITY (CANONICAL REF: user_id -> users.id)
+-- 4. EMPLOYEES IDENTITY (CANONICAL REF: user_id -> users.id)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS employees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -161,7 +146,6 @@ CREATE TABLE IF NOT EXISTS employees (
     designation_id UUID REFERENCES designations(id) ON DELETE SET NULL,
     team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
     manager_id UUID REFERENCES employees(id) ON DELETE SET NULL,
-    shift_id UUID REFERENCES shifts(id) ON DELETE SET NULL,
     pan_number VARCHAR(20),
     aadhaar_number VARCHAR(20),
     bank_account_number VARCHAR(50),
@@ -170,19 +154,8 @@ CREATE TABLE IF NOT EXISTS employees (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS employee_shifts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    shift_id UUID NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
-    effective_from DATE NOT NULL,
-    effective_to DATE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 -- ------------------------------------------------------------
--- 6. ATTENDANCE & LOCATIONS
+-- 5. ATTENDANCE & LOCATIONS
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS attendance_locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

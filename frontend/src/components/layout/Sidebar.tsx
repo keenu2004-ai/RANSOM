@@ -21,7 +21,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     { label: 'Attendance', path: '/attendance', icon: Clock, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Leave Management', path: '/leave', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Holidays & Calendar', path: '/holidays', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Shifts & Rosters', path: '/shifts', icon: Briefcase, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'] },
     { label: 'Expense Claims', path: '/expenses', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Weekly Plan', path: '/timesheets', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Payroll & Payslips', path: '/payroll', icon: Banknote, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'EMPLOYEE'] },

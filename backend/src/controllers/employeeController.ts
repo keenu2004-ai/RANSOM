@@ -17,8 +17,7 @@ const createEmployeeSchema = z.object({
   designation_id: z.string().uuid().optional(),
   branch_id: z.string().uuid().optional(),
   team_id: z.string().uuid().optional(),
-  manager_id: z.string().uuid().optional(),
-  shift_id: z.string().uuid().optional()
+  manager_id: z.string().uuid().optional()
 });
 
 export class EmployeeController {

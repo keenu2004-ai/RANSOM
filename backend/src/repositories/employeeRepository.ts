@@ -138,8 +138,6 @@ export class EmployeeRepository {
         t.name as team_name,
         e.manager_id,
         CONCAT(m.first_name, ' ', m.last_name) as manager_name,
-        e.shift_id,
-        s.name as shift_name,
         e.pan_number,
         e.aadhaar_number,
         e.bank_account_number,
@@ -152,7 +150,6 @@ export class EmployeeRepository {
       LEFT JOIN designations des ON e.designation_id = des.id
       LEFT JOIN teams t ON e.team_id = t.id
       LEFT JOIN employees m ON e.manager_id = m.id
-      LEFT JOIN shifts s ON e.shift_id = s.id
       WHERE e.id = $1 AND e.organization_id = $2
     `;
     const res = await query(text, [id, organizationId]);
@@ -196,10 +193,10 @@ export class EmployeeRepository {
         INSERT INTO employees (
           organization_id, user_id, employee_code, first_name, last_name, email,
           phone, date_of_birth, gender, joining_date, employment_type, status,
-          branch_id, department_id, designation_id, team_id, manager_id, shift_id,
+          branch_id, department_id, designation_id, team_id, manager_id,
           pan_number, aadhaar_number, bank_account_number, bank_ifsc
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
         ) RETURNING id, employee_code, first_name, last_name, email, status, created_at
       `;
 
@@ -208,7 +205,7 @@ export class EmployeeRepository {
         data.phone || null, data.date_of_birth || null, data.gender || null, data.joining_date || new Date(),
         data.employment_type || 'FULL_TIME', data.status || 'ACTIVE',
         data.branch_id || null, data.department_id || null, data.designation_id || null,
-        data.team_id || null, data.manager_id || null, data.shift_id || null,
+        data.team_id || null, data.manager_id || null,
         data.pan_number || null, data.aadhaar_number || null, data.bank_account_number || null, data.bank_ifsc || null
       ];
 
@@ -244,7 +241,6 @@ export class EmployeeRepository {
         designation_id = COALESCE($10, designation_id),
         team_id = COALESCE($11, team_id),
         manager_id = COALESCE($12, manager_id),
-        shift_id = COALESCE($13, shift_id),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $1 AND organization_id = $2
       RETURNING id, employee_code, first_name, last_name, status, updated_at
@@ -253,7 +249,7 @@ export class EmployeeRepository {
     const params = [
       id, organizationId, data.first_name, data.last_name, data.phone,
       data.employment_type, data.status, data.branch_id, data.department_id,
-      data.designation_id, data.team_id, data.manager_id, data.shift_id
+      data.designation_id, data.team_id, data.manager_id
     ];
 
     const res = await query(text, params);

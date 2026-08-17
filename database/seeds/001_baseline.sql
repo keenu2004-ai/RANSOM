@@ -40,19 +40,17 @@ VALUES
 ('20000000-0000-0000-0000-000000000004', 'employees', 'delete', 'Deactivate employee profile', 'employees:delete'),
 ('20000000-0000-0000-0000-000000000005', 'employees', 'export', 'Export employee directory CSV', 'employees:export'),
 -- Attendance
-('20000000-0000-0000-0000-000000000006', 'attendance', 'checkin', 'Mark self shift attendance', 'attendance:checkin'),
-('20000000-0000-0000-0000-000000000007', 'attendance', 'view', 'View company workforce attendance', 'attendance:view'),
-('20000000-0000-0000-0000-000000000008', 'attendance', 'manage', 'Manage shifts and attendance locations', 'attendance:manage'),
+('20000000-0000-0000-0000-000000000006', 'attendance', 'checkin', 'Mark self attendance', 'attendance:checkin'),
+('20000000-0000-0000-0000-000000000007', 'attendance', 'view', 'View attendance logs', 'attendance:view'),
+('20000000-0000-0000-0000-000000000008', 'attendance', 'manage', 'Manage attendance rules and locations', 'attendance:manage'),
 -- Leave
 ('20000000-0000-0000-0000-000000000009', 'leave', 'apply', 'Apply for personal leave', 'leave:apply'),
 ('20000000-0000-0000-0000-000000000010', 'leave', 'view', 'View leave balances and history', 'leave:view'),
 ('20000000-0000-0000-0000-000000000011', 'leave', 'approve', 'Approve/reject workforce leave requests', 'leave:approve'),
 ('20000000-0000-0000-0000-000000000012', 'leave', 'manage', 'Configure leave types and quotas', 'leave:manage'),
--- Holidays & Shifts
+-- Holidays
 ('20000000-0000-0000-0000-000000000013', 'holidays', 'view', 'View holiday calendar', 'holidays:view'),
 ('20000000-0000-0000-0000-000000000014', 'holidays', 'manage', 'Add/edit/delete company holidays', 'holidays:manage'),
-('20000000-0000-0000-0000-000000000015', 'shifts', 'view', 'View working shift rosters', 'shifts:view'),
-('20000000-0000-0000-0000-000000000016', 'shifts', 'manage', 'Configure shifts and assign employees', 'shifts:manage'),
 -- Expenses & Timesheets
 ('20000000-0000-0000-0000-000000000017', 'expenses', 'create', 'Submit expense reimbursement claim', 'expenses:create'),
 ('20000000-0000-0000-0000-000000000018', 'expenses', 'view', 'View expense claims', 'expenses:view'),
@@ -97,7 +95,7 @@ WHERE r.name = 'HR_MANAGER' AND p.key IN (
   'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'employees:export',
   'attendance:checkin', 'attendance:view', 'attendance:manage',
   'leave:apply', 'leave:view', 'leave:approve', 'leave:manage',
-  'holidays:view', 'holidays:manage', 'shifts:view', 'shifts:manage',
+  'holidays:view', 'holidays:manage',
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
   'payroll:manage', 'payroll:view_self',
@@ -113,7 +111,7 @@ FROM roles r, permissions p
 WHERE r.name = 'MANAGER' AND p.key IN (
   'employees:view', 'attendance:checkin', 'attendance:view',
   'leave:apply', 'leave:view', 'leave:approve',
-  'holidays:view', 'shifts:view',
+  'holidays:view',
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
   'payroll:view_self',
@@ -168,11 +166,7 @@ VALUES
 ('50000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000007', 'Administration Team', 'TEAM-ADMIN')
 ON CONFLICT (code) DO NOTHING;
 
--- 5. SHIFTS, LOCATIONS, LEAVE TYPES, EXPENSE CATEGORIES, PROJECTS, DOC TYPES, HOLIDAYS
-INSERT INTO shifts (id, organization_id, name, start_time, end_time, break_duration_minutes, working_hours)
-VALUES ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'GENERAL', '09:30:00', '18:30:00', 60, 8.00)
-ON CONFLICT DO NOTHING;
-
+-- 5. LOCATIONS, LEAVE TYPES, EXPENSE CATEGORIES, PROJECTS, DOC TYPES, HOLIDAYS
 INSERT INTO attendance_locations (id, organization_id, branch_id, name, latitude, longitude, radius_meters)
 VALUES ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'THEIAKSHI HQ Office', 28.66920000, 77.45380000, 500.00)
 ON CONFLICT DO NOTHING;
@@ -201,7 +195,7 @@ VALUES
 ('90000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Internal Operations', 'PRJ-INT-OPS', 'Core Company Operations & Logistics', 'ACTIVE'),
 ('90000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'HRMS Development', 'PRJ-HRMS', 'Enterprise Human Resource Platform Rebuild', 'ACTIVE'),
 ('90000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Website Development', 'PRJ-WEB', 'Corporate Portal & Brand Website Modernization', 'ACTIVE'),
-('90000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Sales Operations', 'PRJ-SALES', 'Client Pipeline & CRM System Support', 'ACTIVE')
+('90000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Sales Operations', 'PRJ-SALES', 'Client Pipeline & CRM System Support', 'ACTIVE')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO holidays (id, organization_id, branch_id, title, date, holiday_type, description)
@@ -241,8 +235,8 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000003', id FROM roles WHERE name = 'HR_MANAGER'
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
-INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id, shift_id)
-VALUES ('e0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'EMP-001', 'Aarav', 'Sharma', 'hr@theiakshi.com', '+919876543210', '2024-01-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001')
+INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id)
+VALUES ('e0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'EMP-001', 'Aarav', 'Sharma', 'hr@theiakshi.com', '+919876543210', '2024-01-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001')
 ON CONFLICT (employee_code) DO NOTHING;
 
 -- User 4: MANAGER (Linked Employee: EMP-002)
@@ -254,8 +248,8 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000004', id FROM roles WHERE name = 'MANAGER'
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
-INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id, shift_id)
-VALUES ('e0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'EMP-002', 'Priya', 'Verma', 'manager@theiakshi.com', '+919876543211', '2024-02-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000001')
+INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id)
+VALUES ('e0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'EMP-002', 'Priya', 'Verma', 'manager@theiakshi.com', '+919876543211', '2024-02-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000005')
 ON CONFLICT (employee_code) DO NOTHING;
 
 -- User 5: EMPLOYEE (Linked Employee: EMP-003)
@@ -267,8 +261,8 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000005', id FROM roles WHERE name = 'EMPLOYEE'
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
-INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id, manager_id, shift_id)
-VALUES ('e0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'EMP-003', 'Rohan', 'Gupta', 'employee@theiakshi.com', '+919876543212', '2024-03-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001')
+INSERT INTO employees (id, organization_id, user_id, employee_code, first_name, last_name, email, phone, joining_date, employment_type, status, branch_id, department_id, designation_id, team_id, manager_id)
+VALUES ('e0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'EMP-003', 'Rohan', 'Gupta', 'employee@theiakshi.com', '+919876543212', '2024-03-01', 'FULL_TIME', 'ACTIVE', '00000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000002')
 ON CONFLICT (employee_code) DO NOTHING;
 
 -- 8. INITIAL LEAVE BALANCES FOR EMPLOYEES

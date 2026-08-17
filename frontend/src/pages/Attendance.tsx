@@ -164,7 +164,7 @@ export const Attendance: React.FC = () => {
       {/* Employee Personal Attendance Section */}
       {user?.employeeId && (
         <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h3 className="font-bold text-sm text-slate-200">Today's Personal Shift Status</h3>
+          <h3 className="font-bold text-sm text-slate-200">Today's Attendance Status</h3>
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
@@ -194,7 +194,7 @@ export const Attendance: React.FC = () => {
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <LogIn className="w-4 h-4" />
-                  <span>{today?.check_out ? 'Shift Completed' : 'Check In Now'}</span>
+                  <span>{today?.check_out ? 'Workday Completed' : 'Check In Now'}</span>
                 </button>
               )}
             </div>

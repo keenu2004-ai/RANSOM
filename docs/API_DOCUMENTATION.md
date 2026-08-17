@@ -17,9 +17,9 @@ All requests use standard JSON headers: `Content-Type: application/json` and `Au
 | GET | `/dashboard` | Role-tailored metrics & announcements | Yes | No | All |
 | GET | `/employees` | List/search employees with pagination | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER, MANAGER |
 | POST | `/employees` | Create employee profile & leave balances | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER |
-| GET | `/attendance/today` | Personal today shift status | Yes | No | All |
-| POST | `/attendance/check-in` | Personal shift check-in | Yes | Yes (400 if null) | All |
-| POST | `/attendance/check-out` | Personal shift check-out | Yes | Yes (400 if null) | All |
+| GET | `/attendance/today` | Personal today attendance status | Yes | No | All |
+| POST | `/attendance/check-in` | Personal workday check-in | Yes | Yes (400 if null) | All |
+| POST | `/attendance/check-out` | Personal workday check-out | Yes | Yes (400 if null) | All |
 | GET | `/attendance/workforce-summary` | Administrative daily workforce stats | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER, MANAGER |
 | GET | `/leaves/me/balance` | Personal leave balances | Yes | Yes | All |
 | POST | `/leaves/apply` | Submit personal leave application | Yes | Yes | All |

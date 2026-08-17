@@ -39,7 +39,6 @@ const BASELINE_EXPECTATIONS = [
   { table: 'departments', min: 7, type: 'REQUIRED MASTER DATA' },
   { table: 'designations', min: 7, type: 'REQUIRED MASTER DATA' },
   { table: 'teams', min: 7, type: 'REQUIRED MASTER DATA' },
-  { table: 'shifts', min: 1, type: 'REQUIRED MASTER DATA' },
   { table: 'attendance_locations', min: 1, type: 'REQUIRED MASTER DATA' },
   { table: 'leave_types', min: 4, type: 'REQUIRED MASTER DATA' },
   { table: 'expense_categories', min: 7, type: 'REQUIRED MASTER DATA' },

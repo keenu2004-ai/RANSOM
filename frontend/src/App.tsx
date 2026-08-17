@@ -55,7 +55,6 @@ export const App: React.FC = () => {
           <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><Leave /></ProtectedRoute>} />
           <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
-          <Route path="/shifts" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
           <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
           <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />

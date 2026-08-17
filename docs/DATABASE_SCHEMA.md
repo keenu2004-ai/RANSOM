@@ -15,14 +15,13 @@
 - `role_permissions` (`role_id`, `permission_id`)
 
 ### Core HR Master
-- `employees` (`id`, `organization_id`, `user_id` FK -> `users.id`, `employee_code`, `first_name`, `last_name`, `email`, `phone`, `employment_type`, `status`, `branch_id`, `department_id`, `designation_id`, `team_id`, `manager_id`, `shift_id`)
+- `employees` (`id`, `organization_id`, `user_id` FK -> `users.id`, `employee_code`, `first_name`, `last_name`, `email`, `phone`, `employment_type`, `status`, `branch_id`, `department_id`, `designation_id`, `team_id`, `manager_id`)
 - `departments` (`id`, `organization_id`, `branch_id`, `name`, `code`)
 - `designations` (`id`, `organization_id`, `department_id`, `name`, `code`)
 - `teams` (`id`, `organization_id`, `department_id`, `name`, `code`)
 - `branches` (`id`, `organization_id`, `name`, `code`, `location`, `is_headquarters`)
 
-### Attendance & Shifts
-- `shifts` (`id`, `organization_id`, `name`, `start_time`, `end_time`, `working_hours`)
+### Attendance & Locations
 - `attendance_locations` (`id`, `organization_id`, `branch_id`, `name`, `latitude`, `longitude`, `radius_meters`)
 - `attendance` (`id`, `organization_id`, `employee_id`, `date`, `check_in`, `check_out`, `status`, `working_hours`)
 - `holidays` (`id`, `organization_id`, `branch_id`, `title`, `date`, `holiday_type`)

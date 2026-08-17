@@ -23,8 +23,6 @@ This directory contains the PostgreSQL source-of-truth database scripts, migrati
 - `designations` — Job titles and designations
 - `teams` — Operational teams within departments
 - `employees` — Workforce identity record (contains `user_id` FK referencing `users.id`)
-- `shifts` — Working hour schedules
-- `employee_shifts` — Shift assignment history
 - `attendance_locations` — Geofencing locations (lat/lng/radius)
 - `leave_types` — Quota rules and paid/unpaid classifications
 - `expense_categories` — Allowed expense claim types
