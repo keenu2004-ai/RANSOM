@@ -1,20 +1,27 @@
 import React, { useState } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, KeyRound, UserCheck, Building2, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { login, error, clearError } = useAuth();
+  const { user, login, error, clearError } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('superadmin@theiakshi.com');
   const [password, setPassword] = useState('ChangeMe@123');
   const [loading, setLoading] = useState(false);
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(email, password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
-      // Error handled by AuthContext
+      // Error is stored in AuthContext error state and displayed below
     } finally {
       setLoading(false);
     }
@@ -97,6 +104,7 @@ export const Login: React.FC = () => {
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center">Quick Demo Account Switch</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
+              type="button"
               onClick={() => setDemo('superadmin@theiakshi.com')}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
             >
@@ -104,6 +112,7 @@ export const Login: React.FC = () => {
               <div className="text-[10px] text-slate-500 truncate">superadmin@theiakshi.com</div>
             </button>
             <button
+              type="button"
               onClick={() => setDemo('admin@theiakshi.com')}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
             >
@@ -111,6 +120,7 @@ export const Login: React.FC = () => {
               <div className="text-[10px] text-slate-500 truncate">admin@theiakshi.com</div>
             </button>
             <button
+              type="button"
               onClick={() => setDemo('hr@theiakshi.com')}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
             >
@@ -118,6 +128,7 @@ export const Login: React.FC = () => {
               <div className="text-[10px] text-slate-500 truncate">hr@theiakshi.com</div>
             </button>
             <button
+              type="button"
               onClick={() => setDemo('manager@theiakshi.com')}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
             >
@@ -126,6 +137,7 @@ export const Login: React.FC = () => {
             </button>
           </div>
           <button
+            type="button"
             onClick={() => setDemo('employee@theiakshi.com')}
             className="w-full p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
           >

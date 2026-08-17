@@ -4,7 +4,15 @@
  */
 
 export function getApiUrl(endpoint: string): string {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  let baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').trim();
+  // Strip trailing slashes
+  baseUrl = baseUrl.replace(/\/+$/, '');
+  
+  // If baseUrl already ends with /api, remove it so we can append cleanly
+  if (baseUrl.endsWith('/api')) {
+    baseUrl = baseUrl.substring(0, baseUrl.length - 4);
+  }
+  
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${baseUrl}/api${cleanEndpoint}`;
 }
@@ -38,7 +46,8 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
     });
     const queryString = queryParams.toString();
     if (queryString) {
-      url += `?${queryString}`;
+      const separator = url.includes('?') ? '&' : '?';
+      url += `${separator}${queryString}`;
     }
   }
 
@@ -57,8 +66,8 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
   try {
     const response = await fetch(url, config);
 
-    if (response.status === 401) {
-      // Clear expired auth session
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
+      // Clear expired auth session for protected endpoints
       localStorage.removeItem('theiakshi_auth_token');
       localStorage.removeItem('theiakshi_auth_user');
       throw new ApiError('Your session has expired or is unauthorized. Please sign in again.', 401, 'UNAUTHENTICATED');
@@ -71,7 +80,9 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
       const code = data.code || 'UNKNOWN_ERROR';
       let message = data.error || 'An error occurred while communicating with the server.';
 
-      if (status === 403) {
+      if (status === 401 && endpoint.includes('/auth/login')) {
+        message = data.error || 'Invalid email address or password.';
+      } else if (status === 403) {
         message = data.error || 'You do not have permission to perform this action.';
       } else if (status === 404) {
         message = data.error || 'The requested resource was not found.';

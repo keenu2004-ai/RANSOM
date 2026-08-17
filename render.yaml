@@ -21,7 +21,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
-        value: https://theiakshi-hrms-frontend.onrender.com
+        value: https://ransom-1-npfy.onrender.com,https://theiakshi-hrms-frontend.onrender.com
 
   # 2. Frontend Static Site
   - type: static
@@ -35,4 +35,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://theiakshi-hrms-backend.onrender.com
+        value: https://ransom-eetj.onrender.com
