@@ -9,7 +9,7 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/theiakshi_hrms',
   jwtSecret: process.env.JWT_SECRET || 'fallback-dev-jwt-secret-theiakshi-2026',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback-dev-refresh-secret-theiakshi-2026',
-  corsAllowedOrigins: (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,https://theiakshi-hrms-frontend.onrender.com')
+  corsAllowedOrigins: (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,https://ransom-1-npfy.onrender.com,https://theiakshi-hrms-frontend.onrender.com')
     .split(',')
     .map(origin => origin.trim())
 };

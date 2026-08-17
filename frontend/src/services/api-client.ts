@@ -100,10 +100,10 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError(
-      error.message || 'Unable to connect to the API server. Please check your network connection.',
-      0,
-      'NETWORK_ERROR'
-    );
+    const isNetwork = error.name === 'TypeError' || (error.message && error.message.includes('Failed to fetch'));
+    const message = isNetwork 
+      ? 'Unable to connect to the server. Please try again.'
+      : (error.message || 'Unable to connect to the server. Please try again.');
+    throw new ApiError(message, 0, 'NETWORK_ERROR');
   }
 }
