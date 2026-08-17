@@ -62,6 +62,18 @@ VALUES
 -- Payroll
 ('20000000-0000-0000-0000-000000000022', 'payroll', 'view_self', 'View personal monthly payslips', 'payroll:view_self'),
 ('20000000-0000-0000-0000-000000000023', 'payroll', 'manage', 'Manage salary structures and process payroll', 'payroll:manage'),
+-- Asset Management
+('20000000-0000-0000-0000-000000000040', 'assets', 'view', 'View assets and details', 'assets:view'),
+('20000000-0000-0000-0000-000000000041', 'assets', 'create', 'Create new asset record', 'assets:create'),
+('20000000-0000-0000-0000-000000000042', 'assets', 'update', 'Update asset information', 'assets:update'),
+('20000000-0000-0000-0000-000000000043', 'assets', 'delete', 'Delete / Soft-delete asset record', 'assets:delete'),
+('20000000-0000-0000-0000-000000000044', 'assets', 'assign', 'Assign asset to employee', 'assets:assign'),
+('20000000-0000-0000-0000-000000000045', 'assets', 'return', 'Process asset return from employee', 'assets:return'),
+('20000000-0000-0000-0000-000000000046', 'assets', 'manage', 'Full asset lifecycle management', 'assets:manage'),
+('20000000-0000-0000-0000-000000000047', 'assets', 'categories', 'Manage asset categories', 'assets:categories'),
+('20000000-0000-0000-0000-000000000048', 'assets', 'maintenance', 'Manage asset maintenance logs', 'assets:maintenance'),
+('20000000-0000-0000-0000-000000000049', 'assets', 'reports', 'View and export asset reports', 'assets:reports'),
+('20000000-0000-0000-0000-000000000050', 'assets', 'history', 'View asset audit history', 'assets:history'),
 -- System & Reports
 ('20000000-0000-0000-0000-000000000031', 'notifications', 'view', 'Receive in-app alerts', 'notifications:view'),
 ('20000000-0000-0000-0000-000000000032', 'reports', 'view', 'View workforce reports', 'reports:view'),
@@ -89,9 +101,8 @@ WHERE r.name = 'HR_MANAGER' AND p.key IN (
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
   'payroll:manage', 'payroll:view_self',
-  'compliance:view', 'compliance:manage',
-  'documents:view', 'announcements:view', 'announcements:create',
-  'helpdesk:create', 'helpdesk:view', 'notifications:view', 'reports:view'
+  'notifications:view', 'reports:view',
+  'assets:view', 'assets:create', 'assets:update', 'assets:assign', 'assets:return', 'assets:categories', 'assets:maintenance', 'assets:reports', 'assets:history'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -105,8 +116,9 @@ WHERE r.name = 'MANAGER' AND p.key IN (
   'holidays:view', 'shifts:view',
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
-  'payroll:view_self', 'documents:view', 'announcements:view',
-  'helpdesk:create', 'helpdesk:view', 'notifications:view', 'reports:view'
+  'payroll:view_self',
+  'notifications:view', 'reports:view',
+  'assets:view', 'assets:assign', 'assets:return', 'assets:history'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -117,8 +129,8 @@ FROM roles r, permissions p
 WHERE r.name = 'EMPLOYEE' AND p.key IN (
   'attendance:checkin', 'leave:apply', 'leave:view', 'holidays:view',
   'expenses:create', 'expenses:view', 'timesheets:create', 'timesheets:view',
-  'payroll:view_self', 'documents:view', 'announcements:view',
-  'helpdesk:create', 'helpdesk:view', 'notifications:view'
+  'payroll:view_self', 'notifications:view',
+  'assets:view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -264,5 +276,31 @@ INSERT INTO leave_balances (organization_id, employee_id, leave_type_id, year, q
 SELECT '00000000-0000-0000-0000-000000000001', e.id, lt.id, 2026, lt.annual_quota, 0, 0, lt.annual_quota
 FROM employees e, leave_types lt
 ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING;
+
+-- 9. ASSET CATEGORIES BASELINE
+INSERT INTO asset_categories (id, organization_id, name, code, description)
+VALUES 
+('f0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Laptop', 'CAT-LAPTOP', 'Portable laptops and notebooks'),
+('f0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Desktop', 'CAT-DESKTOP', 'Desktop workstations & towers'),
+('f0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Monitor', 'CAT-MONITOR', 'Display monitors and screens'),
+('f0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Mobile Phone', 'CAT-MOBILE', 'Company smartphones and test devices'),
+('f0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Peripheral', 'CAT-PERIPHERAL', 'Keyboards, mice, headsets, cables'),
+('f0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Furniture', 'CAT-FURNITURE', 'Office desks, ergonomic chairs, cabinets')
+ON CONFLICT (code) DO NOTHING;
+
+-- 10. DEMO ASSETS & ASSIGNMENT HISTORY
+INSERT INTO assets (id, organization_id, asset_code, asset_name, category_id, asset_type, brand, model, serial_number, purchase_date, purchase_price, current_value, condition, status, location, assigned_employee_id, assigned_date, expected_return_date)
+VALUES 
+('f1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'TE-IT-0001', 'Dell Latitude 5440 Laptop', 'f0000000-0000-0000-0000-000000000001', 'HARDWARE', 'Dell', 'Latitude 5440', 'DL-LAT-98765', '2025-01-15', 75000.00, 68000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 3', 'e0000000-0000-0000-0000-000000000003', '2025-02-01', '2026-12-31'),
+('f1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'TE-IT-0002', 'HP UltraSharp 27" 4K Monitor', 'f0000000-0000-0000-0000-000000000003', 'HARDWARE', 'HP', 'UltraSharp Z27', 'HP-MON-44321', '2025-02-10', 32000.00, 29000.00, 'NEW', 'AVAILABLE', 'IT Storage Bay', NULL, NULL, NULL),
+('f1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'TE-MOB-0001', 'Samsung Galaxy S24 Ultra', 'f0000000-0000-0000-0000-000000000004', 'HARDWARE', 'Samsung', 'Galaxy S24 Ultra', 'SM-GAL-11223', '2025-03-01', 110000.00, 98000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 2', 'e0000000-0000-0000-0000-000000000002', '2025-03-05', '2026-12-31'),
+('f1000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'TE-ACC-0001', 'Logitech MX Keys Wireless Combo', 'f0000000-0000-0000-0000-000000000005', 'PERIPHERAL', 'Logitech', 'MX Keys Advanced', 'LOG-MX-88990', '2025-01-20', 12000.00, 10000.00, 'GOOD', 'AVAILABLE', 'IT Storage Bay', NULL, NULL, NULL),
+('f1000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'TE-FUR-0001', 'Ergonomic Mesh Executive Chair', 'f0000000-0000-0000-0000-000000000006', 'FURNITURE', 'Featherlite', 'Optima Mesh', 'FL-OPT-55667', '2024-11-05', 18000.00, 15000.00, 'GOOD', 'AVAILABLE', 'HQ Floor 1', NULL, NULL, NULL)
+ON CONFLICT (asset_code) DO NOTHING;
+
+INSERT INTO asset_history (asset_id, organization_id, action, previous_status, new_status, employee_id, notes)
+VALUES 
+('f1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 'e0000000-0000-0000-0000-000000000003', 'Initial laptop allocation for Rohan Gupta'),
+('f1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 'e0000000-0000-0000-0000-000000000002', 'Executive test device allocation for Priya Verma');
 
 COMMIT;

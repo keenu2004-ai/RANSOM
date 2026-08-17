@@ -11,6 +11,7 @@ import { Holidays } from './pages/Holidays';
 import { Expenses } from './pages/Expenses';
 import { Timesheets } from './pages/Timesheets';
 import { Payroll } from './pages/Payroll';
+import { Assets } from './pages/Assets';
 import { Notifications } from './pages/Notifications';
 import { Reports } from './pages/Reports';
 import { AuditLogs } from './pages/AuditLogs';
@@ -59,6 +60,7 @@ export const App: React.FC = () => {
           <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
           <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
           <Route path="/payroll" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'EMPLOYEE']}><Payroll /></ProtectedRoute>} />
+          <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER']}><Reports /></ProtectedRoute>} />
           <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><AuditLogs /></ProtectedRoute>} />

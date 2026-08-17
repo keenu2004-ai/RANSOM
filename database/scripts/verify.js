@@ -45,6 +45,7 @@ const BASELINE_EXPECTATIONS = [
   { table: 'expense_categories', min: 7, type: 'REQUIRED MASTER DATA' },
   { table: 'projects', min: 4, type: 'REQUIRED MASTER DATA' },
   { table: 'holidays', min: 4, type: 'REQUIRED MASTER DATA' },
+  { table: 'asset_categories', min: 6, type: 'REQUIRED MASTER DATA' },
 
   // Required Identity Data
   { table: 'users', min: 5, type: 'REQUIRED IDENTITY DATA' },
@@ -53,13 +54,16 @@ const BASELINE_EXPECTATIONS = [
   { table: 'employees', min: 3, type: 'REQUIRED IDENTITY DATA' },
   { table: 'leave_balances', min: 12, type: 'REQUIRED IDENTITY DATA' },
 
-  // Expected Empty Transactional Data
+  // Expected Empty / Master Transactional Data
+  { table: 'assets', min: 5, type: 'REQUIRED ASSET DATA' },
   { table: 'attendance', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'leave_requests', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'expenses', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'timesheets', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'salary_structures', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'payroll_records', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
+  { table: 'asset_history', min: 2, type: 'REQUIRED ASSET HISTORY DATA' },
+  { table: 'asset_maintenance', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'notifications', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'audit_logs', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' }
 ];

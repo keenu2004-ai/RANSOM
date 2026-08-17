@@ -67,6 +67,7 @@ import reportRoutes from './routes/reportRoutes';
 import auditRoutes from './routes/auditRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import adminRoutes from './routes/adminRoutes';
+import assetRoutes from './routes/assetRoutes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -77,6 +78,7 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/assets', assetRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/audit-logs', auditRoutes);
