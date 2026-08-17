@@ -31,6 +31,8 @@ export const Employees: React.FC = () => {
     first_name: '',
     last_name: '',
     email: '',
+    password: '',
+    confirm_password: '',
     phone: '',
     employment_type: 'FULL_TIME',
     department_id: '',
@@ -135,8 +137,21 @@ export const Employees: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (formData.password && formData.password !== formData.confirm_password) {
+      setFormError('Initial password and confirmation do not match.');
+      return;
+    }
+
+    if (formData.password && formData.password.length < 6) {
+      setFormError('Password must be at least 6 characters long.');
+      return;
+    }
+
     try {
       const payload: any = { ...formData };
+      delete payload.confirm_password;
+      if (!payload.password) delete payload.password;
       if (!payload.department_id) delete payload.department_id;
       if (!payload.designation_id) delete payload.designation_id;
 
@@ -146,10 +161,10 @@ export const Employees: React.FC = () => {
       });
       setShowAddModal(false);
       setFormData({
-        first_name: '', last_name: '', email: '', phone: '',
+        first_name: '', last_name: '', email: '', password: '', confirm_password: '', phone: '',
         employment_type: 'FULL_TIME', department_id: '', designation_id: ''
       });
-      setSuccessMsg('Employee created successfully.');
+      setSuccessMsg('Employee profile & user credentials created successfully.');
       setTimeout(() => setSuccessMsg(null), 4000);
       fetchEmployees();
     } catch (err: any) {
@@ -486,6 +501,29 @@ export const Employees: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
                   placeholder="employee@theiakshi.com"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Initial Password</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    placeholder="Leave blank for default"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={formData.confirm_password}
+                    onChange={e => setFormData({ ...formData, confirm_password: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    placeholder="Confirm initial password"
+                  />
+                </div>
               </div>
 
               <div>

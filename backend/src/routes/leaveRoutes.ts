@@ -10,10 +10,12 @@ router.use(authenticate);
 
 // Personal self-service endpoints (Require employeeId)
 router.get('/me/balance', LeaveController.myBalance);
+router.get('/monthly-usage', requireEmployee, LeaveController.monthlyUsage);
 router.post('/apply', requireEmployee, LeaveController.apply);
 
 // Administrative & Configuration endpoints (Do NOT require employeeId)
 router.get('/types', LeaveController.types);
+router.put('/policy', requireRole('SUPER_ADMIN', 'ADMIN'), LeaveController.updatePolicy);
 router.get('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.list);
 router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.approve);
 router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.reject);

@@ -133,4 +133,51 @@ export class LeaveController {
       return next(error);
     }
   }
+
+  // Personal Monthly CL Usage Counter
+  static async monthlyUsage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      const now = new Date();
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : now.getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : (now.getMonth() + 1);
+
+      const clUsedThisMonth = await LeaveRepository.getMonthlyCLUsage(employeeId, organizationId, year, month);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          clUsedThisMonth,
+          clMonthlyLimit: 2
+        }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Administrative Policy Quotas Update
+  static async updatePolicy(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { clQuota, elQuota, slQuota } = req.body;
+
+      if (typeof clQuota !== 'number' || typeof elQuota !== 'number' || typeof slQuota !== 'number') {
+        return res.status(400).json({ success: false, error: 'clQuota, elQuota, and slQuota must be numbers.', code: 'VALIDATION_ERROR' });
+      }
+
+      const result = await LeaveRepository.updatePolicy(organizationId, { clQuota, elQuota, slQuota });
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }

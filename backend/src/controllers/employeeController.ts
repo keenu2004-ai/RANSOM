@@ -7,6 +7,7 @@ const createEmployeeSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   email: z.string().email('Valid email address is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
   phone: z.string().optional(),
   date_of_birth: z.string().optional(),
   gender: z.string().optional(),

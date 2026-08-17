@@ -161,7 +161,30 @@ export class EmployeeRepository {
 
   static async create(data: any) {
     return withTransaction(async (client) => {
-      // Generate employee code if not provided
+      // 1. Create or link user account with initial password
+      const bcrypt = require('bcryptjs');
+      const rawPassword = data.password || 'ChangeMe@123';
+      const passwordHash = bcrypt.hashSync(rawPassword, 10);
+
+      const userRes = await client.query(`
+        INSERT INTO users (organization_id, email, password_hash, status)
+        VALUES ($1, $2, $3, 'ACTIVE')
+        ON CONFLICT (email) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+        RETURNING id
+      `, [data.organization_id, data.email, passwordHash]);
+      const userId = userRes.rows[0].id;
+
+      // Assign EMPLOYEE role to newly created user
+      const roleRes = await client.query('SELECT id FROM roles WHERE organization_id = $1 AND name = $2', [data.organization_id, 'EMPLOYEE']);
+      if (roleRes.rows.length > 0) {
+        await client.query(`
+          INSERT INTO user_roles (user_id, role_id)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id, role_id) DO NOTHING
+        `, [userId, roleRes.rows[0].id]);
+      }
+
+      // 2. Generate employee code if not provided
       let empCode = data.employee_code;
       if (!empCode) {
         const countRes = await client.query('SELECT COUNT(*)::int as count FROM employees WHERE organization_id = $1', [data.organization_id]);
@@ -181,7 +204,7 @@ export class EmployeeRepository {
       `;
 
       const params = [
-        data.organization_id, data.user_id || null, empCode, data.first_name, data.last_name, data.email,
+        data.organization_id, userId, empCode, data.first_name, data.last_name, data.email,
         data.phone || null, data.date_of_birth || null, data.gender || null, data.joining_date || new Date(),
         data.employment_type || 'FULL_TIME', data.status || 'ACTIVE',
         data.branch_id || null, data.department_id || null, data.designation_id || null,

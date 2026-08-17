@@ -58,4 +58,34 @@ export class AuthController {
       data: { message: 'Logged out successfully.' }
     });
   }
+
+  static async changePassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Unauthenticated user.', code: 'UNAUTHENTICATED' });
+      }
+
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ success: false, error: 'Current password, new password, and confirmation are required.', code: 'VALIDATION_ERROR' });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ success: false, error: 'New passwords do not match.', code: 'PASSWORD_MISMATCH' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.', code: 'WEAK_PASSWORD' });
+      }
+
+      await AuthService.changePassword(req.user.userId, currentPassword, newPassword);
+
+      return res.status(200).json({
+        success: true,
+        data: { message: 'Password updated successfully.' }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }

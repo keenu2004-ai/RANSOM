@@ -65,4 +65,25 @@ export class AuthService {
       employeeId: employeeId // Explicit string | null
     };
   }
+
+  static async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const userWithRole = await UserRepository.findById(userId);
+    if (!userWithRole) {
+      const err: any = new Error('User account not found.');
+      err.statusCode = 404;
+      err.code = 'NOT_FOUND';
+      throw err;
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, userWithRole.password_hash);
+    if (!isMatch) {
+      const err: any = new Error('Current password is incorrect.');
+      err.statusCode = 400;
+      err.code = 'INVALID_PASSWORD';
+      throw err;
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await UserRepository.updatePassword(userId, newHash);
+  }
 }

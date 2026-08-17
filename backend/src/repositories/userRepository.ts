@@ -73,4 +73,13 @@ export class UserRepository {
     const res = await query<{ id: string }>(text, [userId, organizationId]);
     return res.rows[0]?.id || null;
   }
+
+  static async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    const text = `
+      UPDATE users
+      SET password_hash = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `;
+    await query(text, [userId, passwordHash]);
+  }
 }

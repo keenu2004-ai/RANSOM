@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { CalendarDays, Plus, Check, X, Clock } from 'lucide-react';
+import { CalendarDays, Plus, Check, X, Clock, Settings, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export const Leave: React.FC = () => {
   const { user } = useAuth();
   const [balances, setBalances] = useState<any[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [monthlyUsage, setMonthlyUsage] = useState<any>({ clUsedThisMonth: 0, clMonthlyLimit: 2 });
   const [loading, setLoading] = useState(true);
+
+  // Leave Policy Config State for Admin
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [policyData, setPolicyData] = useState({ clQuota: 12, elQuota: 18, slQuota: 12 });
+  const [policySuccess, setPolicySuccess] = useState<string | null>(null);
 
   // Apply Modal
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -24,12 +30,17 @@ export const Leave: React.FC = () => {
   const fetchLeaveData = async () => {
     try {
       if (user?.employeeId) {
-        const balRes = await apiFetch('/leaves/me/balance').catch(() => null);
+        const [balRes, usageRes] = await Promise.all([
+          apiFetch('/leaves/me/balance').catch(() => null),
+          apiFetch('/leaves/monthly-usage').catch(() => null)
+        ]);
         setBalances(balRes?.balances || []);
+        if (usageRes?.data) setMonthlyUsage(usageRes.data);
       }
 
       const typesRes = await apiFetch('/leaves/types');
-      setLeaveTypes(typesRes.leaveTypes || []);
+      const activeTypes = (typesRes.leaveTypes || []).filter((t: any) => t.is_active !== false && t.code !== 'OL');
+      setLeaveTypes(activeTypes);
 
       if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
         const reqRes = await apiFetch('/leaves');
@@ -62,6 +73,22 @@ export const Leave: React.FC = () => {
     }
   };
 
+  const handlePolicySave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/leaves/policy', {
+        method: 'PUT',
+        body: JSON.stringify(policyData)
+      });
+      setShowPolicyModal(false);
+      setPolicySuccess('Leave entitlement policy updated successfully.');
+      setTimeout(() => setPolicySuccess(null), 4000);
+      fetchLeaveData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const handleApprove = async (id: string) => {
     try {
       await apiFetch(`/leaves/${id}/approve`, { method: 'PUT' });
@@ -85,44 +112,113 @@ export const Leave: React.FC = () => {
     }
   };
 
+  // 3 Canonical Active Leave Types
+  const activeBalances = balances.filter(b => b.leave_type_code !== 'OL');
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {policySuccess && (
+        <div className="p-4 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center gap-2 shadow-lg">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span className="font-semibold">{policySuccess}</span>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <CalendarDays className="w-6 h-6 text-cyan-400" />
-            <span>Leave Management</span>
+            <span>Leave Management & Policy</span>
           </h1>
-          <p className="text-xs text-slate-400">View personal leave quotas, submit leave requests, and manage workforce leave approvals</p>
+          <p className="text-xs text-slate-400">Manage 3 active leave types (CL, EL, SL), monthly CL limits, and leave entitlements</p>
         </div>
 
-        {user?.employeeId && (
-          <button
-            onClick={() => {
-              if (leaveTypes.length > 0) setFormData(f => ({ ...f, leaveTypeId: leaveTypes[0].id }));
-              setShowApplyModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Apply Leave</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {['SUPER_ADMIN', 'ADMIN'].includes(user?.role || '') && (
+            <button
+              onClick={() => setShowPolicyModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl shadow transition-all"
+            >
+              <Settings className="w-4 h-4 text-cyan-400" />
+              <span>Configure Policy</span>
+            </button>
+          )}
+
+          {user?.employeeId && (
+            <button
+              onClick={() => {
+                if (leaveTypes.length > 0) setFormData(f => ({ ...f, leaveTypeId: leaveTypes[0].id }));
+                setShowApplyModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Apply Leave</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Personal Leave Balances Cards */}
-      {user?.employeeId && balances.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {balances.map(b => (
-            <div key={b.id} className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-              <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">{b.leave_type_code}</span>
-              <p className="font-semibold text-xs text-slate-200 truncate">{b.leave_type_name}</p>
-              <div className="flex items-baseline justify-between pt-2">
-                <span className="text-2xl font-bold text-white">{b.available}</span>
-                <span className="text-[10px] text-slate-500">of {b.quota} Days Available</span>
+      {/* Personal Leave Cards Grid + LEAVE TAKEN THIS MONTH Card */}
+      {user?.employeeId && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Active Leave Type Cards */}
+          {activeBalances.map(b => (
+            <div key={b.id} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold text-cyan-400 bg-cyan-950/80 border border-cyan-800/60 uppercase tracking-widest">
+                  {b.leave_type_code}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">Quota: {b.quota} Days</span>
+              </div>
+              <h3 className="font-bold text-sm text-slate-100">{b.leave_type_name}</h3>
+              <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs border-t border-slate-800">
+                <div className="p-2 bg-slate-950/60 rounded-xl">
+                  <span className="block text-[10px] text-slate-500 font-semibold uppercase">Quota</span>
+                  <span className="font-mono font-bold text-slate-200">{b.quota}</span>
+                </div>
+                <div className="p-2 bg-slate-950/60 rounded-xl">
+                  <span className="block text-[10px] text-slate-500 font-semibold uppercase">Taken</span>
+                  <span className="font-mono font-bold text-amber-400">{b.used}</span>
+                </div>
+                <div className="p-2 bg-slate-950/60 rounded-xl">
+                  <span className="block text-[10px] text-slate-500 font-semibold uppercase">Available</span>
+                  <span className="font-mono font-bold text-emerald-400">{b.available}</span>
+                </div>
               </div>
             </div>
           ))}
+
+          {/* LEAVE TAKEN THIS MONTH (Replaces 4th Type) */}
+          <div className="p-5 bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/30 rounded-2xl space-y-2 relative shadow-lg">
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 uppercase tracking-widest">
+                MONTHLY STATS
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-full">
+                Auto Resets
+              </span>
+            </div>
+            <h3 className="font-bold text-sm text-white">Leave Taken This Month</h3>
+            <p className="text-xs text-slate-400">Current calendar month approved leave tracking</p>
+            <div className="pt-2 border-t border-slate-800/80 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-medium">Casual Leave (CL)</span>
+                <span className="font-mono font-extrabold text-cyan-400">
+                  {monthlyUsage.clUsedThisMonth} / {monthlyUsage.clMonthlyLimit} Days
+                </span>
+              </div>
+              <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                <div 
+                  className="bg-cyan-500 h-full rounded-full transition-all" 
+                  style={{ width: `${Math.min(100, (monthlyUsage.clUsedThisMonth / monthlyUsage.clMonthlyLimit) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 pt-1">
+                * Excess CL beyond 2 days/month is automatically covered by Earned Leave (EL).
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -190,6 +286,78 @@ export const Leave: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Policy Configuration Modal */}
+      {showPolicyModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="font-bold text-lg text-white">Configure Leave Entitlement Policy</h3>
+            <p className="text-xs text-slate-400">Set organization-wide annual leave quotas for the 3 active leave types</p>
+
+            <form onSubmit={handlePolicySave} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Casual Leave (CL) Annual Quota</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={policyData.clQuota}
+                  onChange={e => setPolicyData({ ...policyData, clQuota: parseInt(e.target.value, 10) || 12 })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Earned Leave (EL) Annual Quota</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={policyData.elQuota}
+                  onChange={e => setPolicyData({ ...policyData, elQuota: parseInt(e.target.value, 10) || 18 })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Sick Leave (SL) Annual Quota</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={policyData.slQuota}
+                  onChange={e => setPolicyData({ ...policyData, slQuota: parseInt(e.target.value, 10) || 12 })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-400 space-y-1">
+                <div className="font-semibold text-slate-300 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Fixed Monthly CL Rule:</span>
+                </div>
+                <p>Casual Leave limit is strictly fixed at <strong>2 days per calendar month</strong>. Excess CL requests automatically convert to Earned Leave (EL).</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPolicyModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
+                >
+                  Save Policy
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
