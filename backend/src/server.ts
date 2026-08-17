@@ -132,9 +132,14 @@ if (require.main === module) {
 
     if (process.env.DATABASE_URL) {
       try {
+        const migratePath = path.join(__dirname, '../../database/scripts/migrate.js');
         const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
+        const { runMigrations } = require(migratePath);
         const { runSeed } = require(seedPath);
-        runSeed().catch((err: any) => console.error('Database seed warning:', err.message));
+
+        runMigrations()
+          .then(() => runSeed())
+          .catch((err: any) => console.error('Database migration/seed error:', err.message));
       } catch (e: any) {
         // Safe fallback if path differs in specific environment
       }

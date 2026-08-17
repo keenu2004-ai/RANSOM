@@ -30,7 +30,12 @@ const pool = new Pool({
     : { rejectUnauthorized: false }
 });
 
+const { runMigrations } = require('./migrate');
+
 async function runSeed() {
+  // Ensure schema DDL and migrations execute first
+  await runMigrations();
+
   const client = await pool.connect();
   try {
     console.log('🌱 Seeding PostgreSQL database with idempotent baseline data...');
