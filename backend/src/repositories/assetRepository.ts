@@ -145,7 +145,7 @@ export class AssetRepository {
         }
       }
 
-      // Validate or auto-assign Category
+      // Auto-assign default Category internally
       let categoryId = data.categoryId;
       if (!categoryId || categoryId.trim() === '') {
         const defaultCat = await client.query(
@@ -155,15 +155,27 @@ export class AssetRepository {
         if (defaultCat.rows.length > 0) {
           categoryId = defaultCat.rows[0].id;
         } else {
-          throw new Error('Please select a valid asset category.');
+          const newCat = await client.query(
+            `INSERT INTO asset_categories (organization_id, name, code, description)
+             VALUES ($1, 'General Hardware', 'CAT-GEN', 'General hardware inventory')
+             RETURNING id`,
+            [organizationId]
+          );
+          categoryId = newCat.rows[0].id;
         }
       } else {
         const checkCat = await client.query(
           `SELECT id FROM asset_categories WHERE id = $1 AND organization_id = $2`,
           [categoryId, organizationId]
         );
-        if (checkCat.rows.length === 0) {
-          throw new Error('Please select a valid asset category.');
+        if (checkCat.rows.length > 0) {
+          categoryId = checkCat.rows[0].id;
+        } else {
+          const defaultCat = await client.query(
+            `SELECT id FROM asset_categories WHERE organization_id = $1 ORDER BY name ASC LIMIT 1`,
+            [organizationId]
+          );
+          categoryId = defaultCat.rows[0]?.id;
         }
       }
 

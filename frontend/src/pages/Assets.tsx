@@ -130,13 +130,11 @@ export const Assets: React.FC = () => {
 
   const handleOpenAddAsset = () => {
     setFormError(null);
-    const defaultCatId = categories.length > 0 ? categories[0].id : '';
     setAssetForm({
       assetName: '',
       assetType: 'Laptop',
       serialNumber: '',
       price: 0,
-      categoryId: defaultCatId,
       assignmentStatus: 'IN_STOCK',
       assignedEmployeeId: employees.length > 0 ? employees[0].id : '',
       assignedDate: new Date().toISOString().split('T')[0]
@@ -164,7 +162,6 @@ export const Assets: React.FC = () => {
         assetType: assetForm.assetType,
         serialNumber: assetForm.serialNumber ? assetForm.serialNumber.trim() : undefined,
         price: Number((assetForm as any).price) || 0,
-        categoryId: assetForm.categoryId || undefined,
         assignmentStatus: assetForm.assignmentStatus
       };
 
@@ -740,18 +737,6 @@ export const Assets: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
                   placeholder="55000 (Optional)"
                 />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Category</label>
-                <select
-                  value={assetForm.categoryId || ''}
-                  onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                >
-                  <option value="">Select Category...</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
               </div>
 
               <div className="pt-2 border-t border-slate-800 space-y-3">

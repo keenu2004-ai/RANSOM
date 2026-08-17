@@ -7,7 +7,6 @@ const createAssetSchema = z.object({
   assetCode: z.string().optional(),
   assetName: z.string().min(1, 'Asset Name is required.'),
   assetType: z.string().min(1, 'Asset Type is required.'),
-  categoryId: z.string().optional().nullable(),
   serialNumber: z.string().optional().nullable(),
   price: z.number().min(0).optional().nullable(),
   purchasePrice: z.number().min(0).optional().nullable(),
