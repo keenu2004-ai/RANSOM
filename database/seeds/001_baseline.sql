@@ -226,11 +226,11 @@ VALUES ('c0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000
 ON CONFLICT (rule_code) DO NOTHING;
 
 -- 7. DEMO USER ACCOUNTS & LINKED EMPLOYEES
--- Password hash for 'ChangeMe@123': $2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w
+-- Password hash for 'ChangeMe@123': $2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S
 -- User 1: SUPER ADMIN (No employee profile)
 INSERT INTO users (id, organization_id, email, password_hash, status)
-VALUES ('d0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'superadmin@theiakshi.com', '$2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w', 'ACTIVE')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('d0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'superadmin@theiakshi.com', '$2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S', 'ACTIVE')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status;
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000001', id FROM roles WHERE name = 'SUPER_ADMIN'
@@ -238,8 +238,8 @@ ON CONFLICT (user_id, role_id) DO NOTHING;
 
 -- User 2: ADMIN (No employee profile)
 INSERT INTO users (id, organization_id, email, password_hash, status)
-VALUES ('d0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'admin@theiakshi.com', '$2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w', 'ACTIVE')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('d0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'admin@theiakshi.com', '$2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S', 'ACTIVE')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status;
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000002', id FROM roles WHERE name = 'ADMIN'
@@ -247,8 +247,8 @@ ON CONFLICT (user_id, role_id) DO NOTHING;
 
 -- User 3: HR MANAGER (Linked Employee: EMP-001)
 INSERT INTO users (id, organization_id, email, password_hash, status)
-VALUES ('d0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'hr@theiakshi.com', '$2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w', 'ACTIVE')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('d0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'hr@theiakshi.com', '$2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S', 'ACTIVE')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status;
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000003', id FROM roles WHERE name = 'HR_MANAGER'
@@ -260,8 +260,8 @@ ON CONFLICT (employee_code) DO NOTHING;
 
 -- User 4: MANAGER (Linked Employee: EMP-002)
 INSERT INTO users (id, organization_id, email, password_hash, status)
-VALUES ('d0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'manager@theiakshi.com', '$2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w', 'ACTIVE')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('d0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'manager@theiakshi.com', '$2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S', 'ACTIVE')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status;
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000004', id FROM roles WHERE name = 'MANAGER'
@@ -273,8 +273,8 @@ ON CONFLICT (employee_code) DO NOTHING;
 
 -- User 5: EMPLOYEE (Linked Employee: EMP-003)
 INSERT INTO users (id, organization_id, email, password_hash, status)
-VALUES ('d0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'employee@theiakshi.com', '$2a$10$EqK8s/mZJc9H5W6w2QY.e.X4T1dJ6S7yN8vO9P0q1r2s3t4u5v6w', 'ACTIVE')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('d0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'employee@theiakshi.com', '$2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S', 'ACTIVE')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = EXCLUDED.status;
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 'd0000000-0000-0000-0000-000000000005', id FROM roles WHERE name = 'EMPLOYEE'

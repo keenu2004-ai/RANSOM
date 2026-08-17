@@ -120,6 +120,8 @@ app.get('/api/health', async (req, res, next) => {
 // Centralized Error Handling Middleware
 app.use(errorHandler);
 
+import path from 'path';
+
 if (require.main === module) {
   app.listen(config.port, () => {
     console.log(`====================================================`);
@@ -127,6 +129,16 @@ if (require.main === module) {
     console.log(`  Port: ${config.port}`);
     console.log(`  Environment: ${config.env}`);
     console.log(`====================================================`);
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
+        const { runSeed } = require(seedPath);
+        runSeed().catch((err: any) => console.error('Database seed warning:', err.message));
+      } catch (e: any) {
+        // Safe fallback if path differs in specific environment
+      }
+    }
   });
 }
 
