@@ -43,8 +43,14 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     // Upcoming Holidays
     const holidays = await query('SELECT title, date, holiday_type FROM holidays WHERE organization_id = $1 AND date >= CURRENT_DATE ORDER BY date ASC LIMIT 3', [organizationId]);
 
-    // Announcements
-    const announcements = await query('SELECT id, title, content, published_at FROM announcements WHERE organization_id = $1 AND status = \'PUBLISHED\' ORDER BY published_at DESC LIMIT 3', [organizationId]);
+    // Recent Work Items
+    const recentWork = await query(`
+      SELECT t.id, t.description as title, p.name as category, t.date
+      FROM timesheets t
+      INNER JOIN projects p ON t.project_id = p.id
+      WHERE t.organization_id = $1
+      ORDER BY t.created_at DESC LIMIT 3
+    `, [organizationId]);
 
     return res.status(200).json({
       success: true,
@@ -55,7 +61,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
         summary,
         personal,
         upcomingHolidays: holidays.rows,
-        latestAnnouncements: announcements.rows
+        latestWork: recentWork.rows
       }
     });
   } catch (error) {

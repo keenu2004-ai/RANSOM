@@ -57,14 +57,7 @@ const ALL_35_TABLES = [
   { table: 'timesheets', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
   { table: 'salary_structures', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
   { table: 'payroll_records', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
-  { table: 'statutory_rules', expected: '>= 1', class: 'A. REQUIRED MASTER DATA' },
-  { table: 'compliance_tasks', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
-  { table: 'document_types', expected: '>= 9', class: 'A. REQUIRED MASTER DATA' },
-  { table: 'documents', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
-  { table: 'announcements', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
   { table: 'notifications', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
-  { table: 'helpdesk_tickets', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
-  { table: 'ticket_comments', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
   { table: 'audit_logs', expected: '>= 0', class: 'C. EXPECTED EMPTY — TRANSACTIONAL' },
   { table: 'schema_migrations', expected: '>= 1', class: 'D. OPTIONAL / SYSTEM TABLE' }
 ];

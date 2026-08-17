@@ -372,79 +372,8 @@ CREATE TABLE IF NOT EXISTS payroll_records (
 );
 
 -- ------------------------------------------------------------
--- 11. STATUTORY COMPLIANCE & TAX
+-- 11. IN-APP NOTIFICATIONS
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS statutory_rules (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    rule_name VARCHAR(100) NOT NULL,
-    rule_code VARCHAR(50) NOT NULL UNIQUE,
-    epf_rate NUMERIC(5, 2) NOT NULL DEFAULT 12.00,
-    esi_rate NUMERIC(5, 2) NOT NULL DEFAULT 0.75,
-    pt_slabs JSONB NOT NULL DEFAULT '[]'::jsonb,
-    tds_slabs JSONB NOT NULL DEFAULT '[]'::jsonb,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS compliance_tasks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    due_date DATE NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE')),
-    assigned_to UUID REFERENCES employees(id) ON DELETE SET NULL,
-    details TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- ------------------------------------------------------------
--- 12. DOCUMENT MANAGEMENT
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS document_types (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    is_required BOOLEAN NOT NULL DEFAULT FALSE,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    document_type_id UUID NOT NULL REFERENCES document_types(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    file_url TEXT NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'VERIFIED' CHECK (status IN ('PENDING', 'VERIFIED', 'REJECTED')),
-    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- ------------------------------------------------------------
--- 13. ANNOUNCEMENTS & NOTIFICATIONS
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS announcements (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    target_audience VARCHAR(50) NOT NULL DEFAULT 'ALL' CHECK (target_audience IN ('ALL', 'BRANCH', 'DEPARTMENT', 'ROLE')),
-    branch_id UUID REFERENCES branches(id) ON DELETE SET NULL,
-    department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'PUBLISHED' CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
-    published_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -453,33 +382,6 @@ CREATE TABLE IF NOT EXISTS notifications (
     message TEXT NOT NULL,
     link VARCHAR(255),
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- ------------------------------------------------------------
--- 14. HELPDESK & TICKETS
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS helpdesk_tickets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    ticket_number VARCHAR(50) NOT NULL UNIQUE,
-    title VARCHAR(255) NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM' CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
-    description TEXT NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')),
-    assigned_to UUID REFERENCES employees(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS ticket_comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    ticket_id UUID NOT NULL REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    comment TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

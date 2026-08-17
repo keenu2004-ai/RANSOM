@@ -44,9 +44,7 @@ const BASELINE_EXPECTATIONS = [
   { table: 'leave_types', min: 4, type: 'REQUIRED MASTER DATA' },
   { table: 'expense_categories', min: 7, type: 'REQUIRED MASTER DATA' },
   { table: 'projects', min: 4, type: 'REQUIRED MASTER DATA' },
-  { table: 'document_types', min: 9, type: 'REQUIRED MASTER DATA' },
   { table: 'holidays', min: 4, type: 'REQUIRED MASTER DATA' },
-  { table: 'statutory_rules', min: 1, type: 'REQUIRED MASTER DATA' },
 
   // Required Identity Data
   { table: 'users', min: 5, type: 'REQUIRED IDENTITY DATA' },
@@ -62,12 +60,7 @@ const BASELINE_EXPECTATIONS = [
   { table: 'timesheets', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'salary_structures', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'payroll_records', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'compliance_tasks', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'documents', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'announcements', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'notifications', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'helpdesk_tickets', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'ticket_comments', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'audit_logs', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' }
 ];
 

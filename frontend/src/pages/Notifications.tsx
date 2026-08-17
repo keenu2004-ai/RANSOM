@@ -35,7 +35,7 @@ export const Notifications: React.FC = () => {
             <Bell className="w-6 h-6 text-cyan-400" />
             <span>Notification Center</span>
           </h1>
-          <p className="text-xs text-slate-400">System alerts, leave & expense status updates, and announcement notifications</p>
+          <p className="text-xs text-slate-400">System alerts, leave & expense status updates, and task assignments</p>
         </div>
 
         <button

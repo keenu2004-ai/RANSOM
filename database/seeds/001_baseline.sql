@@ -59,17 +59,10 @@ VALUES
 ('20000000-0000-0000-0000-000000000019', 'expenses', 'approve', 'Approve/reject expense claims', 'expenses:approve'),
 ('20000000-0000-0000-0000-000000000020', 'timesheets', 'create', 'Log daily project hours', 'timesheets:create'),
 ('20000000-0000-0000-0000-000000000021', 'timesheets', 'view', 'View project timesheet logs', 'timesheets:view'),
--- Payroll & Compliance
+-- Payroll
 ('20000000-0000-0000-0000-000000000022', 'payroll', 'view_self', 'View personal monthly payslips', 'payroll:view_self'),
 ('20000000-0000-0000-0000-000000000023', 'payroll', 'manage', 'Manage salary structures and process payroll', 'payroll:manage'),
-('20000000-0000-0000-0000-000000000024', 'compliance', 'view', 'View statutory rules and tax slabs', 'compliance:view'),
-('20000000-0000-0000-0000-000000000025', 'compliance', 'manage', 'Configure statutory compliance rules', 'compliance:manage'),
--- Documents & Portal
-('20000000-0000-0000-0000-000000000026', 'documents', 'view', 'View document library', 'documents:view'),
-('20000000-0000-0000-0000-000000000027', 'announcements', 'view', 'View company announcements', 'announcements:view'),
-('20000000-0000-0000-0000-000000000028', 'announcements', 'create', 'Publish announcements', 'announcements:create'),
-('20000000-0000-0000-0000-000000000029', 'helpdesk', 'create', 'Submit support ticket', 'helpdesk:create'),
-('20000000-0000-0000-0000-000000000030', 'helpdesk', 'view', 'View helpdesk tickets', 'helpdesk:view'),
+-- System & Reports
 ('20000000-0000-0000-0000-000000000031', 'notifications', 'view', 'Receive in-app alerts', 'notifications:view'),
 ('20000000-0000-0000-0000-000000000032', 'reports', 'view', 'View workforce reports', 'reports:view'),
 ('20000000-0000-0000-0000-000000000033', 'audit', 'view', 'View immutable audit trail', 'audit:view'),
@@ -199,19 +192,6 @@ VALUES
 ('90000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Sales Operations', 'PRJ-SALES', 'Client Pipeline & CRM System Support', 'ACTIVE')
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO document_types (id, organization_id, name, code, is_required, description)
-VALUES 
-('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Resume', 'DOC-RESUME', TRUE, 'Curriculum Vitae / Resume'),
-('a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Aadhaar', 'DOC-AADHAAR', TRUE, 'Government Identity Aadhaar Card'),
-('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'PAN', 'DOC-PAN', TRUE, 'Permanent Account Number Card'),
-('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Offer Letter', 'DOC-OFFER', TRUE, 'Signed Employment Offer Letter'),
-('a0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Joining Letter', 'DOC-JOINING', TRUE, 'Formal Appointment & Joining Document'),
-('a0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Experience Letter', 'DOC-EXP', FALSE, 'Relieving & Experience Certificate from Previous Employer'),
-('a0000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Educational Certificate', 'DOC-EDU', TRUE, 'Highest Degree / Graduation Certificate'),
-('a0000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Bank Proof', 'DOC-BANK', TRUE, 'Cancelled Cheque or Passbook First Page'),
-('a0000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Other', 'DOC-OTHER', FALSE, 'Miscellaneous Verified Document')
-ON CONFLICT (code) DO NOTHING;
-
 INSERT INTO holidays (id, organization_id, branch_id, title, date, holiday_type, description)
 VALUES 
 ('b0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'Republic Day', '2026-01-26', 'NATIONAL', 'National Holiday'),
@@ -219,11 +199,6 @@ VALUES
 ('b0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'Mahatma Gandhi Jayanti', '2026-10-02', 'NATIONAL', 'National Holiday'),
 ('b0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'Diwali', '2026-11-08', 'COMPANY', 'Festival Holiday')
 ON CONFLICT DO NOTHING;
-
--- 6. STATUTORY COMPLIANCE BASELINE RULES
-INSERT INTO statutory_rules (id, organization_id, rule_name, rule_code, epf_rate, esi_rate)
-VALUES ('c0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Indian Statutory Rules 2026', 'STAT-IN-2026', 12.00, 0.75)
-ON CONFLICT (rule_code) DO NOTHING;
 
 -- 7. DEMO USER ACCOUNTS & LINKED EMPLOYEES
 -- Password hash for 'ChangeMe@123': $2a$10$pvP3sWXFqrslx.3EcoCqiuGhCuiT6K.jB7LsNRV1aMAcUWWsOnE.S

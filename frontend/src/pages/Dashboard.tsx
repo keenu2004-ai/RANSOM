@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Users, CheckCircle2, Clock, CalendarDays, Receipt, Megaphone, 
+  Users, CheckCircle2, Clock, CalendarDays, Receipt, 
   Sparkles, ShieldCheck, ArrowUpRight, LogIn, LogOut
 } from 'lucide-react';
 
@@ -149,26 +149,28 @@ export const Dashboard: React.FC = () => {
 
       {/* Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Latest Announcements */}
+        {/* Recent Work Items */}
         <div className="lg:col-span-2 p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div className="flex items-center gap-2">
-              <Megaphone className="w-5 h-5 text-cyan-400" />
-              <h3 className="font-semibold text-white">Company Announcements</h3>
+              <Sparkles className="w-5 h-5 text-cyan-400" />
+              <h3 className="font-semibold text-white">Recent Work Items</h3>
             </div>
           </div>
 
           <div className="space-y-3">
-            {data?.latestAnnouncements?.length > 0 ? (
-              data.latestAnnouncements.map((a: any) => (
-                <div key={a.id} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-1">
-                  <h4 className="font-semibold text-sm text-slate-100">{a.title}</h4>
-                  <p className="text-xs text-slate-400 line-clamp-2">{a.content}</p>
-                  <p className="text-[10px] text-slate-500 font-mono pt-1">{new Date(a.published_at).toLocaleDateString()}</p>
+            {data?.latestWork?.length > 0 ? (
+              data.latestWork.map((w: any) => (
+                <div key={w.id} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm text-slate-100">{w.title}</h4>
+                    <span className="text-[10px] font-mono text-cyan-400">{w.category}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono pt-1">Logged on {new Date(w.date).toLocaleDateString()}</p>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-500 py-4 text-center">No company announcements published.</p>
+              <p className="text-xs text-slate-500 py-4 text-center">No recent work items logged.</p>
             )}
           </div>
         </div>
