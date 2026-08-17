@@ -1,16 +1,71 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 export const Timesheets: React.FC = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [myTimesheets, setMyTimesheets] = useState<any[]>([]);
   const [allTimesheets, setAllTimesheets] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ projectId: '', date: new Date().toISOString().split('T')[0], hours: 8, description: '' });
+
+  const fetchCalendarEvents = useCallback(async (year: number, month: number) => {
+    try {
+      const [timesheetRes, holRes, leaveRes] = await Promise.all([
+        apiFetch('/timesheets', { params: { limit: 500 } }).catch(() => ({ timesheets: [] })),
+        apiFetch('/holidays', { params: { year } }).catch(() => ({ holidays: [] })),
+        apiFetch('/leaves').catch(() => ({ leaves: [] }))
+      ]);
+
+      const events: CalendarEvent[] = [];
+
+      (timesheetRes.timesheets || []).forEach((t: any) => {
+        events.push({
+          id: `task-${t.id}`,
+          date: t.date,
+          type: 'TASK',
+          title: `${t.project_name || 'Task'}: ${t.hours}h`,
+          status: t.status || 'SUBMITTED',
+          employeeName: t.employee_name,
+          metadata: { description: t.description, hours: t.hours, project: t.project_name }
+        });
+      });
+
+      (holRes.holidays || []).forEach((h: any) => {
+        events.push({
+          id: `hol-${h.id}`,
+          date: h.date,
+          type: 'HOLIDAY',
+          title: h.title,
+          status: h.holiday_type || 'HOLIDAY'
+        });
+      });
+
+      (leaveRes.leaves || []).forEach((l: any) => {
+        if (l.status === 'APPROVED') {
+          events.push({
+            id: `leave-${l.id}`,
+            date: l.start_date,
+            type: 'LEAVE',
+            title: `${l.employee_name || 'Employee'}: Leave`,
+            status: 'APPROVED'
+          });
+        }
+      });
+
+      setCalendarEvents(events);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
   const fetchTimesheets = async () => {
     try {
@@ -33,14 +88,17 @@ export const Timesheets: React.FC = () => {
 
   useEffect(() => {
     fetchTimesheets();
-  }, []);
+    fetchCalendarEvents(currentYear, currentMonth);
+  }, [currentYear, currentMonth, fetchCalendarEvents]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await apiFetch('/timesheets', { method: 'POST', body: JSON.stringify(formData) });
       setShowModal(false);
-      fetchTimesheets();
+      setFormData({ projectId: projects[0]?.id || '', date: new Date().toISOString().split('T')[0], hours: 8, description: '' });
+      await fetchTimesheets();
+      await fetchCalendarEvents(currentYear, currentMonth);
     } catch (err: any) {
       alert(err.message);
     }
@@ -52,9 +110,9 @@ export const Timesheets: React.FC = () => {
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <FileText className="w-6 h-6 text-cyan-400" />
-            <span>Weekly Plan & Project Timesheets</span>
+            <span>Weekly Plan & Project Workload</span>
           </h1>
-          <p className="text-xs text-slate-400">Log project hours and review operational workload logs</p>
+          <p className="text-xs text-slate-400">Plan tasks, log daily project hours, and visualize project workloads on the shared calendar</p>
         </div>
 
         {user?.employeeId && (
@@ -63,7 +121,7 @@ export const Timesheets: React.FC = () => {
               if (projects.length > 0) setFormData(f => ({ ...f, projectId: projects[0].id }));
               setShowModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-xs rounded-xl shadow"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow"
           >
             <Plus className="w-4 h-4" />
             <span>Log Daily Hours</span>
@@ -71,10 +129,24 @@ export const Timesheets: React.FC = () => {
         )}
       </div>
 
+      {/* Shared Calendar Integration */}
+      <SharedCalendar
+        events={calendarEvents}
+        initialYear={currentYear}
+        initialMonth={currentMonth}
+        onMonthChange={(y, m) => {
+          setCurrentYear(y);
+          setCurrentMonth(m);
+        }}
+        title="Weekly Plan & Task Calendar"
+        subtitle="Visualizing planned tasks, logged project hours, holidays, and approved leave"
+      />
+
+      {/* Timesheet Activity Table */}
       {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-300">
-            Workforce Timesheet Activity
+            Workforce Timesheet Activity Log
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-300">

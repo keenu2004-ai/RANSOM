@@ -1,15 +1,101 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users } from 'lucide-react';
+import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon } from 'lucide-react';
+import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 export const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [today, setToday] = useState<any>(null);
   const [summary, setSummary] = useState<any>(null);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Calendar Date State
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
+
+  const fetchCalendarEvents = useCallback(async (year: number, month: number) => {
+    try {
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      // Parallel data fetching for calendar view
+      const [attRes, holRes, leaveRes, taskRes] = await Promise.all([
+        apiFetch('/attendance', { params: { startDate, endDate, limit: 500 } }).catch(() => ({ attendance: [] })),
+        apiFetch('/holidays', { params: { year } }).catch(() => ({ holidays: [] })),
+        apiFetch('/leaves').catch(() => ({ leaves: [] })),
+        apiFetch('/timesheets', { params: { limit: 500 } }).catch(() => ({ timesheets: [] }))
+      ]);
+
+      const events: CalendarEvent[] = [];
+
+      // 1. Map Attendance Records
+      (attRes.attendance || []).forEach((a: any) => {
+        const status = (a.status || 'PRESENT').toUpperCase();
+        events.push({
+          id: `att-${a.id}`,
+          date: a.date,
+          type: 'ATTENDANCE',
+          title: `${a.employee_name || 'Staff'}: ${status}`,
+          status: status,
+          employeeName: a.employee_name,
+          metadata: {
+            check_in: a.check_in,
+            check_out: a.check_out,
+            working_hours: a.working_hours
+          }
+        });
+      });
+
+      // 2. Map Holidays
+      (holRes.holidays || []).forEach((h: any) => {
+        events.push({
+          id: `hol-${h.id}`,
+          date: h.date,
+          type: 'HOLIDAY',
+          title: h.title,
+          status: h.holiday_type || 'HOLIDAY',
+          metadata: { description: h.description }
+        });
+      });
+
+      // 3. Map Leave Requests
+      (leaveRes.leaves || []).forEach((l: any) => {
+        if (l.status === 'APPROVED') {
+          events.push({
+            id: `leave-${l.id}`,
+            date: l.start_date,
+            type: 'LEAVE',
+            title: `${l.employee_name || 'Employee'}: ${l.leave_type_name || 'Leave'}`,
+            status: 'APPROVED',
+            employeeName: l.employee_name,
+            metadata: { reason: l.reason, endDate: l.end_date }
+          });
+        }
+      });
+
+      // 4. Map Timesheet Tasks
+      (taskRes.timesheets || []).forEach((t: any) => {
+        events.push({
+          id: `task-${t.id}`,
+          date: t.date,
+          type: 'TASK',
+          title: `${t.project_name || 'Task'}: ${t.hours}h`,
+          status: t.status,
+          employeeName: t.employee_name,
+          metadata: { description: t.description, hours: t.hours }
+        });
+      });
+
+      setCalendarEvents(events);
+    } catch (err) {
+      console.error('Error loading calendar events:', err);
+    }
+  }, []);
 
   const fetchAttendance = async () => {
     try {
@@ -23,7 +109,7 @@ export const Attendance: React.FC = () => {
         setSummary(summaryRes.summary);
 
         const listRes = await apiFetch('/attendance');
-        setAttendanceList(listRes.attendance);
+        setAttendanceList(listRes.attendance || []);
       }
     } catch (err) {
       console.error(err);
@@ -34,13 +120,15 @@ export const Attendance: React.FC = () => {
 
   useEffect(() => {
     fetchAttendance();
-  }, []);
+    fetchCalendarEvents(currentYear, currentMonth);
+  }, [currentYear, currentMonth, fetchCalendarEvents]);
 
   const handleCheckIn = async () => {
     setActionLoading(true);
     try {
       await apiFetch('/attendance/check-in', { method: 'POST' });
       await fetchAttendance();
+      await fetchCalendarEvents(currentYear, currentMonth);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -53,6 +141,7 @@ export const Attendance: React.FC = () => {
     try {
       await apiFetch('/attendance/check-out', { method: 'POST' });
       await fetchAttendance();
+      await fetchCalendarEvents(currentYear, currentMonth);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -66,9 +155,9 @@ export const Attendance: React.FC = () => {
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <Clock className="w-6 h-6 text-cyan-400" />
-            <span>Attendance & Shift Management</span>
+            <span>Attendance & Unified Calendar</span>
           </h1>
-          <p className="text-xs text-slate-400">Track check-ins, check-outs, working hours, and daily workforce summaries</p>
+          <p className="text-xs text-slate-400">Track check-ins, check-outs, workforce summaries, and monthly attendance calendars</p>
         </div>
       </div>
 
@@ -135,47 +224,57 @@ export const Attendance: React.FC = () => {
               <p className="text-xl font-bold text-rose-400 mt-1">{summary.absentToday}</p>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-300">
-              Workforce Attendance Records
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="px-6 py-3">Employee</th>
-                    <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Check In</th>
-                    <th className="px-6 py-3">Check Out</th>
-                    <th className="px-6 py-3">Hours</th>
-                    <th className="px-6 py-3">Status</th>
+      {/* Embedded Unified Calendar View */}
+      <SharedCalendar
+        events={calendarEvents}
+        initialYear={currentYear}
+        initialMonth={currentMonth}
+        onMonthChange={(y, m) => {
+          setCurrentYear(y);
+          setCurrentMonth(m);
+        }}
+        title="Attendance & Organizational Calendar"
+        subtitle="Visualizing daily attendance check-ins, leave requests, company holidays, and planned tasks"
+      />
+
+      {/* Workforce Attendance Log Table */}
+      {attendanceList.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-2">
+          <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-300">
+            Recent Attendance Log Records
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                <tr>
+                  <th className="px-6 py-3">Employee</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Check In</th>
+                  <th className="px-6 py-3">Check Out</th>
+                  <th className="px-6 py-3">Hours</th>
+                  <th className="px-6 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {attendanceList.map(a => (
+                  <tr key={a.id} className="hover:bg-slate-800/40">
+                    <td className="px-6 py-3.5 font-semibold text-slate-200">{a.employee_name} ({a.employee_code})</td>
+                    <td className="px-6 py-3.5 font-mono">{a.date}</td>
+                    <td className="px-6 py-3.5 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString() : '--'}</td>
+                    <td className="px-6 py-3.5 font-mono text-cyan-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString() : '--'}</td>
+                    <td className="px-6 py-3.5 font-mono">{a.working_hours || 0} hrs</td>
+                    <td className="px-6 py-3.5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        {a.status}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {attendanceList.length > 0 ? (
-                    attendanceList.map(a => (
-                      <tr key={a.id} className="hover:bg-slate-800/40">
-                        <td className="px-6 py-3.5 font-semibold text-slate-200">{a.employee_name} ({a.employee_code})</td>
-                        <td className="px-6 py-3.5 font-mono">{a.date}</td>
-                        <td className="px-6 py-3.5 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString() : '--'}</td>
-                        <td className="px-6 py-3.5 font-mono text-cyan-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString() : '--'}</td>
-                        <td className="px-6 py-3.5 font-mono">{a.working_hours || 0} hrs</td>
-                        <td className="px-6 py-3.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                            {a.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No attendance records found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

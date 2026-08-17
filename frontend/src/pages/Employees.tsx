@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { 
   Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network, 
-  ChevronLeft, ChevronRight, CheckCircle2
+  ChevronLeft, ChevronRight, CheckCircle2, Edit3, X, Building2, Briefcase
 } from 'lucide-react';
 
 export const Employees: React.FC = () => {
@@ -12,10 +12,18 @@ export const Employees: React.FC = () => {
   const [pagination, setPagination] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
+  // Master Settings Data (Departments & Designations)
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [designations, setDesignations] = useState<any[]>([]);
+
   // Filters
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [filterDepartmentId, setFilterDepartmentId] = useState('');
   const [page, setPage] = useState(1);
+
+  // Success Alert Toast
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Add Employee Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -24,22 +32,52 @@ export const Employees: React.FC = () => {
     last_name: '',
     email: '',
     phone: '',
-    employment_type: 'FULL_TIME'
+    employment_type: 'FULL_TIME',
+    department_id: '',
+    designation_id: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Edit Employee Modal
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    employment_type: 'FULL_TIME',
+    department_id: '',
+    designation_id: ''
+  });
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Fetch Master Settings (Departments & Designations)
+  const fetchMasterSettings = async () => {
+    try {
+      const [deptRes, desigRes] = await Promise.all([
+        apiFetch('/settings/departments').catch(() => ({ departments: [] })),
+        apiFetch('/settings/designations').catch(() => ({ designations: [] }))
+      ]);
+      setDepartments(deptRes.departments || []);
+      setDesignations(desigRes.designations || []);
+    } catch (err) {
+      console.error('Error fetching master settings:', err);
+    }
+  };
 
   const fetchEmployees = async () => {
     setLoading(true);
     try {
       if (activeTab === 'list') {
         const res = await apiFetch('/employees', {
-          params: { search, status, page, limit: 10 }
+          params: { search, status, departmentId: filterDepartmentId, page, limit: 10 }
         });
-        setEmployees(res.employees);
-        setPagination(res.pagination);
+        setEmployees(res.employees || []);
+        setPagination(res.pagination || {});
       } else {
         const res = await apiFetch('/employees/org-chart');
-        setOrgChart(res.orgChart);
+        setOrgChart(res.orgChart || []);
       }
     } catch (err: any) {
       console.error(err);
@@ -49,8 +87,44 @@ export const Employees: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchMasterSettings();
+  }, []);
+
+  useEffect(() => {
     fetchEmployees();
-  }, [activeTab, page, status]);
+  }, [activeTab, page, status, filterDepartmentId]);
+
+  // Filtered Designations for Create Modal based on selected department_id
+  const createAvailableDesignations = useMemo(() => {
+    if (!formData.department_id) return designations;
+    return designations.filter(d => !d.department_id || d.department_id === formData.department_id);
+  }, [designations, formData.department_id]);
+
+  // Filtered Designations for Edit Modal based on selected department_id
+  const editAvailableDesignations = useMemo(() => {
+    if (!editFormData.department_id) return designations;
+    return designations.filter(d => !d.department_id || d.department_id === editFormData.department_id);
+  }, [designations, editFormData.department_id]);
+
+  // When Create Department changes, reset designation if incompatible
+  const handleCreateDeptChange = (deptId: string) => {
+    let newDesig = formData.designation_id;
+    if (deptId && newDesig) {
+      const valid = designations.some(d => d.id === newDesig && (!d.department_id || d.department_id === deptId));
+      if (!valid) newDesig = '';
+    }
+    setFormData({ ...formData, department_id: deptId, designation_id: newDesig });
+  };
+
+  // When Edit Department changes, reset designation if incompatible
+  const handleEditDeptChange = (deptId: string) => {
+    let newDesig = editFormData.designation_id;
+    if (deptId && newDesig) {
+      const valid = designations.some(d => d.id === newDesig && (!d.department_id || d.department_id === deptId));
+      if (!valid) newDesig = '';
+    }
+    setEditFormData({ ...editFormData, department_id: deptId, designation_id: newDesig });
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,15 +136,63 @@ export const Employees: React.FC = () => {
     e.preventDefault();
     setFormError(null);
     try {
+      const payload: any = { ...formData };
+      if (!payload.department_id) delete payload.department_id;
+      if (!payload.designation_id) delete payload.designation_id;
+
       await apiFetch('/employees', {
         method: 'POST',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       setShowAddModal(false);
-      setFormData({ first_name: '', last_name: '', email: '', phone: '', employment_type: 'FULL_TIME' });
+      setFormData({
+        first_name: '', last_name: '', email: '', phone: '',
+        employment_type: 'FULL_TIME', department_id: '', designation_id: ''
+      });
+      setSuccessMsg('Employee created successfully.');
+      setTimeout(() => setSuccessMsg(null), 4000);
       fetchEmployees();
     } catch (err: any) {
-      setFormError(err.message);
+      setFormError(err.message || 'Failed to create employee.');
+    }
+  };
+
+  const openEditModal = (emp: any) => {
+    setEditingEmployee(emp);
+    setEditFormData({
+      first_name: emp.first_name || '',
+      last_name: emp.last_name || '',
+      email: emp.email || '',
+      phone: emp.phone || '',
+      employment_type: emp.employment_type || 'FULL_TIME',
+      department_id: emp.department_id || '',
+      designation_id: emp.designation_id || ''
+    });
+    setEditFormError(null);
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmployee) return;
+    setEditFormError(null);
+    setEditLoading(true);
+    try {
+      const payload: any = { ...editFormData };
+      if (!payload.department_id) payload.department_id = null;
+      if (!payload.designation_id) payload.designation_id = null;
+
+      await apiFetch(`/employees/${editingEmployee.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      setEditingEmployee(null);
+      setSuccessMsg(`Employee ${editFormData.first_name} ${editFormData.last_name} updated successfully.`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+      fetchEmployees();
+    } catch (err: any) {
+      setEditFormError(err.message || 'Failed to update employee profile.');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -95,6 +217,17 @@ export const Employees: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Success Notification Alert */}
+      {successMsg && (
+        <div className="p-4 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span className="font-semibold">{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-emerald-900 rounded"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -102,7 +235,7 @@ export const Employees: React.FC = () => {
             <Users className="w-6 h-6 text-cyan-400" />
             <span>Employee Directory</span>
           </h1>
-          <p className="text-xs text-slate-400">Manage organizational personnel, employment statuses, and team hierarchies</p>
+          <p className="text-xs text-slate-400">Manage organizational personnel, department assignments, and designations</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -147,6 +280,17 @@ export const Employees: React.FC = () => {
             </div>
 
             <select
+              value={filterDepartmentId}
+              onChange={e => { setFilterDepartmentId(e.target.value); setPage(1); }}
+              className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+            >
+              <option value="">All Departments</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+
+            <select
               value={status}
               onChange={e => { setStatus(e.target.value); setPage(1); }}
               className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
@@ -188,9 +332,20 @@ export const Employees: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="font-semibold text-slate-100">{emp.first_name} {emp.last_name}</div>
                           <div className="text-[11px] text-slate-500">{emp.email}</div>
+                          {emp.phone && <div className="text-[10px] text-slate-500 font-mono">{emp.phone}</div>}
                         </td>
-                        <td className="px-6 py-4">{emp.department_name || 'Unassigned'}</td>
-                        <td className="px-6 py-4">{emp.designation_name || 'Unassigned'}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-200">
+                            <Building2 className="w-3.5 h-3.5 text-cyan-500" />
+                            {emp.department_name || 'Unassigned'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-300">
+                            <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                            {emp.designation_name || 'Unassigned'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300">
                             {emp.employment_type}
@@ -204,6 +359,13 @@ export const Employees: React.FC = () => {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2">
+                          <button
+                            onClick={() => openEditModal(emp)}
+                            className="px-2.5 py-1 text-[11px] font-medium bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/50 rounded-lg transition-all inline-flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
                           {emp.status === 'ACTIVE' ? (
                             <button
                               onClick={() => handleDeactivate(emp.id)}
@@ -279,57 +441,110 @@ export const Employees: React.FC = () => {
       {/* Add Employee Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="font-bold text-lg text-white">Create New Employee</h3>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white">Create New Employee</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
 
             {formError && <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>}
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
+              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">First Name *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">First Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.first_name}
                     onChange={e => setFormData({ ...formData, first_name: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    placeholder="John"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">Last Name *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Last Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.last_name}
                     onChange={e => setFormData({ ...formData, last_name: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    placeholder="Doe"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Work Email *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Work Email *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="employee@theiakshi.com"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Phone Number</label>
+                <label className="block text-slate-300 mb-1 font-medium">Phone Number</label>
                 <input
                   type="text"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="+91 98765 43210"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Department</label>
+                  <select
+                    value={formData.department_id}
+                    onChange={e => handleCreateDeptChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  >
+                    <option value="">Select Department...</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Designation</label>
+                  <select
+                    value={formData.designation_id}
+                    onChange={e => setFormData({ ...formData, designation_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  >
+                    <option value="">Select Designation...</option>
+                    {createAvailableDesignations.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Employment Type</label>
+                <select
+                  value={formData.employment_type}
+                  onChange={e => setFormData({ ...formData, employment_type: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="FULL_TIME">Full-Time</option>
+                  <option value="PART_TIME">Part-Time</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="INTERN">Internship</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -342,6 +557,132 @@ export const Employees: React.FC = () => {
                   className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
                 >
                   Create Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Modal */}
+      {editingEmployee && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-bold text-lg text-white">Edit Employee Profile</h3>
+                <p className="text-xs text-cyan-400 font-mono">Code: {editingEmployee.employee_code}</p>
+              </div>
+              <button type="button" onClick={() => setEditingEmployee(null)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            {editFormError && <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{editFormError}</div>}
+
+            <form onSubmit={handleEditSave} className="space-y-4 text-xs">
+              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.first_name}
+                    onChange={e => setEditFormData({ ...editFormData, first_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.last_name}
+                    onChange={e => setEditFormData({ ...editFormData, last_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Work Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={editFormData.email}
+                  onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Phone Number</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                />
+              </div>
+
+              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Department</label>
+                  <select
+                    value={editFormData.department_id}
+                    onChange={e => handleEditDeptChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  >
+                    <option value="">Select Department...</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Designation</label>
+                  <select
+                    value={editFormData.designation_id}
+                    onChange={e => setEditFormData({ ...editFormData, designation_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  >
+                    <option value="">Select Designation...</option>
+                    {editAvailableDesignations.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Employment Type</label>
+                <select
+                  value={editFormData.employment_type}
+                  onChange={e => setEditFormData({ ...editFormData, employment_type: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="FULL_TIME">Full-Time</option>
+                  <option value="PART_TIME">Part-Time</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="INTERN">Internship</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingEmployee(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow disabled:opacity-50"
+                >
+                  {editLoading ? 'Saving Changes...' : 'Save Changes'}
                 </button>
               </div>
             </form>

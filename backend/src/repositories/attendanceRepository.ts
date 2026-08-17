@@ -41,9 +41,9 @@ export class AttendanceRepository {
     return res.rows[0] || null;
   }
 
-  static async findAll(organizationId: string, filters: { date?: string; departmentId?: string; page?: number; limit?: number }) {
+  static async findAll(organizationId: string, filters: { date?: string; startDate?: string; endDate?: string; employeeId?: string; departmentId?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 500;
     const offset = (page - 1) * limit;
 
     let whereClause = `WHERE a.organization_id = $1`;
@@ -53,6 +53,24 @@ export class AttendanceRepository {
     if (filters.date) {
       whereClause += ` AND a.date = $${paramIndex}`;
       params.push(filters.date);
+      paramIndex++;
+    }
+
+    if (filters.startDate) {
+      whereClause += ` AND a.date >= $${paramIndex}`;
+      params.push(filters.startDate);
+      paramIndex++;
+    }
+
+    if (filters.endDate) {
+      whereClause += ` AND a.date <= $${paramIndex}`;
+      params.push(filters.endDate);
+      paramIndex++;
+    }
+
+    if (filters.employeeId) {
+      whereClause += ` AND a.employee_id = $${paramIndex}`;
+      params.push(filters.employeeId);
       paramIndex++;
     }
 

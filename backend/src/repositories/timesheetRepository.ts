@@ -30,7 +30,7 @@ export class TimesheetRepository {
 
   static async findAll(organizationId: string, filters: { page?: number; limit?: number }) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 500;
     const offset = (page - 1) * limit;
 
     const countRes = await query<{ total: number }>('SELECT COUNT(*)::int as total FROM timesheets WHERE organization_id = $1', [organizationId]);

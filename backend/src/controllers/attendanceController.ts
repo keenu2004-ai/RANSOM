@@ -79,13 +79,16 @@ export class AttendanceController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { date, departmentId, page, limit } = req.query;
+      const { date, startDate, endDate, employeeId, departmentId, page, limit } = req.query;
 
       const result = await AttendanceRepository.findAll(organizationId, {
         date: date as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+        employeeId: employeeId as string,
         departmentId: departmentId as string,
         page: page ? parseInt(page as string, 10) : 1,
-        limit: limit ? parseInt(limit as string, 10) : 20
+        limit: limit ? parseInt(limit as string, 10) : 500
       });
 
       return res.status(200).json({

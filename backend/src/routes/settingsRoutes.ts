@@ -32,7 +32,7 @@ router.get('/departments', async (req: AuthenticatedRequest, res: Response, next
 
 router.get('/designations', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await query('SELECT id, name, code, description FROM designations WHERE organization_id = $1 ORDER BY name ASC', [req.user!.organizationId]);
+    const result = await query('SELECT id, department_id, name, code, description FROM designations WHERE organization_id = $1 ORDER BY name ASC', [req.user!.organizationId]);
     return res.status(200).json({ success: true, data: { designations: result.rows } });
   } catch (error) {
     return next(error);
