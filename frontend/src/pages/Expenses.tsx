@@ -88,7 +88,6 @@ export const Expenses: React.FC = () => {
     endPoint: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    bucket: 'Onboarding',
     currency: 'INR'
   });
 
@@ -281,7 +280,6 @@ export const Expenses: React.FC = () => {
       endPoint: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
-      bucket: 'Onboarding',
       currency: 'INR'
     });
     setShowCreateTripModal(true);
@@ -340,7 +338,6 @@ export const Expenses: React.FC = () => {
       endPoint: activeTrip.end_point || '',
       startDate: activeTrip.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : '',
       endDate: activeTrip.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : '',
-      bucket: activeTrip.bucket || 'Onboarding',
       currency: activeTrip.currency || 'INR'
     });
     setShowEditTripModal(true);
@@ -829,7 +826,6 @@ export const Expenses: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 font-medium">
                   <div>Purpose: <strong className="text-white font-semibold">{activeTrip.purpose}</strong></div>
                   <div>Trip Location: <strong className="text-white font-semibold">{activeTrip.start_point} to {activeTrip.end_point}</strong></div>
-                  <div>Bucket: <strong className="text-cyan-300 font-semibold">{activeTrip.bucket || 'Onboarding'}</strong></div>
                   <div>Currency: <strong className="font-mono text-emerald-400">{activeTrip.currency || 'INR'}</strong></div>
                 </div>
               </div>
@@ -1477,19 +1473,11 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
-                  <select required value={tripFormData.bucket} onChange={e => setTripFormData({ ...tripFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
-                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
-                    <option value="INR">Indian Rupee</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <option value="INR">Indian Rupee</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
@@ -1548,19 +1536,11 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
-                  <select required value={tripFormData.bucket} onChange={e => setTripFormData({ ...tripFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
-                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
-                    <option value="INR">Indian Rupee</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <option value="INR">Indian Rupee</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

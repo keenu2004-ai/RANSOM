@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS trip_expenses (
     end_point VARCHAR(255) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    bucket VARCHAR(50) DEFAULT 'Internal',
     currency VARCHAR(10) NOT NULL DEFAULT 'INR',
     total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     status VARCHAR(50) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'SUBMITTED', 'PENDING', 'APPROVED', 'REJECTED', 'PAID')),

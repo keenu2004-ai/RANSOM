@@ -6,7 +6,6 @@ export interface CreateTripDTO {
   endPoint: string;
   startDate: string;
   endDate: string;
-  bucket?: string;
   currency?: string;
 }
 
@@ -65,16 +64,15 @@ export class TripExpenseRepository {
   // Create parent Trip Draft
   static async createTrip(organizationId: string, employeeId: string, data: CreateTripDTO) {
     const currency = data.currency || 'INR';
-    const bucket = data.bucket || 'Internal';
     const text = `
       INSERT INTO trip_expenses (
-        organization_id, employee_id, purpose, start_point, end_point, start_date, end_date, bucket, currency, status, total_amount
+        organization_id, employee_id, purpose, start_point, end_point, start_date, end_date, currency, status, total_amount
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, 'DRAFT', 0.00
+        $1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 0.00
       )
       RETURNING *
     `;
-    const params = [organizationId, employeeId, data.purpose, data.startPoint, data.endPoint, data.startDate, data.endDate, bucket, currency];
+    const params = [organizationId, employeeId, data.purpose, data.startPoint, data.endPoint, data.startDate, data.endDate, currency];
     const res = await query(text, params);
     return res.rows[0];
   }
@@ -325,13 +323,12 @@ export class TripExpenseRepository {
         end_point = COALESCE($3, end_point),
         start_date = COALESCE($4, start_date),
         end_date = COALESCE($5, end_date),
-        bucket = COALESCE($6, bucket),
-        currency = COALESCE($7, currency),
+        currency = COALESCE($6, currency),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8 AND organization_id = $9 AND employee_id = $10 AND status = 'DRAFT'
+      WHERE id = $7 AND organization_id = $8 AND employee_id = $9 AND status = 'DRAFT'
       RETURNING *
     `;
-    const params = [data.purpose || null, data.startPoint || null, data.endPoint || null, data.startDate || null, data.endDate || null, data.bucket || null, data.currency || null, id, organizationId, employeeId];
+    const params = [data.purpose || null, data.startPoint || null, data.endPoint || null, data.startDate || null, data.endDate || null, data.currency || null, id, organizationId, employeeId];
     const res = await query(text, params);
     return res.rows[0] || null;
   }

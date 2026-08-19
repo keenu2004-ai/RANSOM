@@ -92,7 +92,6 @@ const createTripSchema = z.object({
   endPoint: z.string().min(1, 'End Point is required.'),
   startDate: z.string().min(1, 'Start Date is required.'),
   endDate: z.string().min(1, 'End Date is required.'),
-  bucket: z.string().optional().default('Internal'),
   currency: z.string().default('INR')
 }).superRefine((data, ctx) => {
   if (data.startDate && data.endDate && new Date(data.endDate) < new Date(data.startDate)) {
