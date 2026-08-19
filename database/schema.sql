@@ -315,45 +315,6 @@ CREATE TABLE IF NOT EXISTS timesheets (
 );
 
 -- ------------------------------------------------------------
--- 10. PAYROLL & SALARY STRUCTURES
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS salary_structures (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id UUID NOT NULL UNIQUE REFERENCES employees(id) ON DELETE CASCADE,
-    basic_pay NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    hra NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    special_allowance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    pf_deduction NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    esi_deduction NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    professional_tax NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    tds NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    gross_salary NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    net_salary NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS payroll_records (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    pay_period_month INT NOT NULL CHECK (pay_period_month BETWEEN 1 AND 12),
-    pay_period_year INT NOT NULL,
-    basic_pay NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    hra NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    allowances NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    deductions NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    gross_salary NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    net_salary NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    status VARCHAR(50) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PROCESSED', 'PAID')),
-    payment_date DATE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_employee_payroll_period UNIQUE (employee_id, pay_period_month, pay_period_year)
-);
-
--- ------------------------------------------------------------
 -- 11. IN-APP NOTIFICATIONS
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS notifications (
@@ -472,7 +433,6 @@ CREATE INDEX IF NOT EXISTS idx_attendance_org_emp_date ON attendance(organizatio
 CREATE INDEX IF NOT EXISTS idx_leave_requests_org_emp ON leave_requests(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_org_emp ON expenses(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_timesheets_org_emp_date ON timesheets(organization_id, employee_id, date);
-CREATE INDEX IF NOT EXISTS idx_payroll_org_emp_period ON payroll_records(organization_id, employee_id, pay_period_year, pay_period_month);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_org_created ON audit_logs(organization_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_assets_code ON assets(asset_code);
 CREATE INDEX IF NOT EXISTS idx_assets_serial ON assets(serial_number);

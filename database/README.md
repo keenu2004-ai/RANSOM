@@ -37,8 +37,6 @@ This directory contains the PostgreSQL source-of-truth database scripts, migrati
 - `leave_requests` — Employee submitted leave applications
 - `expenses` — Submitted expense reimbursement claims
 - `timesheets` — Daily project hours logged
-- `salary_structures` — Employee salary components
-- `payroll_records` — Monthly processed payroll statements
 - `compliance_tasks` — Statutory filing and compliance tracking tasks
 - `documents` — Employee uploaded document attachments
 - `announcements` — Published company news and notices

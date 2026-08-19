@@ -13,9 +13,9 @@
 - **Capabilities**: Manage organization data, departments, designations, branches, users, roles, compliance, reports, audit logs. Operational overview endpoints never crash or require employeeId.
 
 ### 3. `HR_MANAGER`
-- **Scope**: Personnel operations, talent acquisition, attendance, leave & payroll management
+- **Scope**: Personnel operations, talent acquisition, attendance, and leave management
 - **Employee Profile**: `EMP-001` (Aarav Sharma)
-- **Capabilities**: Create/update employees, approve leave requests, review expense claims, manage payroll structures, statutory compliance, announcements.
+- **Capabilities**: Create/update employees, approve leave requests, review expense claims, manage asset lifecycle, reports.
 
 ### 4. `MANAGER`
 - **Scope**: Team operations & project supervisor
@@ -25,4 +25,4 @@
 ### 5. `EMPLOYEE`
 - **Scope**: Self-service portal user
 - **Employee Profile**: `EMP-003` (Rohan Gupta)
-- **Capabilities**: Personal check-in / check-out, view personal leave balances, apply for leave, submit expense claims, log project timesheets, view personal payslips, access documents & helpdesk.
+- **Capabilities**: Personal check-in / check-out, view personal leave balances, apply for leave, submit expense claims, log project timesheets, access asset management.

@@ -57,9 +57,6 @@ VALUES
 ('20000000-0000-0000-0000-000000000019', 'expenses', 'approve', 'Approve/reject expense claims', 'expenses:approve'),
 ('20000000-0000-0000-0000-000000000020', 'timesheets', 'create', 'Log daily project hours', 'timesheets:create'),
 ('20000000-0000-0000-0000-000000000021', 'timesheets', 'view', 'View project timesheet logs', 'timesheets:view'),
--- Payroll
-('20000000-0000-0000-0000-000000000022', 'payroll', 'view_self', 'View personal monthly payslips', 'payroll:view_self'),
-('20000000-0000-0000-0000-000000000023', 'payroll', 'manage', 'Manage salary structures and process payroll', 'payroll:manage'),
 -- Asset Management
 ('20000000-0000-0000-0000-000000000040', 'assets', 'view', 'View assets and details', 'assets:view'),
 ('20000000-0000-0000-0000-000000000041', 'assets', 'create', 'Create new asset record', 'assets:create'),
@@ -98,7 +95,6 @@ WHERE r.name = 'HR_MANAGER' AND p.key IN (
   'holidays:view', 'holidays:manage',
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
-  'payroll:manage', 'payroll:view_self',
   'notifications:view', 'reports:view',
   'assets:view', 'assets:create', 'assets:update', 'assets:assign', 'assets:return', 'assets:categories', 'assets:maintenance', 'assets:reports', 'assets:history'
 )
@@ -114,7 +110,6 @@ WHERE r.name = 'MANAGER' AND p.key IN (
   'holidays:view',
   'expenses:create', 'expenses:view', 'expenses:approve',
   'timesheets:create', 'timesheets:view',
-  'payroll:view_self',
   'notifications:view', 'reports:view',
   'assets:view', 'assets:assign', 'assets:return', 'assets:history'
 )
@@ -127,7 +122,7 @@ FROM roles r, permissions p
 WHERE r.name = 'EMPLOYEE' AND p.key IN (
   'attendance:checkin', 'leave:apply', 'leave:view', 'holidays:view',
   'expenses:create', 'expenses:view', 'timesheets:create', 'timesheets:view',
-  'payroll:view_self', 'notifications:view',
+  'notifications:view',
   'assets:view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;

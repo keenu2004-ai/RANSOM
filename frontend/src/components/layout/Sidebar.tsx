@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, CalendarCheck, Briefcase, 
-  Receipt, FileText, Banknote, Package, Bell, BarChart3, History, Settings, ShieldCheck, X
+  Receipt, FileText, Package, Bell, BarChart3, History, Settings, ShieldCheck, X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -23,7 +23,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     { label: 'Holidays & Calendar', path: '/holidays', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Expense Claims', path: '/expenses', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Weekly Plan', path: '/timesheets', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Payroll & Payslips', path: '/payroll', icon: Banknote, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'EMPLOYEE'] },
     { label: 'Asset Management', path: '/assets', icon: Package, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'] },

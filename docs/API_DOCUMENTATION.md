@@ -29,8 +29,6 @@ All requests use standard JSON headers: `Content-Type: application/json` and `Au
 | GET | `/expenses/my` | Personal expense claims | Yes | Yes | All |
 | POST | `/expenses` | Submit expense claim in ₹ INR | Yes | Yes | All |
 | GET | `/expenses` | Administrative expense overview | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER, MANAGER |
-| GET | `/payroll/my-payslips` | Personal monthly payslips | Yes | Yes | All |
-| GET | `/payroll/records` | Admin monthly payroll records | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER |
 | GET | `/reports/export-csv` | Download employee report CSV | Yes | No | SUPER_ADMIN, ADMIN, HR_MANAGER, MANAGER |
 | GET | `/audit-logs` | Immutable system audit log trail | Yes | No | SUPER_ADMIN, ADMIN |
 | GET | `/admin/users` | Admin control panel user accounts | Yes | No | SUPER_ADMIN, ADMIN |

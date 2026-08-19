@@ -34,5 +34,3 @@
 - `expenses` (`id`, `organization_id`, `employee_id`, `category_id`, `amount`, `description`, `status`)
 - `projects` (`id`, `organization_id`, `name`, `code`, `status`)
 - `timesheets` (`id`, `organization_id`, `employee_id`, `project_id`, `date`, `hours`, `description`, `status`)
-- `salary_structures` (`id`, `organization_id`, `employee_id`, `basic_pay`, `hra`, `gross_salary`, `net_salary`)
-- `payroll_records` (`id`, `organization_id`, `employee_id`, `pay_period_month`, `pay_period_year`, `gross_salary`, `net_salary`, `status`)

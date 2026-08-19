@@ -59,8 +59,6 @@ const BASELINE_EXPECTATIONS = [
   { table: 'leave_requests', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'expenses', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'timesheets', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'salary_structures', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
-  { table: 'payroll_records', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'asset_history', min: 2, type: 'REQUIRED ASSET HISTORY DATA' },
   { table: 'asset_maintenance', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },
   { table: 'notifications', min: 0, type: 'EXPECTED EMPTY — TRANSACTIONAL TABLE' },

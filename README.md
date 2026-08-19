@@ -63,7 +63,7 @@ All demo account passwords are set to **`ChangeMe@123`** (stored as bcrypt hashe
 |---|---|---|---|---|
 | **SUPER_ADMIN** | `superadmin@theiakshi.com` | `ChangeMe@123` | `NONE` (`null`) | Full System & Global Governance |
 | **ADMIN** | `admin@theiakshi.com` | `ChangeMe@123` | `NONE` (`null`) | Organization Administration |
-| **HR_MANAGER** | `hr@theiakshi.com` | `ChangeMe@123` | `EMP-001` (Aarav Sharma) | HR, Attendance, Leave & Payroll Operations |
+| **HR_MANAGER** | `hr@theiakshi.com` | `ChangeMe@123` | `EMP-001` (Aarav Sharma) | HR, Attendance & Leave Operations |
 | **MANAGER** | `manager@theiakshi.com` | `ChangeMe@123` | `EMP-002` (Priya Verma) | Team Supervision & Approvals |
 | **EMPLOYEE** | `employee@theiakshi.com` | `ChangeMe@123` | `EMP-003` (Rohan Gupta) | Self-Service Portal |
 
