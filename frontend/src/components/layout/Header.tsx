@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, LogOut, Bell, Building2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Menu, LogOut, Building2, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
@@ -8,6 +8,33 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted PWA installation prompt');
+    }
+    setDeferredPrompt(null);
+    setShowInstallBtn(false);
+  };
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 bg-slate-900/90 backdrop-blur border-b border-slate-800">
@@ -27,6 +54,18 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* PWA Install Button */}
+        {showInstallBtn && (
+          <button
+            onClick={handleInstallClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all animate-pulse"
+            title="Install THEIAKSHI App"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Install App</span>
+          </button>
+        )}
+
         {/* User Identity Pills */}
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
