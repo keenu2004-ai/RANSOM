@@ -14,7 +14,7 @@ const LOCAL_TRAVEL_CATEGORIES = [
   'Metro Train', 'Office Supply', 'Others', 'Raw Material', 'Taxi', 'Train'
 ];
 const TRANSPORT_MODES = [
-  'Auto', 'Bus', 'Flight', 'Other', 'Public Transportation', 'Metro', 'Taxi', 'Train'
+  'Auto', 'Bus', 'Flight', 'Others', 'Public Transportation', 'Taxi', 'Train'
 ];
 const OTHER_EXPENSE_CATEGORIES = ['Food', 'General Expense', 'Other', 'Courier', 'Office Supply', 'Raw Material'];
 
@@ -47,6 +47,7 @@ export const Expenses: React.FC = () => {
   const [showCreateTripModal, setShowCreateTripModal] = useState(false);
   const [showEditTripModal, setShowEditTripModal] = useState(false);
   const [showFinalSubmitModal, setShowFinalSubmitModal] = useState(false);
+  const [showInitiatedAlert, setShowInitiatedAlert] = useState(false);
 
   const [activeTrip, setActiveTrip] = useState<any | null>(null); // Active Trip workspace
 
@@ -87,6 +88,7 @@ export const Expenses: React.FC = () => {
     endPoint: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
+    bucket: 'Onboarding',
     currency: 'INR'
   });
 
@@ -196,7 +198,7 @@ export const Expenses: React.FC = () => {
       currency: 'INR',
       amount: '',
       bucket: BUCKET_OPTIONS[1],
-      transportMode: TRANSPORT_MODES[6],
+      transportMode: TRANSPORT_MODES[5],
       startLocation: '',
       endLocation: ''
     });
@@ -279,6 +281,7 @@ export const Expenses: React.FC = () => {
       endPoint: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
+      bucket: 'Onboarding',
       currency: 'INR'
     });
     setShowCreateTripModal(true);
@@ -315,12 +318,11 @@ export const Expenses: React.FC = () => {
 
       setShowCreateTripModal(false);
       const createdTripId = res.data?.trip?.id;
-      setSuccessMsg('Trip Expense draft created. You can now add travel, accommodation, or other expenses.');
       fetchData();
       if (createdTripId) {
         await loadTripDetails(createdTripId);
+        setShowInitiatedAlert(true);
       }
-      setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
       setFormError(err.message || 'Failed to create Trip Expense draft.');
     } finally {
@@ -338,6 +340,7 @@ export const Expenses: React.FC = () => {
       endPoint: activeTrip.end_point || '',
       startDate: activeTrip.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : '',
       endDate: activeTrip.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : '',
+      bucket: activeTrip.bucket || 'Onboarding',
       currency: activeTrip.currency || 'INR'
     });
     setShowEditTripModal(true);
@@ -805,7 +808,7 @@ export const Expenses: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-emerald-400" />
-                    <span>Trip Expense</span>
+                    <span>Trip Expense Details</span>
                   </h2>
                   {activeTrip.status === 'DRAFT' && (
                     <button
@@ -817,13 +820,17 @@ export const Expenses: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <p className="text-xs font-semibold text-slate-200 mt-1">{activeTrip.purpose}</p>
-                <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 font-medium">
-                  <span>Trip Location: <strong className="text-slate-200">{activeTrip.start_point} to {activeTrip.end_point}</strong></span>
-                  <span>•</span>
-                  <span>Date: <strong className="font-mono text-slate-200">{new Date(activeTrip.start_date).toLocaleDateString()} - {new Date(activeTrip.end_date).toLocaleDateString()}</strong></span>
-                  <span>•</span>
-                  <span>Currency: <strong className="font-mono text-cyan-400">{activeTrip.currency || 'INR'}</strong></span>
+                <div className="text-xl font-extrabold font-mono text-emerald-400 mt-1">
+                  INR {grandTripTotal.toFixed(2)}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-300 mt-1 font-medium">
+                  <span className="font-mono">{new Date(activeTrip.start_date).toDateString()} - {new Date(activeTrip.end_date).toDateString()}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 font-medium">
+                  <div>Purpose: <strong className="text-white font-semibold">{activeTrip.purpose}</strong></div>
+                  <div>Trip Location: <strong className="text-white font-semibold">{activeTrip.start_point} to {activeTrip.end_point}</strong></div>
+                  <div>Bucket: <strong className="text-cyan-300 font-semibold">{activeTrip.bucket || 'Onboarding'}</strong></div>
+                  <div>Currency: <strong className="font-mono text-emerald-400">{activeTrip.currency || 'INR'}</strong></div>
                 </div>
               </div>
 
@@ -834,13 +841,8 @@ export const Expenses: React.FC = () => {
                   activeTrip.status === 'DRAFT' ? 'bg-slate-800 text-slate-400 border-slate-700' :
                   'bg-amber-500/10 text-amber-400 border-amber-500/30'
                 }`}>
-                  Status: {activeTrip.status}
+                  {activeTrip.status === 'DRAFT' ? 'Draft Mode' : activeTrip.status}
                 </span>
-
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block font-medium uppercase">Total Amount</span>
-                  <span className="text-xl font-extrabold font-mono text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
 
                 {isManagerOrAdmin && (activeTrip.status === 'SUBMITTED' || activeTrip.status === 'PENDING') && (
                   <div className="flex items-center gap-2 pt-1">
@@ -868,7 +870,6 @@ export const Expenses: React.FC = () => {
                     title="Add Travel Expense"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Travel Expense</span>
                   </button>
                 )}
               </div>
@@ -922,7 +923,6 @@ export const Expenses: React.FC = () => {
                     title="Add Accommodation Expense"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Accommodation Expense</span>
                   </button>
                 )}
               </div>
@@ -974,7 +974,6 @@ export const Expenses: React.FC = () => {
                     title="Add Other Expense"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Other Expense</span>
                   </button>
                 )}
               </div>
@@ -1017,7 +1016,7 @@ export const Expenses: React.FC = () => {
           {/* FINAL TRIP SUBMIT BAR */}
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-2xl">
             <div>
-              <span className="text-xs text-slate-400 block font-medium">FINAL TRIP EXPENSE TOTAL</span>
+              <span className="text-xs text-slate-400 block font-medium uppercase">TOTAL TRIP AMOUNT</span>
               <span className="text-2xl font-extrabold font-mono text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
 
@@ -1034,9 +1033,9 @@ export const Expenses: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenFinalSubmitModal}
-                  className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-cyan-500/20"
+                  className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-emerald-500/20"
                 >
-                  Submit Trip Expense
+                  SUBMIT
                 </button>
               )}
             </div>
@@ -1270,7 +1269,7 @@ export const Expenses: React.FC = () => {
                             onClick={() => loadTripDetails(tr.id)}
                             className="px-2.5 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded text-[10px] font-bold flex items-center gap-1 inline-flex"
                           >
-                            <span>{tr.status === 'DRAFT' ? 'Manage Trip' : 'View Trip'}</span>
+                            <span>{tr.status === 'DRAFT' ? 'Manage Trip' : 'Trip Details'}</span>
                             <ChevronRight className="w-3 h-3" />
                           </button>
 
@@ -1297,6 +1296,22 @@ export const Expenses: React.FC = () => {
       {/* ---------------------------------------------------- */}
       {/* MODALS */}
       {/* ---------------------------------------------------- */}
+
+      {/* ALERT MODAL: TRIP INITIATED */}
+      {showInitiatedAlert && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <h3 className="font-bold text-lg text-white">Trip Expense Initiated</h3>
+            <p className="text-xs text-slate-300">You can add all the trip related expenses here.</p>
+            <button
+              onClick={() => setShowInitiatedAlert(false)}
+              className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-extrabold text-xs shadow-lg"
+            >
+              OKAY
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 1. SINGLE CLAIM MODAL */}
       {showSingleModal && (
@@ -1374,7 +1389,7 @@ export const Expenses: React.FC = () => {
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
                   <select value={singleFormData.currency} onChange={e => setSingleFormData({ ...singleFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
-                    <option value="INR">INR (₹)</option>
+                    <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
                 <div>
@@ -1390,7 +1405,7 @@ export const Expenses: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Attachment / Receipt</label>
+                <label className="block text-slate-300 font-medium">Upload Attachment</label>
                 {!attachment ? (
                   <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
                     <Upload className="w-4 h-4" />
@@ -1408,7 +1423,7 @@ export const Expenses: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowSingleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
                 <button type="button" disabled={submitting} onClick={() => handleSubmitSingleClaim('DRAFT')} className="px-4 py-2 bg-slate-950 border border-slate-700 text-slate-200 rounded-xl">Save Draft</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-500 text-white rounded-xl font-bold">Submit Expense</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-500 text-white rounded-xl font-bold">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -1422,7 +1437,7 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-400" />
-                <span>Create Trip Expense</span>
+                <span>Trip Expense</span>
               </h3>
               <button type="button" onClick={() => setShowCreateTripModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1462,16 +1477,24 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
-                  <option value="INR">INR (₹)</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
+                  <select required value={tripFormData.bucket} onChange={e => setTripFormData({ ...tripFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowCreateTripModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow">Create Trip Expense</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow uppercase">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -1525,11 +1548,19 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
-                  <option value="INR">INR (₹)</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
+                  <select required value={tripFormData.bucket} onChange={e => setTripFormData({ ...tripFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
@@ -1548,7 +1579,7 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Plane className="w-5 h-5 text-indigo-400" />
-                <span>{editingChild ? 'Edit Travel Expense' : 'Add Travel Expense'}</span>
+                <span>Travel Expense</span>
               </h3>
               <button type="button" onClick={() => setShowTravelModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1586,7 +1617,7 @@ export const Expenses: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Purpose of Travel *</label>
                 <input type="text" required value={travelFormData.purpose} onChange={e => setTravelFormData({ ...travelFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Travel to client office" />
               </div>
 
@@ -1603,11 +1634,11 @@ export const Expenses: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Distance (in km)</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Distance (in kms)</label>
                   <input type="number" step="0.1" min="0" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="1150.0" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
                   <input type="number" step="0.01" min="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="5000.00" />
                 </div>
               </div>
@@ -1630,7 +1661,7 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">Save Travel Expense</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -1644,7 +1675,7 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Hotel className="w-5 h-5 text-cyan-400" />
-                <span>{editingChild ? 'Edit Accommodation Expense' : 'Add Accommodation Expense'}</span>
+                <span>Trip Accommodation Expense</span>
               </h3>
               <button type="button" onClick={() => setShowAccomModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1669,12 +1700,12 @@ export const Expenses: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Accommodation Details *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Accommodation Detail *</label>
                 <textarea required rows={3} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Hotel Taj Mumbai stay" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
                 <input type="number" step="0.01" min="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="4000.00" />
               </div>
 
@@ -1696,7 +1727,7 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold">Save Accommodation Expense</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -1710,7 +1741,7 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-amber-400" />
-                <span>{editingChild ? 'Edit Other Expense' : 'Add Other Expense'}</span>
+                <span>Trip Other Expense</span>
               </h3>
               <button type="button" onClick={() => setShowOtherModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1747,7 +1778,7 @@ export const Expenses: React.FC = () => {
                   <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
                   <input type="number" step="0.01" min="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="800.00" />
                 </div>
               </div>
@@ -1770,7 +1801,7 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold">Save Other Expense</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -1784,15 +1815,15 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <span>Confirm Final Trip Submission</span>
+                <span>Confirmation</span>
               </h3>
               <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <p className="text-slate-300">Submit this trip expense for approval?</p>
+              <p className="text-slate-300 text-sm">Are you sure you want to submit this request?</p>
               
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2 font-mono">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Trip Purpose:</span>
                   <span className="font-semibold text-slate-200">{activeTrip?.purpose}</span>
@@ -1816,9 +1847,9 @@ export const Expenses: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-              <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow">Submit</button>
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 text-xs font-bold">
+              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl">CANCEL</button>
+              <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl shadow uppercase">OKAY</button>
             </div>
           </div>
         </div>
