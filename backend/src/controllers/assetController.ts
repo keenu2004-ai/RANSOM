@@ -43,13 +43,19 @@ const returnAssetSchema = z.object({
   notes: z.string().optional()
 });
 
+const createAssetRequestSchema = z.object({
+  categoryId: z.string().uuid().optional().nullable(),
+  reason: z.string().min(1, 'Reason for asset request is required.'),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional().default('NORMAL'),
+  requiredDate: z.string().optional().nullable()
+});
+
 export class AssetController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
       const { search, status, categoryId, assignedEmployeeId, condition, limit, offset } = req.query;
 
-      // If EMPLOYEE role, restrict assignedEmployeeId filter to own employee ID unless explicitly requesting public list
       let finalEmpId = assignedEmployeeId as string | undefined;
       if (req.user!.role === 'EMPLOYEE') {
         finalEmpId = req.user!.employeeId || 'none';
@@ -76,14 +82,7 @@ export class AssetController {
       const organizationId = req.user!.organizationId;
       const { id } = req.params;
       const asset = await AssetRepository.findById(id, organizationId);
-      if (!asset) {
-        return res.status(404).json({ success: false, error: 'Asset not found.' });
-      }
-
-      // Employee access check
-      if (req.user!.role === 'EMPLOYEE' && asset.assigned_employee_id !== req.user!.employeeId) {
-        return res.status(403).json({ success: false, error: 'You do not have permission to view this asset.' });
-      }
+      if (!asset) return res.status(404).json({ success: false, error: 'Asset not found.' });
 
       return res.status(200).json({ success: true, data: asset });
     } catch (error) {
@@ -95,9 +94,10 @@ export class AssetController {
     try {
       const organizationId = req.user!.organizationId;
       const userId = req.user!.userId;
-      const validated = createAssetSchema.parse(req.body);
 
+      const validated = createAssetSchema.parse(req.body);
       const asset = await AssetRepository.create(organizationId, userId, validated);
+
       return res.status(201).json({ success: true, data: asset, message: 'Asset created successfully.' });
     } catch (error) {
       return next(error);
@@ -117,14 +117,28 @@ export class AssetController {
     }
   }
 
+  static async delete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const userId = req.user!.userId;
+      const { id } = req.params;
+
+      await AssetRepository.softDelete(id, organizationId, userId);
+      return res.status(200).json({ success: true, message: 'Asset deleted successfully.' });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   static async assign(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
       const userId = req.user!.userId;
       const { id } = req.params;
-      const validated = assignAssetSchema.parse(req.body);
 
-      const asset = await AssetRepository.assign(id, organizationId, userId, validated);
+      const validated = assignAssetSchema.parse(req.body);
+      const asset = await AssetRepository.assignAsset(id, organizationId, userId, validated);
+
       return res.status(200).json({ success: true, data: asset, message: 'Asset assigned successfully.' });
     } catch (error) {
       return next(error);
@@ -136,9 +150,10 @@ export class AssetController {
       const organizationId = req.user!.organizationId;
       const userId = req.user!.userId;
       const { id } = req.params;
-      const validated = returnAssetSchema.parse(req.body);
 
+      const validated = returnAssetSchema.parse(req.body);
       const asset = await AssetRepository.returnAsset(id, organizationId, userId, validated);
+
       return res.status(200).json({ success: true, data: asset, message: 'Asset returned successfully.' });
     } catch (error) {
       return next(error);
@@ -156,19 +171,6 @@ export class AssetController {
 
       const asset = await AssetRepository.updateStatus(id, organizationId, userId, status, notes);
       return res.status(200).json({ success: true, data: asset, message: 'Asset status updated.' });
-    } catch (error) {
-      return next(error);
-    }
-  }
-
-  static async delete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    try {
-      const organizationId = req.user!.organizationId;
-      const userId = req.user!.userId;
-      const { id } = req.params;
-
-      await AssetRepository.softDelete(id, organizationId, userId);
-      return res.status(200).json({ success: true, message: 'Asset deleted successfully.' });
     } catch (error) {
       return next(error);
     }
@@ -253,6 +255,161 @@ export class AssetController {
       return res.status(201).json({ success: true, data: log, message: 'Maintenance record created.' });
     } catch (error) {
       return next(error);
+    }
+  }
+
+  // ============================================================
+  // ASSET REQUEST CONTROLLERS (PHASE 4)
+  // ============================================================
+
+  static async createRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const userId = req.user!.userId;
+
+      if (!employeeId) {
+        return res.status(400).json({
+          success: false,
+          error: 'A linked employee profile is required to request an asset.',
+          code: 'EMPLOYEE_PROFILE_REQUIRED'
+        });
+      }
+
+      const validated = createAssetRequestSchema.parse(req.body);
+      const request = await AssetRepository.createRequest(organizationId, employeeId, userId, {
+        categoryId: validated.categoryId || undefined,
+        reason: validated.reason,
+        priority: validated.priority,
+        requiredDate: validated.requiredDate || undefined
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: { request, message: 'Asset request submitted successfully.' }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  static async getRequests(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const userRole = req.user!.role;
+      const userEmpId = req.user!.employeeId;
+
+      const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
+      const filterEmployeeId = isManager
+        ? (req.query.employeeId as string) || undefined
+        : (userEmpId || undefined);
+      const statusFilter = req.query.status ? (req.query.status as string) : undefined;
+
+      const requests = await AssetRepository.getRequests(organizationId, {
+        employeeId: filterEmployeeId,
+        status: statusFilter
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: { requests }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  static async getRequestById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { id } = req.params;
+
+      const request = await AssetRepository.getRequestById(organizationId, id);
+      if (!request) return res.status(404).json({ success: false, error: 'Asset request not found.' });
+
+      return res.status(200).json({ success: true, data: { request } });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  static async approveRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const reviewerEmployeeId = req.user!.employeeId || req.user!.userId;
+      const reviewerUserId = req.user!.userId;
+      const { id } = req.params;
+
+      const request = await AssetRepository.approveRequest(organizationId, id, reviewerEmployeeId, reviewerUserId);
+      return res.status(200).json({
+        success: true,
+        data: { request, message: 'Asset request approved successfully.' }
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        error: error.message || 'Approving request failed.',
+        code: 'APPROVE_REQUEST_FAILED'
+      });
+    }
+  }
+
+  static async rejectRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const reviewerEmployeeId = req.user!.employeeId || req.user!.userId;
+      const reviewerUserId = req.user!.userId;
+      const { id } = req.params;
+      const { rejectionReason } = req.body;
+
+      if (!rejectionReason || rejectionReason.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          error: 'Rejection reason is required.',
+          code: 'REJECTION_REASON_REQUIRED'
+        });
+      }
+
+      const request = await AssetRepository.rejectRequest(organizationId, id, reviewerEmployeeId, reviewerUserId, rejectionReason);
+      return res.status(200).json({
+        success: true,
+        data: { request, message: 'Asset request rejected.' }
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        error: error.message || 'Rejecting request failed.',
+        code: 'REJECT_REQUEST_FAILED'
+      });
+    }
+  }
+
+  static async fulfillRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const reviewerUserId = req.user!.userId;
+      const { id } = req.params;
+      const { assetId } = req.body;
+
+      if (!assetId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Asset ID to assign is required for fulfillment.',
+          code: 'ASSET_ID_REQUIRED'
+        });
+      }
+
+      const result = await AssetRepository.fulfillRequest(organizationId, id, assetId, reviewerUserId);
+      return res.status(200).json({
+        success: true,
+        data: { ...result, message: 'Asset assigned and request fulfilled successfully.' }
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        error: error.message || 'Fulfilling request failed.',
+        code: 'FULFILL_REQUEST_FAILED'
+      });
     }
   }
 }

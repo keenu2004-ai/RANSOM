@@ -5,16 +5,17 @@ import {
   Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck, 
   RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2, 
   AlertTriangle, Clock, X, Edit3, Trash2, Tag, Calendar, User, DollarSign,
-  Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye
+  Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye, Check, XCircle
 } from 'lucide-react';
 
 export const Assets: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'ASSETS' | 'CATEGORIES'>('ASSETS');
+  const [activeTab, setActiveTab] = useState<'ASSETS' | 'CATEGORIES' | 'REQUESTS'>('ASSETS');
 
   const [assets, setAssets] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [assetRequests, setAssetRequests] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +32,12 @@ export const Assets: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showMaintModal, setShowMaintModal] = useState(false);
+  
+  // Phase 4 Asset Request Modals
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showFulfillModal, setShowFulfillModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [selectedFulfillAssetId, setSelectedFulfillAssetId] = useState<string>('');
 
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [assetHistory, setAssetHistory] = useState<any[]>([]);
@@ -91,8 +98,16 @@ export const Assets: React.FC = () => {
     description: ''
   });
 
+  const [requestForm, setRequestForm] = useState({
+    categoryId: '',
+    reason: '',
+    priority: 'NORMAL',
+    requiredDate: ''
+  });
+
   const [formError, setFormError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
@@ -100,11 +115,12 @@ export const Assets: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sumRes, catsRes, assetsRes, empRes] = await Promise.all([
+      const [sumRes, catsRes, assetsRes, empRes, reqsRes] = await Promise.all([
         apiFetch('/assets/summary').catch(() => ({ data: null })),
         apiFetch('/assets/categories').catch(() => ({ data: [] })),
         apiFetch('/assets').catch(() => ({ data: { assets: [] } })),
-        apiFetch('/employees').catch(() => ({ employees: [] }))
+        apiFetch('/employees').catch(() => ({ employees: [] })),
+        apiFetch('/assets/requests').catch(() => ({ data: { requests: [] } }))
       ]);
 
       setSummary(sumRes.data || null);
@@ -112,10 +128,11 @@ export const Assets: React.FC = () => {
       setCategories(fetchedCats);
       setAssets(assetsRes.data?.assets || []);
       setEmployees(empRes.employees || []);
+      setAssetRequests(reqsRes.data?.requests || []);
 
-      // If form has no category selected yet, set first category ID
       if (fetchedCats.length > 0) {
         setAssetForm(prev => prev.categoryId ? prev : { ...prev, categoryId: fetchedCats[0].id });
+        setRequestForm(prev => prev.categoryId ? prev : { ...prev, categoryId: fetchedCats[0].id });
       }
     } catch (err) {
       console.error(err);
@@ -128,17 +145,137 @@ export const Assets: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  // Asset Request Actions
+  const handleOpenRequestModal = () => {
+    setRequestError(null);
+    setRequestForm({
+      categoryId: categories.length > 0 ? categories[0].id : '',
+      reason: '',
+      priority: 'NORMAL',
+      requiredDate: ''
+    });
+    setShowRequestModal(true);
+  };
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRequestError(null);
+
+    if (!requestForm.reason || requestForm.reason.trim() === '') {
+      setRequestError('Please provide a reason for the asset request.');
+      return;
+    }
+
+    try {
+      await apiFetch('/assets/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          categoryId: requestForm.categoryId || undefined,
+          reason: requestForm.reason.trim(),
+          priority: requestForm.priority,
+          requiredDate: requestForm.requiredDate || undefined
+        })
+      });
+
+      setShowRequestModal(false);
+      setSuccessMsg('Asset request submitted successfully.');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setRequestError(err.message || 'Failed to submit asset request.');
+    }
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      await apiFetch(`/assets/requests/${requestId}/approve`, { method: 'PUT' });
+      setSuccessMsg('Asset request approved. Ready for fulfillment.');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve request.');
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    const reason = prompt('Please enter rejection reason:');
+    if (reason === null) return;
+    if (reason.trim() === '') {
+      alert('Rejection reason is required.');
+      return;
+    }
+
+    try {
+      await apiFetch(`/assets/requests/${requestId}/reject`, {
+        method: 'PUT',
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+      setSuccessMsg('Asset request rejected.');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject request.');
+    }
+  };
+
+  const handleOpenFulfillModal = (req: any) => {
+    setSelectedRequest(req);
+    const available = assets.filter(a => a.status === 'AVAILABLE');
+    setSelectedFulfillAssetId(available.length > 0 ? available[0].id : '');
+    setShowFulfillModal(true);
+  };
+
+  const handleFulfillRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRequest || !selectedFulfillAssetId) {
+      alert('Please select an available asset to fulfill this request.');
+      return;
+    }
+
+    try {
+      await apiFetch(`/assets/requests/${selectedRequest.id}/fulfill`, {
+        method: 'PUT',
+        body: JSON.stringify({ assetId: selectedFulfillAssetId })
+      });
+
+      setShowFulfillModal(false);
+      setSelectedRequest(null);
+      setSuccessMsg('Asset assigned and request fulfilled successfully.');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to fulfill request.');
+    }
+  };
+
+  // Standard Inventory Handlers
   const handleOpenAddAsset = () => {
     setFormError(null);
     setAssetForm({
+      assetCode: '',
       assetName: '',
-      assetType: 'Laptop',
+      categoryId: categories.length > 0 ? categories[0].id : '',
+      assetType: 'HARDWARE',
+      brand: '',
+      model: '',
       serialNumber: '',
-      price: 0,
+      purchaseDate: new Date().toISOString().split('T')[0],
+      purchasePrice: 0,
+      currentValue: 0,
+      warrantyStartDate: '',
+      warrantyEndDate: '',
+      vendor: '',
+      invoiceNumber: '',
+      condition: 'NEW',
+      location: 'HQ Main Office',
+      description: '',
       assignmentStatus: 'IN_STOCK',
       assignedEmployeeId: employees.length > 0 ? employees[0].id : '',
-      assignedDate: new Date().toISOString().split('T')[0]
-    } as any);
+      assignedDate: new Date().toISOString().split('T')[0],
+      expectedReturnDate: '',
+      assignmentCondition: 'NEW',
+      assignmentNotes: ''
+    });
     setShowAddModal(true);
   };
 
@@ -160,16 +297,20 @@ export const Assets: React.FC = () => {
       const payload: any = {
         assetName: assetForm.assetName.trim(),
         assetType: assetForm.assetType,
+        categoryId: assetForm.categoryId,
         serialNumber: assetForm.serialNumber ? assetForm.serialNumber.trim() : undefined,
-        price: Number((assetForm as any).price) || 0,
+        purchasePrice: Number(assetForm.purchasePrice) || 0,
+        currentValue: Number(assetForm.currentValue) || 0,
+        brand: assetForm.brand,
+        model: assetForm.model,
+        location: assetForm.location,
+        condition: assetForm.condition,
         assignmentStatus: assetForm.assignmentStatus
       };
 
       if (assetForm.assignmentStatus === 'ASSIGNED') {
         payload.assignedEmployeeId = assetForm.assignedEmployeeId;
         payload.assignedDate = assetForm.assignedDate;
-      } else {
-        payload.assignedEmployeeId = null;
       }
 
       await apiFetch('/assets', {
@@ -178,180 +319,126 @@ export const Assets: React.FC = () => {
       });
 
       setShowAddModal(false);
-      setSuccessMsg(assetForm.assignmentStatus === 'ASSIGNED' 
-        ? 'Asset added and assigned successfully.' 
-        : 'Asset added successfully and placed in stock.');
+      setSuccessMsg('Asset registered successfully.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to add asset.');
+      setFormError(err.message || 'Failed to create asset.');
     }
   };
 
-  const handleCreateCategoryFromModal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCategoryError(null);
-    if (!categoryForm.name || !categoryForm.code) {
-      setCategoryError('Category Name and Code are required.');
-      return;
-    }
-
+  const handleViewDetails = async (asset: any) => {
+    setSelectedAsset(asset);
     try {
-      const res = await apiFetch('/assets/categories', {
-        method: 'POST',
-        body: JSON.stringify(categoryForm)
-      });
-      const newCategory = res.data;
-
-      // Refresh categories list
-      const catsRes = await apiFetch('/assets/categories');
-      const updatedCats = catsRes.data || [];
-      setCategories(updatedCats);
-
-      // Automatically select the newly created category in asset form
-      if (newCategory?.id) {
-        setAssetForm(prev => ({ ...prev, categoryId: newCategory.id }));
-      }
-
-      setShowCategoryModal(false);
-      setCategoryForm({ name: '', code: '', description: '' });
-      setSuccessMsg(`Category '${newCategory.name}' created and selected.`);
-      setTimeout(() => setSuccessMsg(null), 4000);
-    } catch (err: any) {
-      setCategoryError(err.message || 'Failed to create asset category.');
+      const histRes = await apiFetch(`/assets/${asset.id}/history`);
+      setAssetHistory(histRes.data || []);
+    } catch (err) {
+      console.error(err);
+      setAssetHistory([]);
     }
+    setShowDetailsModal(true);
+  };
+
+  const handleOpenAssign = (asset: any) => {
+    setSelectedAsset(asset);
+    setAssignForm({
+      employeeId: employees.length > 0 ? employees[0].id : '',
+      assignedDate: new Date().toISOString().split('T')[0],
+      expectedReturnDate: '',
+      condition: asset.condition || 'EXCELLENT',
+      notes: ''
+    });
+    setShowAssignModal(true);
   };
 
   const handleAssignAsset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAsset) return;
-    setFormError(null);
+    if (!selectedAsset || !assignForm.employeeId) return;
+
     try {
       await apiFetch(`/assets/${selectedAsset.id}/assign`, {
         method: 'POST',
         body: JSON.stringify(assignForm)
       });
       setShowAssignModal(false);
-      setSelectedAsset(null);
-      setSuccessMsg('Asset allocated to employee successfully.');
+      setSuccessMsg('Asset assigned successfully.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to assign asset.');
+      alert(err.message || 'Failed to assign asset.');
     }
+  };
+
+  const handleOpenReturn = (asset: any) => {
+    setSelectedAsset(asset);
+    setReturnForm({
+      returnedDate: new Date().toISOString().split('T')[0],
+      condition: asset.condition || 'GOOD',
+      notes: ''
+    });
+    setShowReturnModal(true);
   };
 
   const handleReturnAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAsset) return;
-    setFormError(null);
+
     try {
       await apiFetch(`/assets/${selectedAsset.id}/return`, {
         method: 'POST',
         body: JSON.stringify(returnForm)
       });
       setShowReturnModal(false);
-      setSelectedAsset(null);
-      setSuccessMsg('Asset returned to available stock.');
+      setSuccessMsg('Asset returned to stock.');
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err.message || 'Failed to process return.');
+      alert(err.message || 'Failed to return asset.');
     }
   };
-
-  const handleCreateMaintenance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedAsset) return;
-    setFormError(null);
-    try {
-      await apiFetch(`/assets/${selectedAsset.id}/maintenance`, {
-        method: 'POST',
-        body: JSON.stringify(maintForm)
-      });
-      setShowMaintModal(false);
-      setSelectedAsset(null);
-      setSuccessMsg('Maintenance ticket logged. Asset status set to UNDER_MAINTENANCE.');
-      fetchData();
-      setTimeout(() => setSuccessMsg(null), 4000);
-    } catch (err: any) {
-      setFormError(err.message || 'Failed to log maintenance.');
-    }
-  };
-
-  const openAssetDetails = async (asset: any) => {
-    setSelectedAsset(asset);
-    try {
-      const histRes = await apiFetch(`/assets/${asset.id}/history`);
-      setAssetHistory(histRes.data || []);
-      setShowDetailsModal(true);
-    } catch (err: any) {
-      console.error(err);
-      setShowDetailsModal(true);
-    }
-  };
-
-  const filteredAssets = useMemo(() => {
-    return assets.filter(a => {
-      let matchesStatus = true;
-      if (statusFilter === 'IN_STOCK') {
-        matchesStatus = !a.assigned_employee_id && a.status === 'AVAILABLE';
-      } else if (statusFilter) {
-        matchesStatus = a.status === statusFilter;
-      }
-
-      const matchesSearch = !searchTerm || (
-        a.asset_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (a.serial_number && a.serial_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.employee_first_name && `${a.employee_first_name} ${a.employee_last_name}`.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      const matchesCategory = !categoryFilter || a.category_id === categoryFilter;
-      const matchesCondition = !conditionFilter || a.condition === conditionFilter;
-
-      return matchesStatus && matchesSearch && matchesCategory && matchesCondition;
-    });
-  }, [assets, searchTerm, statusFilter, categoryFilter, conditionFilter]);
 
   const exportCSV = () => {
-    const headers = ['Asset Code', 'Asset Name', 'Category', 'Status', 'Condition', 'Assigned Employee', 'Purchase Price', 'Current Value', 'Serial Number'];
-    const rows = filteredAssets.map(a => [
+    const headers = ['Asset Code', 'Name', 'Category', 'Type', 'Serial Number', 'Status', 'Condition', 'Assigned To', 'Price'];
+    const rows = assets.map(a => [
       a.asset_code,
-      a.asset_name,
-      a.category_name,
+      `"${a.asset_name}"`,
+      `"${a.category_name}"`,
+      a.asset_type,
+      a.serial_number || '',
       a.status,
       a.condition,
-      a.employee_first_name ? `${a.employee_first_name} ${a.employee_last_name} (${a.employee_code})` : 'Unassigned',
-      a.purchase_price,
-      a.current_value,
-      a.serial_number || 'N/A'
+      `"${a.employee_name || 'Unassigned'}"`,
+      a.purchase_price
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Asset_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `asset_inventory_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const getStatusBadge = (asset: any) => {
-    if (!asset.assigned_employee_id && asset.status === 'AVAILABLE') {
-      return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">IN STOCK</span>;
-    }
-    switch (asset.status) {
-      case 'ASSIGNED':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/60">ASSIGNED</span>;
-      case 'UNDER_MAINTENANCE':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-950 text-amber-400 border border-amber-800/60">MAINTENANCE</span>;
-      case 'DAMAGED':
-      case 'LOST':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-950 text-rose-400 border border-rose-800/60">{asset.status}</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">{asset.status}</span>;
-    }
-  };
+  const filteredAssets = useMemo(() => {
+    return assets.filter(a => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const codeMatch = a.asset_code?.toLowerCase().includes(term);
+        const nameMatch = a.asset_name?.toLowerCase().includes(term);
+        const serialMatch = a.serial_number?.toLowerCase().includes(term);
+        const empMatch = a.employee_name?.toLowerCase().includes(term);
+        if (!codeMatch && !nameMatch && !serialMatch && !empMatch) return false;
+      }
+      if (statusFilter && a.status !== statusFilter) return false;
+      if (categoryFilter && a.category_id !== categoryFilter) return false;
+      if (conditionFilter && a.condition !== conditionFilter) return false;
+      return true;
+    });
+  }, [assets, searchTerm, statusFilter, categoryFilter, conditionFilter]);
+
+  const availableAssetsList = useMemo(() => assets.filter(a => a.status === 'AVAILABLE'), [assets]);
 
   return (
     <div className="space-y-6">
@@ -362,28 +449,40 @@ export const Assets: React.FC = () => {
             <Package className="w-6 h-6 text-cyan-400" />
             <span>Asset Management</span>
           </h1>
-          <p className="text-xs text-slate-400">Enterprise hardware inventory, stock management, allocations, and lifecycle audit log</p>
+          <p className="text-xs text-slate-400">Enterprise hardware inventory, allocations, self-service requisitions, and audit trail</p>
         </div>
 
-        {isManagerOrAdmin && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {user?.employeeId && (
             <button
-              onClick={exportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition-all"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Export CSV</span>
-            </button>
-
-            <button
-              onClick={handleOpenAddAsset}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+              onClick={handleOpenRequestModal}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>Register New Asset</span>
+              <span>Request New Asset</span>
             </button>
-          </div>
-        )}
+          )}
+
+          {isManagerOrAdmin && (
+            <>
+              <button
+                onClick={exportCSV}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition-all"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Export CSV</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddAsset}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Register New Asset</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {successMsg && (
@@ -393,36 +492,42 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* KPI Cards — Derived Stock Metrics */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
           <span className="text-[11px] text-slate-400 font-medium">Total Assets</span>
           <p className="text-xl font-extrabold text-white">{summary?.total_assets || 0}</p>
-          <span className="text-[10px] text-cyan-400 font-mono">Valuation: ₹{(Number(summary?.total_current_value || 0)).toLocaleString()}</span>
+          <span className="text-[10px] text-slate-500">In Database</span>
+        </div>
+
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+          <span className="text-[11px] text-slate-400 font-medium">In Stock</span>
+          <p className="text-xl font-extrabold text-emerald-400">{summary?.available_count || 0}</p>
+          <span className="text-[10px] text-slate-500">Ready to Assign</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
           <span className="text-[11px] text-slate-400 font-medium">Assigned</span>
           <p className="text-xl font-extrabold text-cyan-400">{summary?.assigned_count || 0}</p>
-          <span className="text-[10px] text-slate-500">With employees</span>
+          <span className="text-[10px] text-slate-500">With Employees</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">In Stock</span>
-          <p className="text-xl font-extrabold text-emerald-400">{summary?.in_stock_count || summary?.available_count || 0}</p>
-          <span className="text-[10px] text-slate-500">Unassigned pool</span>
+          <span className="text-[11px] text-slate-400 font-medium">Requests</span>
+          <p className="text-xl font-extrabold text-indigo-400">{assetRequests.filter(r => r.status === 'SUBMITTED').length}</p>
+          <span className="text-[10px] text-slate-500">Pending Review</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">Under Maintenance</span>
+          <span className="text-[11px] text-slate-400 font-medium">Maintenance</span>
           <p className="text-xl font-extrabold text-amber-400">{summary?.maintenance_count || 0}</p>
-          <span className="text-[10px] text-slate-500">In service</span>
+          <span className="text-[10px] text-slate-500">Under Repair</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">Damaged / Lost</span>
+          <span className="text-[11px] text-slate-400 font-medium">Damaged/Lost</span>
           <p className="text-xl font-extrabold text-rose-400">{(summary?.damaged_count || 0) + (summary?.lost_count || 0)}</p>
-          <span className="text-[10px] text-slate-500">Requires review</span>
+          <span className="text-[10px] text-slate-500">Attention Req.</span>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
@@ -430,43 +535,49 @@ export const Assets: React.FC = () => {
           <p className="text-xl font-extrabold text-slate-400">{summary?.retired_count || 0}</p>
           <span className="text-[10px] text-slate-500">Decommissioned</span>
         </div>
-
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <span className="text-[11px] text-slate-400 font-medium">Disposed</span>
-          <p className="text-xl font-extrabold text-slate-500">{summary?.disposed_count || 0}</p>
-          <span className="text-[10px] text-slate-600">Written off</span>
-        </div>
       </div>
 
-      {/* Tabs */}
+      {/* Main Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 text-xs font-semibold">
         <button
           onClick={() => setActiveTab('ASSETS')}
-          className={`pb-3 px-2 border-b-2 transition-all ${
+          className={`pb-3 px-3 border-b-2 transition-all ${
             activeTab === 'ASSETS' ? 'border-cyan-400 text-cyan-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Asset Inventory & Stock ({filteredAssets.length})
+          Asset Inventory ({filteredAssets.length})
         </button>
+
         <button
-          onClick={() => setActiveTab('CATEGORIES')}
-          className={`pb-3 px-2 border-b-2 transition-all ${
-            activeTab === 'CATEGORIES' ? 'border-cyan-400 text-cyan-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('REQUESTS')}
+          className={`pb-3 px-3 border-b-2 transition-all ${
+            activeTab === 'REQUESTS' ? 'border-indigo-400 text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Asset Categories Matrix ({categories.length})
+          Asset Requests ({assetRequests.length})
         </button>
+
+        {isManagerOrAdmin && (
+          <button
+            onClick={() => setActiveTab('CATEGORIES')}
+            className={`pb-3 px-3 border-b-2 transition-all ${
+              activeTab === 'CATEGORIES' ? 'border-cyan-400 text-cyan-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Asset Categories ({categories.length})
+          </button>
+        )}
       </div>
 
+      {/* 1. ASSETS INVENTORY TAB */}
       {activeTab === 'ASSETS' && (
         <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-          {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Search asset code, asset name, serial number, employee name..."
+                placeholder="Search asset code, name, serial number, employee..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500"
@@ -480,13 +591,12 @@ export const Assets: React.FC = () => {
                 className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300"
               >
                 <option value="">All Statuses</option>
-                <option value="IN_STOCK">In Stock (Unassigned)</option>
-                <option value="ASSIGNED">Assigned</option>
-                <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-                <option value="DAMAGED">Damaged</option>
-                <option value="LOST">Lost</option>
-                <option value="RETIRED">Retired</option>
-                <option value="DISPOSED">Disposed</option>
+                <option value="AVAILABLE">AVAILABLE (In Stock)</option>
+                <option value="ASSIGNED">ASSIGNED</option>
+                <option value="UNDER_MAINTENANCE">UNDER MAINTENANCE</option>
+                <option value="DAMAGED">DAMAGED</option>
+                <option value="LOST">LOST</option>
+                <option value="RETIRED">RETIRED</option>
               </select>
 
               <select
@@ -495,121 +605,61 @@ export const Assets: React.FC = () => {
                 className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300"
               >
                 <option value="">All Categories</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-
-              <select
-                value={conditionFilter}
-                onChange={e => setConditionFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300"
-              >
-                <option value="">All Conditions</option>
-                <option value="NEW">NEW</option>
-                <option value="EXCELLENT">EXCELLENT</option>
-                <option value="GOOD">GOOD</option>
-                <option value="FAIR">FAIR</option>
-                <option value="POOR">POOR</option>
-                <option value="DAMAGED">DAMAGED</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto border border-slate-800 rounded-xl">
             <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
                 <tr>
-                  <th className="p-3">Asset Code & Name</th>
+                  <th className="p-3">Asset Code</th>
+                  <th className="p-3">Asset Name</th>
                   <th className="p-3">Category</th>
-                  <th className="p-3">Brand / Model</th>
-                  <th className="p-3">Serial Number</th>
-                  <th className="p-3">Assigned Employee</th>
+                  <th className="p-3">Serial / Specs</th>
                   <th className="p-3">Status</th>
-                  <th className="p-3">Condition</th>
-                  <th className="p-3">Valuation (₹)</th>
+                  <th className="p-3">Assigned Employee</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {filteredAssets.map(asset => (
-                  <tr key={asset.id} className="hover:bg-slate-800/40 transition-all">
+                {filteredAssets.map(a => (
+                  <tr key={a.id} className="hover:bg-slate-800/40">
+                    <td className="p-3 font-mono font-bold text-cyan-400">{a.asset_code}</td>
+                    <td className="p-3 font-bold text-white">{a.asset_name}</td>
+                    <td className="p-3 text-slate-300">{a.category_name}</td>
+                    <td className="p-3 font-mono text-slate-400">{a.serial_number || 'N/A'}</td>
                     <td className="p-3">
-                      <div className="font-bold text-white flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>{asset.asset_code}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 truncate max-w-[180px]">{asset.asset_name}</div>
-                    </td>
-                    <td className="p-3 font-medium text-slate-300">{asset.category_name}</td>
-                    <td className="p-3">
-                      <span className="text-slate-200">{asset.brand || '-'}</span>
-                      {asset.model && <span className="text-slate-500 block text-[10px]">{asset.model}</span>}
-                    </td>
-                    <td className="p-3 font-mono text-slate-400 text-[11px]">{asset.serial_number || '-'}</td>
-                    <td className="p-3">
-                      {asset.employee_first_name ? (
-                        <div>
-                          <div className="font-semibold text-cyan-400">{asset.employee_first_name} {asset.employee_last_name}</div>
-                          <span className="text-[10px] text-slate-500 font-mono">{asset.employee_code}</span>
-                        </div>
-                      ) : (
-                        <span className="text-emerald-400 font-semibold text-[11px] italic">In Stock</span>
-                      )}
-                    </td>
-                    <td className="p-3">{getStatusBadge(asset)}</td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded font-mono text-[10px]">
-                        {asset.condition}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        a.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                        a.status === 'ASSIGNED' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                        a.status === 'UNDER_MAINTENANCE' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                        'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}>
+                        {a.status === 'AVAILABLE' ? 'IN STOCK' : a.status}
                       </span>
                     </td>
-                    <td className="p-3 font-mono font-semibold text-slate-200">
-                      ₹{Number(asset.current_value || 0).toLocaleString()}
+                    <td className="p-3">
+                      {a.assigned_employee_id ? (
+                        <div className="font-semibold text-slate-200">
+                          {a.employee_first_name} {a.employee_last_name}
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 italic">Unassigned</span>
+                      )}
                     </td>
                     <td className="p-3 text-right space-x-1">
-                      <button
-                        onClick={() => openAssetDetails(asset)}
-                        className="p-1 text-slate-400 hover:text-cyan-400"
-                        title="View Asset Details & History"
-                      >
+                      <button onClick={() => handleViewDetails(a)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Audit Details">
                         <Eye className="w-4 h-4" />
                       </button>
-
-                      {isManagerOrAdmin && asset.status === 'AVAILABLE' && (
-                        <button
-                          onClick={() => {
-                            setSelectedAsset(asset);
-                            setAssignForm({
-                              employeeId: employees[0]?.id || '',
-                              assignedDate: new Date().toISOString().split('T')[0],
-                              expectedReturnDate: '',
-                              condition: asset.condition || 'EXCELLENT',
-                              notes: ''
-                            });
-                            setShowAssignModal(true);
-                          }}
-                          className="px-2.5 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded-lg text-[10px] font-bold"
-                          title="Assign to Employee"
-                        >
+                      {isManagerOrAdmin && a.status === 'AVAILABLE' && (
+                        <button onClick={() => handleOpenAssign(a)} className="px-2 py-0.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded text-[10px] font-bold">
                           Assign
                         </button>
                       )}
-
-                      {isManagerOrAdmin && asset.status === 'ASSIGNED' && (
-                        <button
-                          onClick={() => {
-                            setSelectedAsset(asset);
-                            setReturnForm({
-                              returnedDate: new Date().toISOString().split('T')[0],
-                              condition: asset.condition || 'GOOD',
-                              notes: ''
-                            });
-                            setShowReturnModal(true);
-                          }}
-                          className="px-2.5 py-1 bg-amber-950 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded-lg text-[10px] font-bold"
-                          title="Process Return"
-                        >
+                      {isManagerOrAdmin && a.status === 'ASSIGNED' && (
+                        <button onClick={() => handleOpenReturn(a)} className="px-2 py-0.5 bg-amber-950 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded text-[10px] font-bold">
                           Return
                         </button>
                       )}
@@ -617,11 +667,7 @@ export const Assets: React.FC = () => {
                   </tr>
                 ))}
                 {filteredAssets.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-500 italic">
-                      No assets found matching the specified filters.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-slate-500 italic">No asset inventory records found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -629,47 +675,223 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'CATEGORIES' && (
+      {/* 2. ASSET REQUESTS TAB (PHASE 4) */}
+      {activeTab === 'REQUESTS' && (
         <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="font-bold text-white">Asset Categories Matrix</h3>
-            {isManagerOrAdmin && (
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-400" />
+              <span>Employee Asset Requisitions</span>
+            </h3>
+
+            {user?.employeeId && (
               <button
-                onClick={() => setShowCategoryModal(true)}
-                className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-white font-semibold text-xs rounded-xl shadow"
+                onClick={handleOpenRequestModal}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow transition-all flex items-center gap-1"
               >
-                + Add Category
+                <Plus className="w-4 h-4" />
+                <span>Request Asset</span>
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {categories.map(c => (
-              <div key={c.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-white">{c.name}</h4>
-                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">{c.code}</span>
-                </div>
-                <p className="text-xs text-slate-400">{c.description || 'Standard hardware category'}</p>
-                <div className="pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex items-center justify-between">
-                  <span>Total Registered Assets:</span>
-                  <span className="font-bold text-slate-200">{c.total_assets || 0}</span>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto border border-slate-800 rounded-xl">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                <tr>
+                  <th className="p-3">Request #</th>
+                  <th className="p-3">Employee</th>
+                  <th className="p-3">Category</th>
+                  <th className="p-3">Reason / Purpose</th>
+                  <th className="p-3">Priority</th>
+                  <th className="p-3">Required Date</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {assetRequests.map(r => (
+                  <tr key={r.id} className="hover:bg-slate-800/40">
+                    <td className="p-3 font-mono font-bold text-indigo-400">{r.request_number}</td>
+                    <td className="p-3 font-semibold text-slate-200">
+                      <div>{r.employee_name}</div>
+                      <span className="text-[10px] font-mono text-slate-500">{r.employee_code}</span>
+                    </td>
+                    <td className="p-3 font-medium text-slate-300">{r.category_name || 'General Hardware'}</td>
+                    <td className="p-3 max-w-[250px] truncate text-slate-200">{r.reason}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        r.priority === 'URGENT' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                        r.priority === 'HIGH' ? 'bg-amber-950 text-amber-400 border-amber-800' :
+                        'bg-slate-950 text-slate-400 border-slate-800'
+                      }`}>
+                        {r.priority}
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-slate-400">{r.required_date ? new Date(r.required_date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="p-3">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        r.status === 'FULFILLED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                        r.status === 'APPROVED' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                        r.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
+                        'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right space-x-1">
+                      {isManagerOrAdmin && r.status === 'SUBMITTED' && (
+                        <>
+                          <button onClick={() => handleApproveRequest(r.id)} className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">
+                            Approve
+                          </button>
+                          <button onClick={() => handleRejectRequest(r.id)} className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {isManagerOrAdmin && r.status === 'APPROVED' && (
+                        <button onClick={() => handleOpenFulfillModal(r)} className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[10px] font-bold shadow flex items-center gap-1 inline-flex">
+                          <span>Fulfill & Assign</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      )}
+                      {r.status === 'FULFILLED' && r.fulfilled_asset_code && (
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold block">Assigned: {r.fulfilled_asset_code}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {assetRequests.length === 0 && (
+                  <tr><td colSpan={8} className="p-8 text-center text-slate-500 italic">No asset requests found.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* SIMPLE ADD NEW ASSET MODAL */}
+      {/* MODAL 1: REQUEST NEW ASSET (EMPLOYEE SELF SERVICE) */}
+      {showRequestModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                <span>Request Asset</span>
+              </h3>
+              <button type="button" onClick={() => setShowRequestModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            {requestError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{requestError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateRequest} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Asset Category *</label>
+                <select value={requestForm.categoryId} onChange={e => setRequestForm({ ...requestForm, categoryId: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Reason / Purpose *</label>
+                <textarea required rows={3} value={requestForm.reason} onChange={e => setRequestForm({ ...requestForm, reason: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="State why you require this asset..." />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Priority *</label>
+                  <select value={requestForm.priority} onChange={e => setRequestForm({ ...requestForm, priority: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    <option value="LOW">LOW</option>
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="URGENT">URGENT</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Required Date</label>
+                  <input type="date" value={requestForm.requiredDate} onChange={e => setRequestForm({ ...requestForm, requiredDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowRequestModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold uppercase shadow">SUBMIT REQUEST</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: FULFILL ASSET REQUEST (ADMIN FULFILLMENT) */}
+      {showFulfillModal && selectedRequest && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span>Fulfill Asset Request</span>
+              </h3>
+              <button type="button" onClick={() => setShowFulfillModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
+              <div>Request #: <strong className="text-indigo-400 font-mono">{selectedRequest.request_number}</strong></div>
+              <div>Requesting Employee: <strong className="text-white">{selectedRequest.employee_name}</strong></div>
+              <div>Requested Category: <strong className="text-slate-200">{selectedRequest.category_name}</strong></div>
+              <div>Purpose: <span className="text-slate-300">{selectedRequest.reason}</span></div>
+            </div>
+
+            <form onSubmit={handleFulfillRequest} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Select Available In-Stock Asset *</label>
+                {availableAssetsList.length > 0 ? (
+                  <select
+                    required
+                    value={selectedFulfillAssetId}
+                    onChange={e => setSelectedFulfillAssetId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold"
+                  >
+                    {availableAssetsList.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.asset_code} — {a.asset_name} ({a.brand || 'No Brand'})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 rounded-xl">
+                    No available in-stock assets found. Please register an available asset first.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowFulfillModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={availableAssetsList.length === 0}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow disabled:opacity-50"
+                >
+                  ASSIGN & FULFILL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* REGISTER NEW ASSET MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white">Add New Asset</h3>
-              <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
@@ -682,484 +904,181 @@ export const Assets: React.FC = () => {
             <form onSubmit={handleCreateAsset} className="space-y-4 text-xs">
               <div>
                 <label className="block text-slate-300 mb-1 font-medium">Asset Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={assetForm.assetName}
-                  onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Dell Latitude Laptop"
-                />
+                <input type="text" required value={assetForm.assetName} onChange={e => setAssetForm({ ...assetForm, assetName: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Dell Latitude Laptop" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Asset Category *</label>
+                  <select value={assetForm.categoryId} onChange={e => setAssetForm({ ...assetForm, categoryId: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Asset Type *</label>
+                  <input type="text" required value={assetForm.assetType} onChange={e => setAssetForm({ ...assetForm, assetType: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Laptop / Phone" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
+                  <input type="text" value={assetForm.serialNumber} onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="SN-882299" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Purchase Price (₹)</label>
+                  <input type="number" step="0.01" min="0" value={assetForm.purchasePrice} onChange={e => setAssetForm({ ...assetForm, purchasePrice: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="65000" />
+                </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Asset Type *</label>
-                <select
-                  required
-                  value={assetForm.assetType}
-                  onChange={e => setAssetForm({ ...assetForm, assetType: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                >
-                  <option value="Laptop">Laptop</option>
-                  <option value="Desktop">Desktop</option>
-                  <option value="Monitor">Monitor</option>
-                  <option value="Mobile">Mobile</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Keyboard">Keyboard</option>
-                  <option value="Mouse">Mouse</option>
-                  <option value="Headset">Headset</option>
-                  <option value="Printer">Printer</option>
-                  <option value="Furniture">Furniture</option>
-                  <option value="Vehicle">Vehicle</option>
-                  <option value="ID Card">ID Card</option>
-                  <option value="Access Card">Access Card</option>
-                  <option value="Other">Other</option>
+                <label className="block text-slate-300 mb-1 font-medium">Initial Status *</label>
+                <select value={assetForm.assignmentStatus} onChange={e => setAssetForm({ ...assetForm, assignmentStatus: e.target.value as any })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold">
+                  <option value="IN_STOCK">In Stock (Available)</option>
+                  <option value="ASSIGNED">Assign to Employee</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Serial Number</label>
-                <input
-                  type="text"
-                  value={assetForm.serialNumber || ''}
-                  onChange={e => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  placeholder="SN-987654 (Optional)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Asset Price (₹)</label>
-                <input
-                  type="number"
-                  value={(assetForm as any).price || ''}
-                  onChange={e => setAssetForm({ ...assetForm, price: parseFloat(e.target.value) || 0 } as any)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  placeholder="55000 (Optional)"
-                />
-              </div>
-
-              <div className="pt-2 border-t border-slate-800 space-y-3">
-                <label className="block text-slate-300 font-bold">Asset Status</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-200">
-                    <input
-                      type="radio"
-                      name="assignmentStatus"
-                      value="IN_STOCK"
-                      checked={assetForm.assignmentStatus === 'IN_STOCK'}
-                      onChange={() => setAssetForm({ ...assetForm, assignmentStatus: 'IN_STOCK' })}
-                      className="w-4 h-4 text-cyan-500"
-                    />
-                    <span>In Stock</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-200">
-                    <input
-                      type="radio"
-                      name="assignmentStatus"
-                      value="ASSIGNED"
-                      checked={assetForm.assignmentStatus === 'ASSIGNED'}
-                      onChange={() => setAssetForm({ ...assetForm, assignmentStatus: 'ASSIGNED' })}
-                      className="w-4 h-4 text-cyan-500"
-                    />
-                    <span>Assign to Employee</span>
-                  </label>
-                </div>
-
-                {assetForm.assignmentStatus === 'ASSIGNED' && (
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Employee *</label>
-                      <select
-                        required
-                        value={assetForm.assignedEmployeeId || ''}
-                        onChange={e => setAssetForm({ ...assetForm, assignedEmployeeId: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      >
-                        <option value="">Select Employee...</option>
-                        {employees.map(emp => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.first_name} {emp.last_name} ({emp.employee_code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Assignment Date</label>
-                      <input
-                        type="date"
-                        value={assetForm.assignedDate || new Date().toISOString().split('T')[0]}
-                        onChange={e => setAssetForm({ ...assetForm, assignedDate: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                      />
-                    </div>
+              {assetForm.assignmentStatus === 'ASSIGNED' && (
+                <div className="space-y-3 p-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl">
+                  <div>
+                    <label className="block text-cyan-300 mb-1 font-medium">Assign To Employee *</label>
+                    <select value={assetForm.assignedEmployeeId} onChange={e => setAssetForm({ ...assetForm, assignedEmployeeId: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold">
+                      {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>)}
+                    </select>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-cyan-300 mb-1 font-medium">Assignment Date</label>
+                    <input type="date" value={assetForm.assignedDate} onChange={e => setAssetForm({ ...assetForm, assignedDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
-                >
-                  Add Asset
-                </button>
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold uppercase shadow">REGISTER ASSET</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* CREATE CATEGORY MODAL */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white">Create Asset Category</h3>
-              <button type="button" onClick={() => setShowCategoryModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {categoryError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold">
-                {categoryError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateCategoryFromModal} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Category Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={categoryForm.name}
-                  onChange={e => {
-                    const name = e.target.value;
-                    const code = `CAT-${name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)}`;
-                    setCategoryForm({ ...categoryForm, name, code });
-                  }}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="e.g. Software License / Vehicle"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Category Code *</label>
-                <input
-                  type="text"
-                  required
-                  value={categoryForm.code}
-                  onChange={e => setCategoryForm({ ...categoryForm, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  placeholder="CAT-SOFTWARE"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Description</label>
-                <textarea
-                  rows={2}
-                  value={categoryForm.description}
-                  onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Category description..."
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
-                >
-                  Save Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ASSET DETAILS & HISTORY MODAL */}
-      {showDetailsModal && selectedAsset && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-lg text-white">{selectedAsset.asset_name}</h3>
-                  <span className="font-mono text-xs text-cyan-400 bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{selectedAsset.asset_code}</span>
-                </div>
-                <p className="text-xs text-slate-400">Category: {selectedAsset.category_name}</p>
-              </div>
-              <button type="button" onClick={() => setShowDetailsModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Status</span>
-                <div>{getStatusBadge(selectedAsset)}</div>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Condition</span>
-                <p className="font-bold text-slate-200">{selectedAsset.condition}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Assigned Employee</span>
-                <p className="font-bold text-cyan-400">
-                  {selectedAsset.employee_first_name ? `${selectedAsset.employee_first_name} ${selectedAsset.employee_last_name}` : 'In Stock'}
-                </p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Brand & Model</span>
-                <p className="font-semibold text-slate-200">{selectedAsset.brand || '-'} {selectedAsset.model || ''}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Serial Number</span>
-                <p className="font-mono text-slate-300">{selectedAsset.serial_number || '-'}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Location</span>
-                <p className="font-semibold text-slate-200">{selectedAsset.location || '-'}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Purchase Price</span>
-                <p className="font-mono text-slate-200">₹{Number(selectedAsset.purchase_price || 0).toLocaleString()}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Current Valuation</span>
-                <p className="font-mono text-cyan-400 font-bold">₹{Number(selectedAsset.current_value || 0).toLocaleString()}</p>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                <span className="text-[10px] text-slate-500 font-medium">Purchase Date</span>
-                <p className="font-mono text-slate-300">{selectedAsset.purchase_date ? selectedAsset.purchase_date.split('T')[0] : '-'}</p>
-              </div>
-            </div>
-
-            {/* Audit History Timeline */}
-            <div className="pt-3 border-t border-slate-800 space-y-3">
-              <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                <History className="w-4 h-4 text-cyan-400" />
-                <span>Asset Audit History Log</span>
-              </h4>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-2 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                {assetHistory.map((h, idx) => (
-                  <div key={idx} className="relative flex items-start gap-3 pl-7 text-xs">
-                    <div className="absolute left-1.5 top-1.5 w-3 h-3 rounded-full bg-cyan-400 border-2 border-slate-900" />
-                    <div className="flex-1 p-2.5 bg-slate-950 border border-slate-800 rounded-xl space-y-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-cyan-400 uppercase text-[10px]">{h.action}</span>
-                        <span className="text-[10px] font-mono text-slate-500">{new Date(h.created_at).toLocaleString()}</span>
-                      </div>
-                      <p className="text-slate-300 text-[11px]">{h.notes}</p>
-                      {h.employee_first_name && (
-                        <span className="text-[10px] text-cyan-400 block font-mono">Target Employee: {h.employee_first_name} {h.employee_last_name} ({h.employee_code})</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {assetHistory.length === 0 && (
-                  <p className="text-xs text-slate-500 italic text-center py-3">No history entries logged.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGN MODAL */}
+      {/* ASSIGN ASSET MODAL */}
       {showAssignModal && selectedAsset && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white">Allocate Asset to Employee</h3>
-              <button type="button" onClick={() => setShowAssignModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <h3 className="font-bold text-lg text-white">Assign Asset: {selectedAsset.asset_code}</h3>
+              <button type="button" onClick={() => setShowAssignModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
-            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
-              <div className="font-bold text-cyan-400">{selectedAsset.asset_code} — {selectedAsset.asset_name}</div>
-              <div className="text-slate-400">Category: {selectedAsset.category_name}</div>
-            </div>
-
-            {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
-            )}
 
             <form onSubmit={handleAssignAsset} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Select Employee *</label>
-                <select
-                  required
-                  value={assignForm.employeeId}
-                  onChange={e => setAssignForm({ ...assignForm, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-medium"
-                >
-                  <option value="">Select Employee...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_code})
-                    </option>
-                  ))}
+                <label className="block text-slate-300 mb-1 font-medium">Employee *</label>
+                <select value={assignForm.employeeId} onChange={e => setAssignForm({ ...assignForm, employeeId: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold">
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>)}
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Assignment Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={assignForm.assignedDate}
-                    onChange={e => setAssignForm({ ...assignForm, assignedDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Expected Return Date</label>
-                  <input
-                    type="date"
-                    value={assignForm.expectedReturnDate}
-                    onChange={e => setAssignForm({ ...assignForm, expectedReturnDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Allocation Notes</label>
-                <textarea
-                  rows={2}
-                  value={assignForm.notes}
-                  onChange={e => setAssignForm({ ...assignForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Reason for allocation or accessories provided..."
-                />
+                <label className="block text-slate-300 mb-1 font-medium">Assignment Date *</label>
+                <input type="date" required value={assignForm.assignedDate} onChange={e => setAssignForm({ ...assignForm, assignedDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
-                >
-                  Confirm Allocation
-                </button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold uppercase shadow">ASSIGN</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* RETURN MODAL */}
+      {/* RETURN ASSET MODAL */}
       {showReturnModal && selectedAsset && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white">Process Asset Return</h3>
-              <button type="button" onClick={() => setShowReturnModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <h3 className="font-bold text-lg text-white">Return Asset to Stock</h3>
+              <button type="button" onClick={() => setShowReturnModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
-            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
-              <div className="font-bold text-amber-400">{selectedAsset.asset_code} — {selectedAsset.asset_name}</div>
-              <div className="text-slate-400">Currently assigned to: {selectedAsset.employee_first_name} {selectedAsset.employee_last_name}</div>
-            </div>
-
-            {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
-            )}
 
             <form onSubmit={handleReturnAsset} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Return Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={returnForm.returnedDate}
-                    onChange={e => setReturnForm({ ...returnForm, returnedDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Return Condition *</label>
-                  <select
-                    value={returnForm.condition}
-                    onChange={e => setReturnForm({ ...returnForm, condition: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  >
-                    <option value="EXCELLENT">EXCELLENT</option>
-                    <option value="GOOD">GOOD</option>
-                    <option value="FAIR">FAIR</option>
-                    <option value="POOR">POOR</option>
-                    <option value="DAMAGED">DAMAGED</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Returned Date *</label>
+                <input type="date" required value={returnForm.returnedDate} onChange={e => setReturnForm({ ...returnForm, returnedDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Return Inspection Notes</label>
-                <textarea
-                  rows={2}
-                  value={returnForm.notes}
-                  onChange={e => setReturnForm({ ...returnForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Physical condition inspection notes..."
-                />
+                <label className="block text-slate-300 mb-1 font-medium">Return Condition</label>
+                <select value={returnForm.condition} onChange={e => setReturnForm({ ...returnForm, condition: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                  <option value="EXCELLENT">EXCELLENT</option>
+                  <option value="GOOD">GOOD</option>
+                  <option value="FAIR">FAIR</option>
+                  <option value="POOR">POOR</option>
+                  <option value="DAMAGED">DAMAGED</option>
+                </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowReturnModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold shadow"
-                >
-                  Process Return to Stock
-                </button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowReturnModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold uppercase shadow">CONFIRM RETURN</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ASSET DETAILS & AUDIT HISTORY MODAL */}
+      {showDetailsModal && selectedAsset && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <Package className="w-5 h-5 text-cyan-400" />
+                <span>{selectedAsset.asset_code} — Details & History</span>
+              </h3>
+              <button type="button" onClick={() => setShowDetailsModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950 rounded-xl text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px]">ASSET NAME</span>
+                <span className="font-bold text-white">{selectedAsset.asset_name}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">SERIAL NUMBER</span>
+                <span className="font-mono text-cyan-400">{selectedAsset.serial_number || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">STATUS</span>
+                <span className="font-semibold text-emerald-400">{selectedAsset.status}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">ASSIGNED TO</span>
+                <span className="font-semibold text-slate-200">{selectedAsset.employee_first_name ? `${selectedAsset.employee_first_name} ${selectedAsset.employee_last_name}` : 'Unassigned'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-xs text-slate-300">Lifecycle Audit History</h4>
+              <div className="max-h-48 overflow-y-auto space-y-2 border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+                {assetHistory.map(h => (
+                  <div key={h.id} className="text-xs p-2 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-cyan-400 block">{h.action}</span>
+                      <span className="text-[10px] text-slate-400">{h.notes || 'Status update'}</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500">{new Date(h.created_at).toLocaleString()}</span>
+                  </div>
+                ))}
+                {assetHistory.length === 0 && <div className="text-slate-500 text-xs italic text-center p-2">No history records found.</div>}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-800">
+              <button type="button" onClick={() => setShowDetailsModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium">Close</button>
+            </div>
           </div>
         </div>
       )}

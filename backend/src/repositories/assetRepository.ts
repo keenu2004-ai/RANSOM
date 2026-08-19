@@ -673,4 +673,266 @@ export class AssetRepository {
     `, [organizationId]);
     return res.rows[0];
   }
+
+  // ============================================================
+  // ASSET REQUESTS WORKFLOW (PHASE 4)
+  // ============================================================
+
+  static async createRequest(
+    organizationId: string,
+    employeeId: string,
+    userId: string,
+    data: { categoryId?: string; reason: string; priority?: string; requiredDate?: string }
+  ) {
+    return withTransaction(async (client) => {
+      const datePart = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const seqRes = await client.query(
+        `SELECT COUNT(*)::int as count FROM asset_requests WHERE organization_id = $1 AND DATE(created_at) = CURRENT_DATE`,
+        [organizationId]
+      );
+      const seqNum = String(seqRes.rows[0].count + 1).padStart(4, '0');
+      const requestNumber = `AR-${datePart}-${seqNum}`;
+
+      const res = await client.query(`
+        INSERT INTO asset_requests (
+          organization_id, employee_id, category_id, request_number, reason, priority, required_date, status
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, 'SUBMITTED'
+        ) RETURNING *
+      `, [
+        organizationId,
+        employeeId,
+        data.categoryId || null,
+        requestNumber,
+        data.reason.trim(),
+        data.priority || 'NORMAL',
+        data.requiredDate || null
+      ]);
+
+      const request = res.rows[0];
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values
+        ) VALUES ($1, $2, 'REQUEST_CREATED', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, userId, request.id, JSON.stringify({ requestNumber, reason: data.reason, priority: data.priority })]);
+
+      await client.query(`
+        INSERT INTO notifications (
+          organization_id, user_id, title, message, link
+        ) VALUES ($1, $2, 'Asset Request Submitted', $3, '/assets')
+      `, [organizationId, userId, `Your asset request (${requestNumber}) has been submitted successfully.`]);
+
+      return request;
+    });
+  }
+
+  static async getRequests(
+    organizationId: string,
+    filters: { employeeId?: string; status?: string }
+  ) {
+    let sql = `
+      SELECT 
+        ar.*,
+        c.name as category_name,
+        c.code as category_code,
+        e.employee_code,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+        e.email as employee_email,
+        CONCAT(rev.first_name, ' ', rev.last_name) as reviewer_name,
+        fa.asset_name as fulfilled_asset_name,
+        fa.asset_code as fulfilled_asset_code
+      FROM asset_requests ar
+      LEFT JOIN asset_categories c ON ar.category_id = c.id
+      JOIN employees e ON ar.employee_id = e.id
+      LEFT JOIN employees rev ON ar.reviewed_by = rev.id
+      LEFT JOIN assets fa ON ar.fulfilled_asset_id = fa.id
+      WHERE ar.organization_id = $1
+    `;
+    const params: any[] = [organizationId];
+
+    if (filters.employeeId) {
+      params.push(filters.employeeId);
+      sql += ` AND ar.employee_id = $${params.length}`;
+    }
+
+    if (filters.status) {
+      params.push(filters.status);
+      sql += ` AND ar.status = $${params.length}`;
+    }
+
+    sql += ` ORDER BY ar.created_at DESC`;
+
+    const res = await query(sql, params);
+    return res.rows;
+  }
+
+  static async getRequestById(organizationId: string, requestId: string) {
+    const sql = `
+      SELECT 
+        ar.*,
+        c.name as category_name,
+        c.code as category_code,
+        e.employee_code,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+        e.email as employee_email,
+        e.user_id as employee_user_id,
+        CONCAT(rev.first_name, ' ', rev.last_name) as reviewer_name,
+        fa.asset_name as fulfilled_asset_name,
+        fa.asset_code as fulfilled_asset_code
+      FROM asset_requests ar
+      LEFT JOIN asset_categories c ON ar.category_id = c.id
+      JOIN employees e ON ar.employee_id = e.id
+      LEFT JOIN employees rev ON ar.reviewed_by = rev.id
+      LEFT JOIN assets fa ON ar.fulfilled_asset_id = fa.id
+      WHERE ar.organization_id = $1 AND ar.id = $2
+    `;
+    const res = await query(sql, [organizationId, requestId]);
+    return res.rows[0] || null;
+  }
+
+  static async approveRequest(
+    organizationId: string,
+    requestId: string,
+    reviewerEmployeeId: string,
+    reviewerUserId: string
+  ) {
+    return withTransaction(async (client) => {
+      const checkRes = await client.query(
+        `SELECT ar.*, e.user_id as emp_user_id FROM asset_requests ar JOIN employees e ON ar.employee_id = e.id WHERE ar.id = $1 AND ar.organization_id = $2 AND ar.status = 'SUBMITTED'`,
+        [requestId, organizationId]
+      );
+      const req = checkRes.rows[0];
+      if (!req) throw new Error('Pending asset request not found.');
+
+      const res = await client.query(`
+        UPDATE asset_requests
+        SET status = 'APPROVED', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 AND organization_id = $3
+        RETURNING *
+      `, [reviewerEmployeeId, requestId, organizationId]);
+
+      const updated = res.rows[0];
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values
+        ) VALUES ($1, $2, 'REQUEST_APPROVED', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, reviewerUserId, requestId, JSON.stringify({ requestNumber: req.request_number, status: 'APPROVED' })]);
+
+      if (req.emp_user_id) {
+        await client.query(`
+          INSERT INTO notifications (
+            organization_id, user_id, title, message, link
+          ) VALUES ($1, $2, 'Asset Request Approved', $3, '/assets')
+        `, [organizationId, req.emp_user_id, `Your asset request (${req.request_number}) has been approved and is ready for fulfillment.`]);
+      }
+
+      return updated;
+    });
+  }
+
+  static async rejectRequest(
+    organizationId: string,
+    requestId: string,
+    reviewerEmployeeId: string,
+    reviewerUserId: string,
+    rejectionReason: string
+  ) {
+    return withTransaction(async (client) => {
+      const checkRes = await client.query(
+        `SELECT ar.*, e.user_id as emp_user_id FROM asset_requests ar JOIN employees e ON ar.employee_id = e.id WHERE ar.id = $1 AND ar.organization_id = $2 AND ar.status = 'SUBMITTED'`,
+        [requestId, organizationId]
+      );
+      const req = checkRes.rows[0];
+      if (!req) throw new Error('Pending asset request not found.');
+
+      const res = await client.query(`
+        UPDATE asset_requests
+        SET status = 'REJECTED', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3 AND organization_id = $4
+        RETURNING *
+      `, [reviewerEmployeeId, rejectionReason.trim(), requestId, organizationId]);
+
+      const updated = res.rows[0];
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values
+        ) VALUES ($1, $2, 'REQUEST_REJECTED', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, reviewerUserId, requestId, JSON.stringify({ requestNumber: req.request_number, rejectionReason })]);
+
+      if (req.emp_user_id) {
+        await client.query(`
+          INSERT INTO notifications (
+            organization_id, user_id, title, message, link
+          ) VALUES ($1, $2, 'Asset Request Rejected', $3, '/assets')
+        `, [organizationId, req.emp_user_id, `Your asset request (${req.request_number}) was rejected: ${rejectionReason}`]);
+      }
+
+      return updated;
+    });
+  }
+
+  static async fulfillRequest(
+    organizationId: string,
+    requestId: string,
+    assetId: string,
+    reviewerUserId: string
+  ) {
+    return withTransaction(async (client) => {
+      const reqRes = await client.query(
+        `SELECT ar.*, e.user_id as emp_user_id, CONCAT(e.first_name, ' ', e.last_name) as emp_name FROM asset_requests ar JOIN employees e ON ar.employee_id = e.id WHERE ar.id = $1 AND ar.organization_id = $2 AND ar.status = 'APPROVED'`,
+        [requestId, organizationId]
+      );
+      const req = reqRes.rows[0];
+      if (!req) throw new Error('Approved asset request not found or already fulfilled.');
+
+      const assetRes = await client.query(
+        `SELECT * FROM assets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+        [assetId, organizationId]
+      );
+      const asset = assetRes.rows[0];
+      if (!asset) throw new Error('Target asset not found.');
+      if (asset.status !== 'AVAILABLE') throw new Error(`Asset '${asset.asset_name}' is currently ${asset.status} and cannot be assigned.`);
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await client.query(`
+        UPDATE assets
+        SET status = 'ASSIGNED', assigned_employee_id = $1, assigned_date = $2, updated_by = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4 AND organization_id = $5
+      `, [req.employee_id, todayStr, reviewerUserId, assetId, organizationId]);
+
+      await client.query(`
+        INSERT INTO asset_history (
+          organization_id, asset_id, action, previous_status, new_status, employee_id, performed_by, notes
+        ) VALUES ($1, $2, 'ASSIGNED_VIA_REQUEST', 'AVAILABLE', 'ASSIGNED', $3, $4, $5)
+      `, [organizationId, assetId, req.employee_id, reviewerUserId, `Fulfilled Asset Request ${req.request_number}`]);
+
+      const fulfillRes = await client.query(`
+        UPDATE asset_requests
+        SET status = 'FULFILLED', fulfilled_asset_id = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 AND organization_id = $3
+        RETURNING *
+      `, [assetId, requestId, organizationId]);
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values
+        ) VALUES ($1, $2, 'REQUEST_FULFILLED', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, reviewerUserId, requestId, JSON.stringify({ requestNumber: req.request_number, assetId, assetCode: asset.asset_code })]);
+
+      if (req.emp_user_id) {
+        await client.query(`
+          INSERT INTO notifications (
+            organization_id, user_id, title, message, link
+          ) VALUES ($1, $2, 'Asset Assigned & Fulfilled', $3, '/assets')
+        `, [organizationId, req.emp_user_id, `Asset '${asset.asset_name}' (${asset.asset_code}) has been assigned to fulfill your request ${req.request_number}.`]);
+      }
+
+      return { request: fulfillRes.rows[0], asset };
+    });
+  }
 }
+
