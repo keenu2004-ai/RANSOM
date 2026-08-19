@@ -342,8 +342,8 @@ export class AssetRepository {
     });
   }
 
-  // Assign asset to employee
-  static async assign(id: string, organizationId: string, userId: string, data: {
+  // Assign asset to employee (assignAsset and alias assign)
+  static async assignAsset(id: string, organizationId: string, userId: string, data: {
     employeeId: string;
     assignedDate: string;
     expectedReturnDate?: string;
@@ -419,6 +419,17 @@ export class AssetRepository {
 
       return updatedAsset;
     });
+  }
+
+  // Alias for assignAsset
+  static async assign(id: string, organizationId: string, userId: string, data: {
+    employeeId: string;
+    assignedDate: string;
+    expectedReturnDate?: string;
+    condition?: string;
+    notes?: string;
+  }) {
+    return this.assignAsset(id, organizationId, userId, data);
   }
 
   // Return asset from employee
