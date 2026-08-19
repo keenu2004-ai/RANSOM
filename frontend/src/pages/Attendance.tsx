@@ -23,73 +23,16 @@ export const Attendance: React.FC = () => {
       const lastDay = new Date(year, month + 1, 0).getDate();
       const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      // Parallel data fetching for calendar view
-      const [attRes, holRes, leaveRes, taskRes] = await Promise.all([
-        apiFetch('/attendance', { params: { startDate, endDate, limit: 500 } }).catch(() => ({ attendance: [] })),
-        apiFetch('/holidays', { params: { year } }).catch(() => ({ holidays: [] })),
-        apiFetch('/leaves').catch(() => ({ leaves: [] })),
-        apiFetch('/timesheets', { params: { limit: 500 } }).catch(() => ({ timesheets: [] }))
-      ]);
-
-      const events: CalendarEvent[] = [];
-
-      // 1. Map Attendance Records
-      (attRes.attendance || []).forEach((a: any) => {
-        const status = (a.status || 'PRESENT').toUpperCase();
-        events.push({
-          id: `att-${a.id}`,
-          date: a.date,
-          type: 'ATTENDANCE',
-          title: `${a.employee_name || 'Staff'}: ${status}`,
-          status: status,
-          employeeName: a.employee_name,
-          metadata: {
-            check_in: a.check_in,
-            check_out: a.check_out,
-            working_hours: a.working_hours
-          }
-        });
-      });
-
-      // 2. Map Holidays
-      (holRes.holidays || []).forEach((h: any) => {
-        events.push({
-          id: `hol-${h.id}`,
-          date: h.date,
-          type: 'HOLIDAY',
-          title: h.title,
-          status: h.holiday_type || 'HOLIDAY',
-          metadata: { description: h.description }
-        });
-      });
-
-      // 3. Map Leave Requests
-      (leaveRes.leaves || []).forEach((l: any) => {
-        if (l.status === 'APPROVED') {
-          events.push({
-            id: `leave-${l.id}`,
-            date: l.start_date,
-            type: 'LEAVE',
-            title: `${l.employee_name || 'Employee'}: ${l.leave_type_name || 'Leave'}`,
-            status: 'APPROVED',
-            employeeName: l.employee_name,
-            metadata: { reason: l.reason, endDate: l.end_date }
-          });
-        }
-      });
-
-      // 4. Map Timesheet Tasks
-      (taskRes.timesheets || []).forEach((t: any) => {
-        events.push({
-          id: `task-${t.id}`,
-          date: t.date,
-          type: 'TASK',
-          title: `${t.project_name || 'Task'}: ${t.hours}h`,
-          status: t.status,
-          employeeName: t.employee_name,
-          metadata: { description: t.description, hours: t.hours }
-        });
-      });
+      const res = await apiFetch('/calendar', { params: { startDate, endDate } }).catch(() => ({ data: { events: [] } }));
+      const events: CalendarEvent[] = (res.data?.events || res.events || []).map((e: any) => ({
+        id: e.id,
+        date: e.date,
+        type: e.type,
+        title: e.title,
+        status: e.status,
+        employeeName: e.employeeName,
+        metadata: e.metadata || {}
+      }));
 
       setCalendarEvents(events);
     } catch (err) {
