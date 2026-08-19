@@ -363,7 +363,7 @@ export class TripExpenseRepository {
 
       const submitRes = await client.query(`
         UPDATE trip_expenses
-        SET status = 'SUBMITTED', total_amount = $1, updated_at = CURRENT_TIMESTAMP
+        SET status = 'PENDING', total_amount = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
         RETURNING *
       `, [grandTotal, id]);

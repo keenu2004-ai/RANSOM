@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Receipt, Plus, Check, X, FileText, MapPin, Navigation,
   Building, Calendar, Upload, Trash2, Eye, AlertTriangle,
-  ArrowRight, Edit, Hotel, Plane, Clock, ChevronRight
+  ArrowRight, Edit, Hotel, Plane, Clock, ChevronRight, ShieldCheck, DollarSign
 } from 'lucide-react';
 
 const BUCKET_OPTIONS = ['Exit', 'Internal', 'Onboarding', 'Other', 'Primary'];
@@ -16,7 +16,7 @@ const LOCAL_TRAVEL_CATEGORIES = [
 const TRANSPORT_MODES = [
   'Auto', 'Bus', 'Flight', 'Other', 'Public Transportation', 'Metro', 'Taxi', 'Train'
 ];
-const OTHER_EXPENSE_CATEGORIES = ['Food', 'Other', 'Courier', 'Office Supply', 'Raw Material'];
+const OTHER_EXPENSE_CATEGORIES = ['Food', 'General Expense', 'Other', 'Courier', 'Office Supply', 'Raw Material'];
 
 export const Expenses: React.FC = () => {
   const { user } = useAuth();
@@ -43,8 +43,11 @@ export const Expenses: React.FC = () => {
   const [showSingleModal, setShowSingleModal] = useState(false);
   const [singleClaimType, setSingleClaimType] = useState<'BUSINESS' | 'LOCAL_TRAVEL'>('BUSINESS');
 
-  // Trip Parent Create Modal
+  // Trip Parent Create & Edit Modals
   const [showCreateTripModal, setShowCreateTripModal] = useState(false);
+  const [showEditTripModal, setShowEditTripModal] = useState(false);
+  const [showFinalSubmitModal, setShowFinalSubmitModal] = useState(false);
+
   const [activeTrip, setActiveTrip] = useState<any | null>(null); // Active Trip workspace
 
   // Child Expense Modals
@@ -64,7 +67,7 @@ export const Expenses: React.FC = () => {
   // Details View Modal
   const [selectedSingleExpense, setSelectedSingleExpense] = useState<any | null>(null);
 
-  // Forms State
+  // Form State
   const [singleFormData, setSingleFormData] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
     description: '',
@@ -287,19 +290,19 @@ export const Expenses: React.FC = () => {
     setFormError(null);
 
     if (!tripFormData.purpose || tripFormData.purpose.trim() === '') {
-      setFormError('Trip Purpose is required.');
+      setFormError('Please enter the trip purpose.');
       return;
     }
     if (!tripFormData.startPoint || tripFormData.startPoint.trim() === '') {
-      setFormError('Start Point is required.');
+      setFormError('Please enter the trip start point.');
       return;
     }
     if (!tripFormData.endPoint || tripFormData.endPoint.trim() === '') {
-      setFormError('End Point is required.');
+      setFormError('Please enter the trip end point.');
       return;
     }
     if (new Date(tripFormData.endDate) < new Date(tripFormData.startDate)) {
-      setFormError('End Date cannot be before Start Date.');
+      setFormError('End date cannot be before start date.');
       return;
     }
 
@@ -312,7 +315,7 @@ export const Expenses: React.FC = () => {
 
       setShowCreateTripModal(false);
       const createdTripId = res.data?.trip?.id;
-      setSuccessMsg('Trip Expense draft created. Now add your travel, accommodation, or other expenses below.');
+      setSuccessMsg('Trip Expense draft created. You can now add travel, accommodation, or other expenses.');
       fetchData();
       if (createdTripId) {
         await loadTripDetails(createdTripId);
@@ -320,6 +323,49 @@ export const Expenses: React.FC = () => {
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
       setFormError(err.message || 'Failed to create Trip Expense draft.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Edit Parent Trip Details
+  const handleOpenEditTrip = () => {
+    if (!activeTrip) return;
+    setFormError(null);
+    setTripFormData({
+      purpose: activeTrip.purpose || '',
+      startPoint: activeTrip.start_point || '',
+      endPoint: activeTrip.end_point || '',
+      startDate: activeTrip.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : '',
+      endDate: activeTrip.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : '',
+      currency: activeTrip.currency || 'INR'
+    });
+    setShowEditTripModal(true);
+  };
+
+  const handleUpdateTripDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTrip) return;
+    setFormError(null);
+
+    if (new Date(tripFormData.endDate) < new Date(tripFormData.startDate)) {
+      setFormError('End date cannot be before start date.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await apiFetch(`/expenses/trips/${activeTrip.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(tripFormData)
+      });
+      setShowEditTripModal(false);
+      await loadTripDetails(activeTrip.id);
+      fetchData();
+      setSuccessMsg('Trip details updated successfully.');
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to update trip details.');
     } finally {
       setSubmitting(false);
     }
@@ -345,6 +391,25 @@ export const Expenses: React.FC = () => {
     setShowTravelModal(true);
   };
 
+  const handleOpenEditTravel = (item: any) => {
+    setEditingChild(item);
+    setFormError(null);
+    setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
+    setTravelFormData({
+      startDate: item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : '',
+      endDate: item.end_date ? new Date(item.end_date).toISOString().split('T')[0] : '',
+      transportMode: item.transport_mode || 'Flight',
+      purpose: item.purpose || '',
+      merchant: item.merchant || '',
+      startLocation: item.start_location || '',
+      endLocation: item.end_location || '',
+      distanceKm: item.distance_km ? String(item.distance_km) : '0',
+      currency: item.currency || 'INR',
+      amount: item.amount ? String(item.amount) : ''
+    });
+    setShowTravelModal(true);
+  };
+
   const handleSubmitTravelChild = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -355,7 +420,7 @@ export const Expenses: React.FC = () => {
       return;
     }
     if (new Date(travelFormData.endDate) < new Date(travelFormData.startDate)) {
-      setFormError('End Date cannot be before Start Date.');
+      setFormError('End date cannot be before start date.');
       return;
     }
 
@@ -391,14 +456,14 @@ export const Expenses: React.FC = () => {
       await loadTripDetails(activeTrip.id);
       fetchData();
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save Travel Expense.');
+      setFormError(err.message || 'Travel expense could not be saved.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteTravelChild = async (travelId: string) => {
-    if (!confirm('Remove this Travel Expense from trip?')) return;
+    if (!confirm('Remove this travel expense from the trip?')) return;
     try {
       await apiFetch(`/expenses/trips/${activeTrip.id}/travel/${travelId}`, { method: 'DELETE' });
       await loadTripDetails(activeTrip.id);
@@ -423,6 +488,20 @@ export const Expenses: React.FC = () => {
     setShowAccomModal(true);
   };
 
+  const handleOpenEditAccom = (item: any) => {
+    setEditingChild(item);
+    setFormError(null);
+    setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
+    setAccomFormData({
+      startDate: item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : '',
+      endDate: item.end_date ? new Date(item.end_date).toISOString().split('T')[0] : '',
+      currency: item.currency || 'INR',
+      amount: item.amount ? String(item.amount) : '',
+      accommodationDetails: item.accommodation_details || ''
+    });
+    setShowAccomModal(true);
+  };
+
   const handleSubmitAccomChild = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -433,11 +512,11 @@ export const Expenses: React.FC = () => {
       return;
     }
     if (new Date(accomFormData.endDate) < new Date(accomFormData.startDate)) {
-      setFormError('End Date cannot be before Start Date.');
+      setFormError('End date cannot be before start date.');
       return;
     }
     if (!accomFormData.accommodationDetails || accomFormData.accommodationDetails.trim() === '') {
-      setFormError('Accommodation Details are required.');
+      setFormError('Accommodation details are required.');
       return;
     }
 
@@ -466,14 +545,14 @@ export const Expenses: React.FC = () => {
       await loadTripDetails(activeTrip.id);
       fetchData();
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save Accommodation Expense.');
+      setFormError(err.message || 'Accommodation expense could not be saved.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteAccomChild = async (accomId: string) => {
-    if (!confirm('Remove this Accommodation Expense from trip?')) return;
+    if (!confirm('Remove this accommodation expense from the trip?')) return;
     try {
       await apiFetch(`/expenses/trips/${activeTrip.id}/accommodation/${accomId}`, { method: 'DELETE' });
       await loadTripDetails(activeTrip.id);
@@ -495,6 +574,21 @@ export const Expenses: React.FC = () => {
       currency: activeTrip?.currency || 'INR',
       amount: '',
       purpose: ''
+    });
+    setShowOtherModal(true);
+  };
+
+  const handleOpenEditOther = (item: any) => {
+    setEditingChild(item);
+    setFormError(null);
+    setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
+    setOtherFormData({
+      transactionDate: item.transaction_date ? new Date(item.transaction_date).toISOString().split('T')[0] : '',
+      category: item.category || 'Food',
+      merchant: item.merchant || '',
+      currency: item.currency || 'INR',
+      amount: item.amount ? String(item.amount) : '',
+      purpose: item.purpose || ''
     });
     setShowOtherModal(true);
   };
@@ -538,14 +632,14 @@ export const Expenses: React.FC = () => {
       await loadTripDetails(activeTrip.id);
       fetchData();
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save Other Expense.');
+      setFormError(err.message || 'Other expense could not be saved.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteOtherChild = async (otherId: string) => {
-    if (!confirm('Remove this Other Expense from trip?')) return;
+    if (!confirm('Remove this other expense from the trip?')) return;
     try {
       await apiFetch(`/expenses/trips/${activeTrip.id}/other/${otherId}`, { method: 'DELETE' });
       await loadTripDetails(activeTrip.id);
@@ -556,25 +650,31 @@ export const Expenses: React.FC = () => {
   };
 
   // FINAL TRIP EXPENSE SUBMISSION
-  const handleFinalSubmitTrip = async () => {
+  const handleOpenFinalSubmitModal = () => {
     if (!activeTrip) return;
     const totalChildren = (activeTrip.travelExpenses?.length || 0) + (activeTrip.accommodationExpenses?.length || 0) + (activeTrip.otherExpenses?.length || 0);
 
     if (totalChildren === 0) {
-      alert('Add at least one travel, accommodation, or other expense before submitting the trip.');
+      alert('Please add at least one travel, accommodation, or other expense before submitting the trip.');
       return;
     }
+    setShowFinalSubmitModal(true);
+  };
 
-    if (!confirm(`Submit Trip Expense "${activeTrip.purpose}" for total ₹${Number(activeTrip.total_amount || 0).toLocaleString('en-IN')}?`)) return;
-
+  const handleConfirmFinalSubmitTrip = async () => {
+    if (!activeTrip) return;
+    setSubmitting(true);
     try {
       await apiFetch(`/expenses/trips/${activeTrip.id}/submit`, { method: 'POST' });
-      setSuccessMsg('Trip Expense submitted successfully for approval.');
+      setShowFinalSubmitModal(false);
+      setSuccessMsg('Trip expense submitted successfully.');
       await loadTripDetails(activeTrip.id);
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to submit trip expense.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -640,11 +740,11 @@ export const Expenses: React.FC = () => {
     return true;
   });
 
-  // Calculate Subtotals for Active Trip Workspace
+  // Subtotals
   const travelTotal = (activeTrip?.travelExpenses || []).reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0);
   const accomTotal = (activeTrip?.accommodationExpenses || []).reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0);
   const otherTotal = (activeTrip?.otherExpenses || []).reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0);
-  const grandTripTotal = travelTotal + accomTotal + otherTotal;
+  const grandTripTotal = Number(activeTrip?.total_amount || 0) || (travelTotal + accomTotal + otherTotal);
 
   return (
     <div className="space-y-6">
@@ -688,11 +788,11 @@ export const Expenses: React.FC = () => {
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* ACTIVE TRIP WORKSPACE VIEW (IF A TRIP IS SELECTED) */}
+      {/* ACTIVE TRIP DETAILS WORKSPACE VIEW */}
       {/* ---------------------------------------------------- */}
       {activeTrip ? (
         <div className="space-y-6">
-          {/* Trip Banner Header */}
+          {/* Trip Summary Card Header */}
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -702,237 +802,219 @@ export const Expenses: React.FC = () => {
                 >
                   ← Back to Claims List
                 </button>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-cyan-400" />
-                  <span>{activeTrip.purpose}</span>
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
+                    <span>Trip Expense</span>
+                  </h2>
+                  {activeTrip.status === 'DRAFT' && (
+                    <button
+                      onClick={handleOpenEditTrip}
+                      className="p-1 text-slate-400 hover:text-cyan-400"
+                      title="Edit Parent Trip Details"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-slate-200 mt-1">{activeTrip.purpose}</p>
                 <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 font-medium">
-                  <span className="text-slate-200 font-semibold">{activeTrip.start_point} → {activeTrip.end_point}</span>
+                  <span>Trip Location: <strong className="text-slate-200">{activeTrip.start_point} to {activeTrip.end_point}</strong></span>
                   <span>•</span>
-                  <span className="font-mono">{new Date(activeTrip.start_date).toLocaleDateString()} — {new Date(activeTrip.end_date).toLocaleDateString()}</span>
+                  <span>Date: <strong className="font-mono text-slate-200">{new Date(activeTrip.start_date).toLocaleDateString()} - {new Date(activeTrip.end_date).toLocaleDateString()}</strong></span>
                   <span>•</span>
-                  <span className="font-mono text-cyan-400">{activeTrip.currency || 'INR'}</span>
+                  <span>Currency: <strong className="font-mono text-cyan-400">{activeTrip.currency || 'INR'}</strong></span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end gap-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                   activeTrip.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
                   activeTrip.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
                   activeTrip.status === 'DRAFT' ? 'bg-slate-800 text-slate-400 border-slate-700' :
                   'bg-amber-500/10 text-amber-400 border-amber-500/30'
                 }`}>
-                  {activeTrip.status}
+                  Status: {activeTrip.status}
                 </span>
 
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block font-medium uppercase">Total Amount</span>
+                  <span className="text-xl font-extrabold font-mono text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+
                 {isManagerOrAdmin && (activeTrip.status === 'SUBMITTED' || activeTrip.status === 'PENDING') && (
-                  <>
-                    <button onClick={() => handleApproveTrip(activeTrip.id)} className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-bold">Approve Trip</button>
-                    <button onClick={() => handleRejectTrip(activeTrip.id)} className="px-3 py-1.5 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-bold">Reject Trip</button>
-                  </>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button onClick={() => handleApproveTrip(activeTrip.id)} className="px-3 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-bold">Approve</button>
+                    <button onClick={() => handleRejectTrip(activeTrip.id)} className="px-3 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-bold">Reject</button>
+                  </div>
                 )}
               </div>
             </div>
-
-            {/* Subtotals KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs pt-1">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">TRAVEL EXPENSES</span>
-                <span className="text-base font-bold font-mono text-indigo-400">₹{travelTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">ACCOMMODATION</span>
-                <span className="text-base font-bold font-mono text-cyan-400">₹{accomTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">OTHER EXPENSES</span>
-                <span className="text-base font-bold font-mono text-amber-400">₹{otherTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="p-3 bg-cyan-950/60 border border-cyan-800/60 rounded-xl">
-                <span className="text-cyan-300 block text-[10px] font-bold uppercase">TOTAL TRIP EXPENSE</span>
-                <span className="text-lg font-extrabold font-mono text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
           </div>
 
-          {/* 1. TRAVEL EXPENSES SECTION */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Plane className="w-4 h-4 text-indigo-400" />
-                <span>TRAVEL EXPENSES ({activeTrip.travelExpenses?.length || 0})</span>
-              </h3>
-              {activeTrip.status === 'DRAFT' && (
-                <button
-                  onClick={handleOpenAddTravel}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Travel Expense</span>
-                </button>
+          {/* THREE CHILD EXPENSE SECTIONS */}
+          <div className="space-y-6">
+            {/* 1. TRAVEL EXPENSE SECTION */}
+            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <Plane className="w-4 h-4 text-indigo-400" />
+                  <span>Travel Expense</span>
+                </h3>
+                {activeTrip.status === 'DRAFT' && (
+                  <button
+                    onClick={handleOpenAddTravel}
+                    className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    title="Add Travel Expense"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Travel Expense</span>
+                  </button>
+                )}
+              </div>
+
+              {(activeTrip.travelExpenses || []).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeTrip.travelExpenses.map((t: any) => (
+                    <div key={t.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <span className="font-bold text-indigo-400 text-xs">{t.transport_mode}</span>
+                        <span className="font-mono text-slate-400">{new Date(t.start_date).toLocaleDateString()} - {new Date(t.end_date).toLocaleDateString()}</span>
+                      </div>
+                      <div className="font-semibold text-slate-200">{t.start_location} → {t.end_location}</div>
+                      <p className="text-slate-400 truncate">{t.purpose}</p>
+                      {t.merchant && <div className="text-[10px] text-slate-500">Merchant: {t.merchant}</div>}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className="flex items-center gap-2">
+                          {t.receipt_url && (
+                            <a href={t.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                          )}
+                          {activeTrip.status === 'DRAFT' && (
+                            <>
+                              <button onClick={() => handleOpenEditTravel(t)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteTravelChild(t.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                  No travel expenses
+                </div>
               )}
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-xl text-xs">
-              <table className="w-full text-left text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px]">
-                  <tr>
-                    <th className="p-3">Dates</th>
-                    <th className="p-3">Route & Transport</th>
-                    <th className="p-3">Purpose & Merchant</th>
-                    <th className="p-3">Distance</th>
-                    <th className="p-3">Amount (₹)</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/80">
-                  {(activeTrip.travelExpenses || []).map((t: any) => (
-                    <tr key={t.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-mono text-slate-400">{new Date(t.start_date).toLocaleDateString()} — {new Date(t.end_date).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        <div className="font-semibold text-slate-200">{t.start_location} → {t.end_location}</div>
-                        <span className="text-[10px] text-indigo-400 font-bold">{t.transport_mode}</span>
-                      </td>
-                      <td className="p-3">
-                        <div>{t.purpose}</div>
-                        {t.merchant && <span className="text-[10px] text-slate-500">{t.merchant}</span>}
-                      </td>
-                      <td className="p-3 font-mono text-slate-400">{t.distance_km ? `${t.distance_km} km` : '-'}</td>
-                      <td className="p-3 font-mono font-bold text-emerald-400">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-3 text-right space-x-1">
-                        {t.receipt_url && (
-                          <a href={t.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
-                        )}
-                        {activeTrip.status === 'DRAFT' && (
-                          <button onClick={() => handleDeleteTravelChild(t.id)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {(activeTrip.travelExpenses || []).length === 0 && (
-                    <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic">No travel expenses added to this trip yet.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            {/* 2. ACCOMMODATION EXPENSE SECTION */}
+            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <Hotel className="w-4 h-4 text-cyan-400" />
+                  <span>Accommodation Expense</span>
+                </h3>
+                {activeTrip.status === 'DRAFT' && (
+                  <button
+                    onClick={handleOpenAddAccom}
+                    className="p-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    title="Add Accommodation Expense"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Accommodation Expense</span>
+                  </button>
+                )}
+              </div>
 
-          {/* 2. ACCOMMODATION EXPENSES SECTION */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Hotel className="w-4 h-4 text-cyan-400" />
-                <span>ACCOMMODATION EXPENSES ({activeTrip.accommodationExpenses?.length || 0})</span>
-              </h3>
-              {activeTrip.status === 'DRAFT' && (
-                <button
-                  onClick={handleOpenAddAccom}
-                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl shadow flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Accommodation Expense</span>
-                </button>
+              {(activeTrip.accommodationExpenses || []).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeTrip.accommodationExpenses.map((a: any) => (
+                    <div key={a.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-cyan-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <span className="font-semibold text-slate-300">Hotel / Lodging</span>
+                        <span className="font-mono text-slate-400">{new Date(a.start_date).toLocaleDateString()} - {new Date(a.end_date).toLocaleDateString()}</span>
+                      </div>
+                      <p className="font-medium text-slate-200">{a.accommodation_details}</p>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className="flex items-center gap-2">
+                          {a.receipt_url && (
+                            <a href={a.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                          )}
+                          {activeTrip.status === 'DRAFT' && (
+                            <>
+                              <button onClick={() => handleOpenEditAccom(a)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteAccomChild(a.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                  No accommodation expenses
+                </div>
               )}
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-xl text-xs">
-              <table className="w-full text-left text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px]">
-                  <tr>
-                    <th className="p-3">Dates</th>
-                    <th className="p-3">Accommodation Details</th>
-                    <th className="p-3">Amount (₹)</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/80">
-                  {(activeTrip.accommodationExpenses || []).map((a: any) => (
-                    <tr key={a.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-mono text-slate-400">{new Date(a.start_date).toLocaleDateString()} — {new Date(a.end_date).toLocaleDateString()}</td>
-                      <td className="p-3 font-medium text-slate-200">{a.accommodation_details}</td>
-                      <td className="p-3 font-mono font-bold text-emerald-400">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-3 text-right space-x-1">
-                        {a.receipt_url && (
-                          <a href={a.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
-                        )}
-                        {activeTrip.status === 'DRAFT' && (
-                          <button onClick={() => handleDeleteAccomChild(a.id)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {(activeTrip.accommodationExpenses || []).length === 0 && (
-                    <tr><td colSpan={4} className="p-6 text-center text-slate-500 italic">No accommodation expenses added to this trip yet.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            {/* 3. OTHER EXPENSE SECTION */}
+            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  <span>Other Expense</span>
+                </h3>
+                {activeTrip.status === 'DRAFT' && (
+                  <button
+                    onClick={handleOpenAddOther}
+                    className="p-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    title="Add Other Expense"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Other Expense</span>
+                  </button>
+                )}
+              </div>
 
-          {/* 3. OTHER EXPENSES SECTION */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <FileText className="w-4 h-4 text-amber-400" />
-                <span>OTHER EXPENSES ({activeTrip.otherExpenses?.length || 0})</span>
-              </h3>
-              {activeTrip.status === 'DRAFT' && (
-                <button
-                  onClick={handleOpenAddOther}
-                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded-xl shadow flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Other Expense</span>
-                </button>
+              {(activeTrip.otherExpenses || []).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeTrip.otherExpenses.map((o: any) => (
+                    <div key={o.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <span className="font-bold text-amber-400 text-xs">{o.category}</span>
+                        <span className="font-mono text-slate-400">{new Date(o.transaction_date).toLocaleDateString()}</span>
+                      </div>
+                      <p className="font-medium text-slate-200">{o.purpose}</p>
+                      {o.merchant && <div className="text-[10px] text-slate-500">Merchant: {o.merchant}</div>}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className="flex items-center gap-2">
+                          {o.receipt_url && (
+                            <a href={o.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                          )}
+                          {activeTrip.status === 'DRAFT' && (
+                            <>
+                              <button onClick={() => handleOpenEditOther(o)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteOtherChild(o.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                  No other expenses
+                </div>
               )}
             </div>
-
-            <div className="overflow-x-auto border border-slate-800 rounded-xl text-xs">
-              <table className="w-full text-left text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px]">
-                  <tr>
-                    <th className="p-3">Date</th>
-                    <th className="p-3">Category</th>
-                    <th className="p-3">Purpose & Merchant</th>
-                    <th className="p-3">Amount (₹)</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/80">
-                  {(activeTrip.otherExpenses || []).map((o: any) => (
-                    <tr key={o.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-mono text-slate-400">{new Date(o.transaction_date).toLocaleDateString()}</td>
-                      <td className="p-3 font-bold text-amber-400">{o.category}</td>
-                      <td className="p-3">
-                        <div>{o.purpose}</div>
-                        {o.merchant && <span className="text-[10px] text-slate-500">{o.merchant}</span>}
-                      </td>
-                      <td className="p-3 font-mono font-bold text-emerald-400">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-3 text-right space-x-1">
-                        {o.receipt_url && (
-                          <a href={o.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
-                        )}
-                        {activeTrip.status === 'DRAFT' && (
-                          <button onClick={() => handleDeleteOtherChild(o.id)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {(activeTrip.otherExpenses || []).length === 0 && (
-                    <tr><td colSpan={5} className="p-6 text-center text-slate-500 italic">No other expenses added to this trip yet.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
 
-          {/* FINAL TRIP SUBMISSION BAR */}
+          {/* FINAL TRIP SUBMIT BAR */}
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-2xl">
             <div>
               <span className="text-xs text-slate-400 block font-medium">FINAL TRIP EXPENSE TOTAL</span>
@@ -951,7 +1033,7 @@ export const Expenses: React.FC = () => {
               {activeTrip.status === 'DRAFT' && (
                 <button
                   type="button"
-                  onClick={handleFinalSubmitTrip}
+                  onClick={handleOpenFinalSubmitModal}
                   className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-cyan-500/20"
                 >
                   Submit Trip Expense
@@ -962,12 +1044,11 @@ export const Expenses: React.FC = () => {
         </div>
       ) : (
         /* ---------------------------------------------------- */
-        /* LANDING VIEW — CARDS & EXPENSE LIST TABLES */
+        /* MAIN CLAIMS LANDING PAGE */
         /* ---------------------------------------------------- */
         <div className="space-y-6">
-          {/* Landing Expense Cards */}
+          {/* Landing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Business Expense Card */}
             <div
               onClick={() => handleOpenSingleModal('BUSINESS')}
               className="p-5 bg-gradient-to-br from-slate-900 to-cyan-950/40 border border-slate-800 hover:border-cyan-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
@@ -986,7 +1067,6 @@ export const Expenses: React.FC = () => {
               </button>
             </div>
 
-            {/* Local Travel Expense Card */}
             <div
               onClick={() => handleOpenSingleModal('LOCAL_TRAVEL')}
               className="p-5 bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-slate-800 hover:border-indigo-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
@@ -1005,7 +1085,6 @@ export const Expenses: React.FC = () => {
               </button>
             </div>
 
-            {/* Trip Expense Card — FULLY ACTIVE NOW */}
             <div
               onClick={handleOpenCreateTrip}
               className="p-5 bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-slate-800 hover:border-emerald-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
@@ -1025,7 +1104,7 @@ export const Expenses: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Tabs: Single Expenses vs Trip Expenses */}
+          {/* Main Table Tabs */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
@@ -1047,7 +1126,6 @@ export const Expenses: React.FC = () => {
                 </button>
               </div>
 
-              {/* Status Filter */}
               <div className="flex items-center gap-2 text-xs">
                 <select
                   value={statusFilter}
@@ -1056,14 +1134,13 @@ export const Expenses: React.FC = () => {
                 >
                   <option value="">All Statuses</option>
                   <option value="DRAFT">DRAFT</option>
-                  <option value="SUBMITTED">SUBMITTED</option>
+                  <option value="PENDING">PENDING</option>
                   <option value="APPROVED">APPROVED</option>
                   <option value="REJECTED">REJECTED</option>
                 </select>
               </div>
             </div>
 
-            {/* 1. SINGLE EXPENSES TABLE */}
             {claimCategoryTab === 'SINGLE_EXPENSES' && (
               <div className="overflow-x-auto border border-slate-800 rounded-xl">
                 <table className="w-full text-left text-xs text-slate-300">
@@ -1143,7 +1220,6 @@ export const Expenses: React.FC = () => {
               </div>
             )}
 
-            {/* 2. TRIP EXPENSES TABLE */}
             {claimCategoryTab === 'TRIP_EXPENSES' && (
               <div className="overflow-x-auto border border-slate-800 rounded-xl">
                 <table className="w-full text-left text-xs text-slate-300">
@@ -1219,10 +1295,10 @@ export const Expenses: React.FC = () => {
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* MODALS SECTION */}
+      {/* MODALS */}
       {/* ---------------------------------------------------- */}
 
-      {/* 1. BUSINESS & LOCAL TRAVEL SINGLE CLAIM MODAL */}
+      {/* 1. SINGLE CLAIM MODAL */}
       {showSingleModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
@@ -1231,9 +1307,7 @@ export const Expenses: React.FC = () => {
                 {singleClaimType === 'BUSINESS' ? <Building className="w-5 h-5 text-cyan-400" /> : <Navigation className="w-5 h-5 text-indigo-400" />}
                 <span>{singleClaimType === 'BUSINESS' ? 'Business Expense Claim' : 'Local Travel Expense Claim'}</span>
               </h3>
-              <button type="button" onClick={() => setShowSingleModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <button type="button" onClick={() => setShowSingleModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
@@ -1247,40 +1321,19 @@ export const Expenses: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Transaction Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={singleFormData.transactionDate}
-                    onChange={e => setSingleFormData({ ...singleFormData, transactionDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
+                  <input type="date" required value={singleFormData.transactionDate} onChange={e => setSingleFormData({ ...singleFormData, transactionDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
                 </div>
-
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Category *</label>
-                  <select
-                    required
-                    value={singleFormData.category}
-                    onChange={e => setSingleFormData({ ...singleFormData, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  >
-                    {(singleClaimType === 'BUSINESS' ? BUSINESS_CATEGORIES : LOCAL_TRAVEL_CATEGORIES).map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
+                  <select required value={singleFormData.category} onChange={e => setSingleFormData({ ...singleFormData, category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    {(singleClaimType === 'BUSINESS' ? BUSINESS_CATEGORIES : LOCAL_TRAVEL_CATEGORIES).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-slate-300 mb-1 font-medium">Purpose / Note *</label>
-                <textarea
-                  required
-                  rows={2}
-                  value={singleFormData.description}
-                  onChange={e => setSingleFormData({ ...singleFormData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Reason for expense, project context, or items purchased..."
-                />
+                <textarea required rows={2} value={singleFormData.description} onChange={e => setSingleFormData({ ...singleFormData, description: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Reason for expense..." />
               </div>
 
               {singleClaimType === 'LOCAL_TRAVEL' && (
@@ -1288,54 +1341,23 @@ export const Expenses: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-indigo-300 mb-1 font-medium">Mode of Transport *</label>
-                      <select
-                        required
-                        value={singleFormData.transportMode}
-                        onChange={e => setSingleFormData({ ...singleFormData, transportMode: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      >
-                        {TRANSPORT_MODES.map(mode => (
-                          <option key={mode} value={mode}>{mode}</option>
-                        ))}
+                      <select required value={singleFormData.transportMode} onChange={e => setSingleFormData({ ...singleFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                        {TRANSPORT_MODES.map(mode => <option key={mode} value={mode}>{mode}</option>)}
                       </select>
                     </div>
-
                     <div>
                       <label className="block text-indigo-300 mb-1 font-medium">Merchant *</label>
-                      <input
-                        type="text"
-                        required
-                        value={singleFormData.merchant}
-                        onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                        placeholder="Uber / Ola / Local Auto"
-                      />
+                      <input type="text" required value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Uber / Ola" />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-indigo-300 mb-1 font-medium">Start Location *</label>
-                      <input
-                        type="text"
-                        required
-                        value={singleFormData.startLocation}
-                        onChange={e => setSingleFormData({ ...singleFormData, startLocation: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                        placeholder="HQ Office"
-                      />
+                      <input type="text" required value={singleFormData.startLocation} onChange={e => setSingleFormData({ ...singleFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="HQ Office" />
                     </div>
-
                     <div>
                       <label className="block text-indigo-300 mb-1 font-medium">End Location *</label>
-                      <input
-                        type="text"
-                        required
-                        value={singleFormData.endLocation}
-                        onChange={e => setSingleFormData({ ...singleFormData, endLocation: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                        placeholder="Client Site"
-                      />
+                      <input type="text" required value={singleFormData.endLocation} onChange={e => setSingleFormData({ ...singleFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client Site" />
                     </div>
                   </div>
                 </div>
@@ -1344,53 +1366,25 @@ export const Expenses: React.FC = () => {
               {singleClaimType === 'BUSINESS' && (
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Merchant / Vendor</label>
-                  <input
-                    type="text"
-                    value={singleFormData.merchant}
-                    onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Amazon / Vendor Name"
-                  />
+                  <input type="text" value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Amazon / Vendor Name" />
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select
-                    value={singleFormData.currency}
-                    onChange={e => setSingleFormData({ ...singleFormData, currency: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  >
+                  <select value={singleFormData.currency} onChange={e => setSingleFormData({ ...singleFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
                     <option value="INR">INR (₹)</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    required
-                    value={singleFormData.amount}
-                    onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold"
-                    placeholder="5500.00"
-                  />
+                  <input type="number" step="0.01" min="0.01" required value={singleFormData.amount} onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="5500.00" />
                 </div>
-
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
-                  <select
-                    required
-                    value={singleFormData.bucket}
-                    onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  >
-                    {BUCKET_OPTIONS.map(b => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
+                  <select required value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
               </div>
@@ -1398,20 +1392,15 @@ export const Expenses: React.FC = () => {
               <div className="pt-2 border-t border-slate-800 space-y-2">
                 <label className="block text-slate-300 font-medium">Upload Attachment / Receipt</label>
                 {!attachment ? (
-                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 hover:border-cyan-500 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300 transition-all">
+                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
                     <Upload className="w-4 h-4" />
                     <span>Upload Receipt (PDF, JPG, PNG)</span>
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
                   </label>
                 ) : (
                   <div className="flex items-center justify-between p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-xs">
-                    <div className="flex items-center gap-2 truncate">
-                      <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="text-slate-200 truncate">{attachment.name}</span>
-                    </div>
-                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <span className="text-slate-200 truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 )}
               </div>
@@ -1433,11 +1422,9 @@ export const Expenses: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-400" />
-                <span>Create New Trip Expense</span>
+                <span>Create Trip Expense</span>
               </h3>
-              <button type="button" onClick={() => setShowCreateTripModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <button type="button" onClick={() => setShowCreateTripModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
@@ -1449,95 +1436,119 @@ export const Expenses: React.FC = () => {
 
             <form onSubmit={handleCreateTripDraft} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Trip Purpose *</label>
-                <textarea
-                  required
-                  rows={2}
-                  value={tripFormData.purpose}
-                  onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Client visit and business meetings"
-                />
+                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client visit and business meetings" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Start Point *</label>
-                  <input
-                    type="text"
-                    required
-                    value={tripFormData.startPoint}
-                    onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Delhi"
-                  />
+                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Delhi" />
                 </div>
-
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">End Point *</label>
-                  <input
-                    type="text"
-                    required
-                    value={tripFormData.endPoint}
-                    onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Mumbai"
-                  />
+                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Mumbai" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={tripFormData.startDate}
-                    onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
+                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
                 </div>
-
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={tripFormData.endDate}
-                    onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                  />
+                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                <select
-                  value={tripFormData.currency}
-                  onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                >
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
                   <option value="INR">INR (₹)</option>
                 </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowCreateTripModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow">Create Trip Draft</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow">Create Trip Expense</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 3. ADD TRAVEL EXPENSE CHILD MODAL */}
+      {/* EDIT PARENT TRIP DETAILS MODAL */}
+      {showEditTripModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <Edit className="w-5 h-5 text-cyan-400" />
+                <span>Edit Trip Details</span>
+              </h3>
+              <button type="button" onClick={() => setShowEditTripModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            {formError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateTripDraft} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Start Point *</label>
+                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">End Point *</label>
+                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
+                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
+                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <option value="INR">INR (₹)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowEditTripModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold shadow">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. ADD / EDIT TRAVEL EXPENSE CHILD MODAL */}
       {showTravelModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Plane className="w-5 h-5 text-indigo-400" />
-                <span>Add Travel Expense to Trip</span>
+                <span>{editingChild ? 'Edit Travel Expense' : 'Add Travel Expense'}</span>
               </h3>
               <button type="button" onClick={() => setShowTravelModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1592,21 +1603,21 @@ export const Expenses: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Distance (km)</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Distance (in km)</label>
                   <input type="number" step="0.1" min="0" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="1150.0" />
                 </div>
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" min="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="8000.00" />
+                  <input type="number" step="0.01" min="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="5000.00" />
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Ticket / Receipt</label>
+                <label className="block text-slate-300 font-medium">Upload Attachment</label>
                 {!attachment ? (
                   <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
                     <Upload className="w-4 h-4" />
-                    <span>Upload Attachment (PDF, JPG, PNG)</span>
+                    <span>Upload File (PDF, JPG, PNG)</span>
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
                   </label>
                 ) : (
@@ -1619,21 +1630,21 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">Submit Travel Expense</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">Save Travel Expense</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 4. ADD ACCOMMODATION EXPENSE CHILD MODAL */}
+      {/* 4. ADD / EDIT ACCOMMODATION EXPENSE CHILD MODAL */}
       {showAccomModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Hotel className="w-5 h-5 text-cyan-400" />
-                <span>Add Accommodation Expense to Trip</span>
+                <span>{editingChild ? 'Edit Accommodation Expense' : 'Add Accommodation Expense'}</span>
               </h3>
               <button type="button" onClick={() => setShowAccomModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1659,16 +1670,16 @@ export const Expenses: React.FC = () => {
 
               <div>
                 <label className="block text-slate-300 mb-1 font-medium">Accommodation Details *</label>
-                <textarea required rows={3} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Hotel Taj Mumbai — 3 nights accommodation for client visit" />
+                <textarea required rows={3} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Hotel Taj Mumbai stay" />
               </div>
 
               <div>
                 <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                <input type="number" step="0.01" min="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="12000.00" />
+                <input type="number" step="0.01" min="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="4000.00" />
               </div>
 
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Hotel Bill / Invoice</label>
+                <label className="block text-slate-300 font-medium">Upload Attachment</label>
                 {!attachment ? (
                   <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
                     <Upload className="w-4 h-4" />
@@ -1685,21 +1696,21 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold">Submit Accommodation Expense</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold">Save Accommodation Expense</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 5. ADD OTHER EXPENSE CHILD MODAL */}
+      {/* 5. ADD / EDIT OTHER EXPENSE CHILD MODAL */}
       {showOtherModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-amber-400" />
-                <span>Add Other Expense to Trip</span>
+                <span>{editingChild ? 'Edit Other Expense' : 'Add Other Expense'}</span>
               </h3>
               <button type="button" onClick={() => setShowOtherModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -1726,23 +1737,23 @@ export const Expenses: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
-                <input type="text" required value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Lunch during client meeting" />
+                <label className="block text-slate-300 mb-1 font-medium">Purpose / Notes *</label>
+                <input type="text" required value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client dinner" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Merchant</label>
-                  <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant / Local Store" />
+                  <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant" />
                 </div>
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" min="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="1500.00" />
+                  <input type="number" step="0.01" min="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="800.00" />
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Receipt</label>
+                <label className="block text-slate-300 font-medium">Upload Attachment</label>
                 {!attachment ? (
                   <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
                     <Upload className="w-4 h-4" />
@@ -1759,9 +1770,56 @@ export const Expenses: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold">Submit Other Expense</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold">Save Other Expense</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. FINAL SUBMIT TRIP CONFIRMATION MODAL */}
+      {showFinalSubmitModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <span>Confirm Final Trip Submission</span>
+              </h3>
+              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-300">Submit this trip expense for approval?</p>
+              
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Trip Purpose:</span>
+                  <span className="font-semibold text-slate-200">{activeTrip?.purpose}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Travel Expenses:</span>
+                  <span className="font-mono text-indigo-400 font-bold">{activeTrip?.travelExpenses?.length || 0} items</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Accommodation Expenses:</span>
+                  <span className="font-mono text-cyan-400 font-bold">{activeTrip?.accommodationExpenses?.length || 0} items</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Other Expenses:</span>
+                  <span className="font-mono text-amber-400 font-bold">{activeTrip?.otherExpenses?.length || 0} items</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-slate-800 text-sm">
+                  <span className="font-bold text-slate-300">Trip Total:</span>
+                  <span className="font-mono font-extrabold text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+              <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow">Submit</button>
+            </div>
           </div>
         </div>
       )}
