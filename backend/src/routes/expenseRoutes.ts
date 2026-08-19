@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { ExpenseRepository } from '../repositories/expenseRepository';
+import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import { authenticate } from '../middleware/authMiddleware';
 import { requireEmployee } from '../middleware/requireEmployee';
 import { requireRole } from '../middleware/rbacMiddleware';
@@ -18,8 +19,9 @@ const LOCAL_TRAVEL_CATEGORIES = [
 const TRANSPORT_MODES = [
   'Auto', 'Bus', 'Flight', 'Other', 'Public Transportation', 'Metro', 'Taxi', 'Train'
 ] as const;
+const OTHER_EXPENSE_CATEGORIES = ['Food', 'Other', 'Courier', 'Office Supply', 'Raw Material', 'Miscellaneous'] as const;
 
-// Validation Schema
+// Validation Schema for Business & Local Travel
 const createExpenseSchema = z.object({
   expenseType: z.enum(['BUSINESS', 'LOCAL_TRAVEL']),
   transactionDate: z.string().optional(),
@@ -83,6 +85,79 @@ const createExpenseSchema = z.object({
   }
 });
 
+// Trip Parent Schema
+const createTripSchema = z.object({
+  purpose: z.string().min(1, 'Purpose is required.'),
+  startPoint: z.string().min(1, 'Start Point is required.'),
+  endPoint: z.string().min(1, 'End Point is required.'),
+  startDate: z.string().min(1, 'Start Date is required.'),
+  endDate: z.string().min(1, 'End Date is required.'),
+  currency: z.string().default('INR')
+}).superRefine((data, ctx) => {
+  if (data.startDate && data.endDate && new Date(data.endDate) < new Date(data.startDate)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End Date cannot be before Start Date.',
+      path: ['endDate']
+    });
+  }
+});
+
+// Travel Child Schema
+const createTravelSchema = z.object({
+  startDate: z.string().min(1, 'Start Date is required.'),
+  endDate: z.string().min(1, 'End Date is required.'),
+  transportMode: z.enum(TRANSPORT_MODES, { errorMap: () => ({ message: 'Valid Mode of Transport is required.' }) }),
+  purpose: z.string().min(1, 'Purpose is required.'),
+  merchant: z.string().optional(),
+  startLocation: z.string().min(1, 'Start Location is required.'),
+  endLocation: z.string().min(1, 'End Location is required.'),
+  distanceKm: z.number().min(0, 'Distance cannot be negative.').optional().default(0),
+  currency: z.string().default('INR'),
+  amount: z.number().gt(0, 'Amount must be greater than 0.'),
+  attachmentName: z.string().optional(),
+  receiptUrl: z.string().optional()
+}).superRefine((data, ctx) => {
+  if (data.startDate && data.endDate && new Date(data.endDate) < new Date(data.startDate)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Travel End Date cannot be before Start Date.',
+      path: ['endDate']
+    });
+  }
+});
+
+// Accommodation Child Schema
+const createAccommodationSchema = z.object({
+  startDate: z.string().min(1, 'Start Date is required.'),
+  endDate: z.string().min(1, 'End Date is required.'),
+  currency: z.string().default('INR'),
+  amount: z.number().gt(0, 'Amount must be greater than 0.'),
+  accommodationDetails: z.string().min(1, 'Accommodation Details are required.'),
+  attachmentName: z.string().optional(),
+  receiptUrl: z.string().optional()
+}).superRefine((data, ctx) => {
+  if (data.startDate && data.endDate && new Date(data.endDate) < new Date(data.startDate)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Accommodation End Date cannot be before Start Date.',
+      path: ['endDate']
+    });
+  }
+});
+
+// Other Child Schema
+const createOtherSchema = z.object({
+  transactionDate: z.string().min(1, 'Transaction Date is required.'),
+  category: z.string().min(1, 'Category is required.'),
+  merchant: z.string().optional(),
+  currency: z.string().default('INR'),
+  amount: z.number().gt(0, 'Amount must be greater than 0.'),
+  purpose: z.string().min(1, 'Purpose is required.'),
+  attachmentName: z.string().optional(),
+  receiptUrl: z.string().optional()
+});
+
 // Personal self-service: My expenses
 router.get('/my', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -112,7 +187,8 @@ router.get('/categories', async (req: AuthenticatedRequest, res: Response, next:
         businessCategories: BUSINESS_CATEGORIES,
         localTravelCategories: LOCAL_TRAVEL_CATEGORIES,
         transportModes: TRANSPORT_MODES,
-        buckets: BUCKETS
+        buckets: BUCKETS,
+        otherCategories: OTHER_EXPENSE_CATEGORIES
       }
     });
   } catch (error) {
@@ -120,21 +196,258 @@ router.get('/categories', async (req: AuthenticatedRequest, res: Response, next:
   }
 });
 
-// Create new expense claim (DRAFT or SUBMITTED)
+// ============================================================
+// TRIP EXPENSE ENDPOINTS
+// ============================================================
+
+// 1. Create Parent Trip Draft
+router.post('/trips', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const validated = createTripSchema.parse(req.body);
+    const trip = await TripExpenseRepository.createTrip(organizationId, employeeId, validated);
+    return res.status(201).json({ success: true, data: { trip, message: 'Trip Expense draft created successfully.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 2. Get My Trip Claims
+router.get('/trips/my', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId;
+    if (!employeeId) {
+      return res.status(400).json({ success: false, error: 'Trip expenses require a linked employee profile.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+    }
+    const { status } = req.query;
+    const trips = await TripExpenseRepository.findByEmployee(organizationId, employeeId, { status: status as string });
+    return res.status(200).json({ success: true, data: { trips } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 3. Get Workforce Trip Claims (Approvers)
+router.get('/trips/workforce', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { status, page, limit } = req.query;
+    const result = await TripExpenseRepository.findAll(organizationId, {
+      status: status as string,
+      page: page ? parseInt(page as string, 10) : 1,
+      limit: limit ? parseInt(limit as string, 10) : 50
+    });
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 4. Get Single Trip Details with Children
+router.get('/trips/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const trip = await TripExpenseRepository.getTripById(req.params.id, organizationId);
+    if (!trip) {
+      return res.status(404).json({ success: false, error: 'Trip Expense not found.', code: 'TRIP_NOT_FOUND' });
+    }
+
+    const isOwner = req.user!.employeeId && req.user!.employeeId === trip.employee_id;
+    const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(req.user!.role);
+
+    if (!isOwner && !isManagerOrAdmin) {
+      return res.status(403).json({ success: false, error: 'Access denied to this trip expense.', code: 'FORBIDDEN' });
+    }
+
+    return res.status(200).json({ success: true, data: { trip } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 5. Update Trip Draft Details
+router.put('/trips/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const updated = await TripExpenseRepository.updateTripDraft(req.params.id, organizationId, employeeId, req.body);
+    if (!updated) {
+      return res.status(400).json({ success: false, error: 'Trip Expense not found or not in DRAFT status.', code: 'INVALID_TRIP_UPDATE' });
+    }
+    return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense draft updated successfully.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 6. Delete Trip Draft
+router.delete('/trips/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const deleted = await TripExpenseRepository.deleteTripDraft(req.params.id, organizationId, employeeId);
+    if (!deleted) {
+      return res.status(400).json({ success: false, error: 'Trip Expense not found or not in DRAFT status.', code: 'INVALID_TRIP_DELETE' });
+    }
+    return res.status(200).json({ success: true, data: { message: 'Trip Expense draft deleted successfully.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 7. Final Trip Submission (Enforces >= 1 child expense & calculates total)
+router.post('/trips/:id/submit', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const submittedTrip = await TripExpenseRepository.submitTrip(req.params.id, organizationId, employeeId);
+    return res.status(200).json({ success: true, data: { trip: submittedTrip, message: 'Trip Expense submitted successfully for approval.' } });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, error: error.message || 'Failed to submit Trip Expense.', code: 'TRIP_SUBMIT_ERROR' });
+  }
+});
+
+// 8. Approve Trip (Approver)
+router.put('/trips/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = await TripExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'APPROVED', req.user!.employeeId || undefined);
+    return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense approved successfully.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 9. Reject Trip (Approver)
+router.put('/trips/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const updated = await TripExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
+    return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense rejected.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ------------------------------------------------------------
+// CHILD EXPENSE ENDPOINTS (Travel, Accommodation, Other)
+// ------------------------------------------------------------
+
+// A. Travel Expenses
+router.post('/trips/:tripId/travel', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const validated = createTravelSchema.parse(req.body);
+    const item = await TripExpenseRepository.addTravelExpense(organizationId, employeeId, req.params.tripId, validated);
+    return res.status(201).json({ success: true, data: { item, message: 'Travel Expense added to Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.put('/trips/:tripId/travel/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const item = await TripExpenseRepository.updateTravelExpense(req.params.id, req.params.tripId, organizationId, employeeId, req.body);
+    return res.status(200).json({ success: true, data: { item, message: 'Travel Expense updated.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/trips/:tripId/travel/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    await TripExpenseRepository.deleteTravelExpense(req.params.id, req.params.tripId, organizationId, employeeId);
+    return res.status(200).json({ success: true, data: { message: 'Travel Expense removed from Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// B. Accommodation Expenses
+router.post('/trips/:tripId/accommodation', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const validated = createAccommodationSchema.parse(req.body);
+    const item = await TripExpenseRepository.addAccommodationExpense(organizationId, employeeId, req.params.tripId, validated);
+    return res.status(201).json({ success: true, data: { item, message: 'Accommodation Expense added to Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.put('/trips/:tripId/accommodation/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const item = await TripExpenseRepository.updateAccommodationExpense(req.params.id, req.params.tripId, organizationId, employeeId, req.body);
+    return res.status(200).json({ success: true, data: { item, message: 'Accommodation Expense updated.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/trips/:tripId/accommodation/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    await TripExpenseRepository.deleteAccommodationExpense(req.params.id, req.params.tripId, organizationId, employeeId);
+    return res.status(200).json({ success: true, data: { message: 'Accommodation Expense removed from Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// C. Other Expenses
+router.post('/trips/:tripId/other', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const validated = createOtherSchema.parse(req.body);
+    const item = await TripExpenseRepository.addOtherExpense(organizationId, employeeId, req.params.tripId, validated);
+    return res.status(201).json({ success: true, data: { item, message: 'Other Expense added to Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.put('/trips/:tripId/other/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    const item = await TripExpenseRepository.updateOtherExpense(req.params.id, req.params.tripId, organizationId, employeeId, req.body);
+    return res.status(200).json({ success: true, data: { item, message: 'Other Expense updated.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/trips/:tripId/other/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const employeeId = req.user!.employeeId!;
+    await TripExpenseRepository.deleteOtherExpense(req.params.id, req.params.tripId, organizationId, employeeId);
+    return res.status(200).json({ success: true, data: { message: 'Other Expense removed from Trip.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ============================================================
+// BUSINESS & LOCAL TRAVEL SINGLE EXPENSE ENDPOINTS
+// ============================================================
+
+// Create new single expense claim (DRAFT or SUBMITTED)
 router.post('/', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
     
-    // Explicit rejection of TRIP expense
-    if (req.body.expenseType === 'TRIP') {
-      return res.status(400).json({
-        success: false,
-        error: 'Trip Expense is coming soon and not active in Phase 1.',
-        code: 'TRIP_EXPENSE_UNSUPPORTED'
-      });
-    }
-
     const validatedData = createExpenseSchema.parse(req.body);
     const expense = await ExpenseRepository.create(organizationId, employeeId, validatedData as any);
     
@@ -148,7 +461,7 @@ router.post('/', requireEmployee, async (req: AuthenticatedRequest, res: Respons
   }
 });
 
-// Get single expense details by ID (Security: Owner or Admin/Manager)
+// Get single expense details by ID
 router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
@@ -158,7 +471,6 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
       return res.status(404).json({ success: false, error: 'Expense claim not found.', code: 'EXPENSE_NOT_FOUND' });
     }
 
-    // Security check: must be owner OR have manager/admin role
     const isOwner = req.user!.employeeId && req.user!.employeeId === expense.employee_id;
     const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(req.user!.role);
 
@@ -172,7 +484,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
   }
 });
 
-// Update draft expense
+// Update draft single expense
 router.put('/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
@@ -187,7 +499,7 @@ router.put('/:id', requireEmployee, async (req: AuthenticatedRequest, res: Respo
   }
 });
 
-// Submit draft expense
+// Submit draft single expense
 router.post('/:id/submit', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
@@ -221,7 +533,7 @@ router.get('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), as
   }
 });
 
-// Approve claim (Requires Admin/Manager role)
+// Approve single claim (Requires Admin/Manager role)
 router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const updated = await ExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'APPROVED', req.user!.employeeId || undefined);
@@ -231,7 +543,7 @@ router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MA
   }
 });
 
-// Reject claim (Requires Admin/Manager role)
+// Reject single claim (Requires Admin/Manager role)
 router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const updated = await ExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
