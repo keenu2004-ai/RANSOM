@@ -12,6 +12,12 @@ router.use(authenticate);
 router.get('/today', AttendanceController.getToday);
 router.post('/check-in', requireEmployee, AttendanceController.checkIn);
 router.post('/check-out', requireEmployee, AttendanceController.checkOut);
+router.post('/break', requireEmployee, AttendanceController.updateBreak);
+
+// Attendance Regularization endpoints
+router.post('/regularize', requireEmployee, AttendanceController.applyRegularization);
+router.get('/regularize', AttendanceController.getRegularizations);
+router.put('/regularize/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.processRegularization);
 
 // Administrative / Overview endpoints (Do NOT require employeeId)
 router.get('/locations', AttendanceController.locations);

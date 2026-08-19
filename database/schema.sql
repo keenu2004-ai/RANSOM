@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS branches (
     name VARCHAR(255) NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
     location VARCHAR(255) NOT NULL,
+    latitude NUMERIC(10, 6) DEFAULT 12.971598,
+    longitude NUMERIC(10, 6) DEFAULT 77.594566,
+    geofence_radius_meters INT DEFAULT 500,
+    city VARCHAR(100),
+    state VARCHAR(100),
     is_headquarters BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -177,6 +182,14 @@ CREATE TABLE IF NOT EXISTS attendance (
     date DATE NOT NULL,
     check_in TIMESTAMPTZ,
     check_out TIMESTAMPTZ,
+    punch_in_lat NUMERIC(10, 6),
+    punch_in_lng NUMERIC(10, 6),
+    punch_out_lat NUMERIC(10, 6),
+    punch_out_lng NUMERIC(10, 6),
+    break_duration_mins INT DEFAULT 0,
+    shift_name VARCHAR(100) DEFAULT 'General Shift',
+    is_late BOOLEAN DEFAULT FALSE,
+    is_overtime BOOLEAN DEFAULT FALSE,
     status VARCHAR(50) NOT NULL DEFAULT 'PRESENT' CHECK (status IN ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE')),
     working_hours NUMERIC(4, 2) DEFAULT 0.00,
     late_minutes INT DEFAULT 0,
@@ -186,6 +199,22 @@ CREATE TABLE IF NOT EXISTS attendance (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_employee_attendance_date UNIQUE (employee_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS attendance_regularizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    attendance_date DATE NOT NULL,
+    requested_punch_in TIMESTAMPTZ,
+    requested_punch_out TIMESTAMPTZ,
+    reason TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    approved_by UUID REFERENCES employees(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS holidays (
