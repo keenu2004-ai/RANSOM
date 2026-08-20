@@ -12,7 +12,7 @@ ALTER TABLE attendance ADD COLUMN IF NOT EXISTS punch_out_accuracy NUMERIC(8, 2)
 -- 3. Audit-Safe Data Remediation: Resolve legacy duplicate open sessions (check_out IS NULL)
 -- Keeps the newest active session (highest check_in) open.
 -- For older duplicate open sessions: sets check_out = check_in (working_hours = 0.00) without fabricating false work hours.
--- Inserts audit log entries for every remediated duplicate record.
+-- Inserts audit log entries with user_id = NULL (system event) for every remediated duplicate record.
 WITH active_ranks AS (
   SELECT id, organization_id, employee_id, check_in,
          ROW_NUMBER() OVER (
@@ -36,17 +36,17 @@ remediated_rows AS (
 INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
 SELECT 
   organization_id,
-  '00000000-0000-0000-0000-000000000000',
+  NULL,
   'ATTENDANCE_DUPLICATE_AUTO_CLOSED',
   'attendance',
   'AttendanceSession',
   id,
-  json_build_object(
+  jsonb_build_object(
     'reason', 'Duplicate open session auto-closed during migration 011',
     'check_in', check_in,
     'check_out', check_in,
     'working_hours', 0.00
-  )::text
+  )
 FROM remediated_rows;
 
 -- 4. Enforce maximum of ONE active open session (check_out IS NULL) per employee
