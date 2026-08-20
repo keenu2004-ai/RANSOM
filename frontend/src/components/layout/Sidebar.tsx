@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'] },
     { label: 'Audit Logs', path: '/audit-logs', icon: History, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { label: 'Settings', path: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { label: 'Settings', path: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
     { label: 'Admin Control', path: '/admin-control', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN'] }
   ];
 

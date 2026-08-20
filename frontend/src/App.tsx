@@ -61,7 +61,7 @@ export const App: React.FC = () => {
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER']}><Reports /></ProtectedRoute>} />
           <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><AuditLogs /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Settings /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/admin-control" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><AdminControl /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

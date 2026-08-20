@@ -11,9 +11,11 @@ interface SessionData {
   punch_in_lat: number | string | null;
   punch_in_lng: number | string | null;
   punch_in_accuracy: number | string | null;
+  punch_in_location_name?: string | null;
   punch_out_lat: number | string | null;
   punch_out_lng: number | string | null;
   punch_out_accuracy: number | string | null;
+  punch_out_location_name?: string | null;
   break_duration_mins: number;
   working_hours: number | string;
   status: string;
@@ -305,15 +307,17 @@ export const Attendance: React.FC = () => {
                             <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-[10px] font-bold">IN PROGRESS</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[11px] text-slate-400">
-                          {formatCoord(s.punch_in_lat) !== 'N/A' && formatCoord(s.punch_in_lng) !== 'N/A'
-                            ? `${formatCoord(s.punch_in_lat)}, ${formatCoord(s.punch_in_lng)}`
-                            : 'N/A'}
+                        <td className="px-4 py-3 text-[11px] text-slate-300">
+                          {s.punch_in_location_name && <div className="font-semibold text-slate-200">{s.punch_in_location_name}</div>}
+                          <div className="font-mono text-[10px] text-slate-400">
+                            {formatCoord(s.punch_in_lat) !== 'N/A' ? `${formatCoord(s.punch_in_lat)}, ${formatCoord(s.punch_in_lng)} (${formatAccuracy(s.punch_in_accuracy)})` : 'N/A'}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-mono text-[11px] text-slate-400">
-                          {formatCoord(s.punch_out_lat) !== 'N/A' && formatCoord(s.punch_out_lng) !== 'N/A'
-                            ? `${formatCoord(s.punch_out_lat)}, ${formatCoord(s.punch_out_lng)}`
-                            : 'N/A'}
+                        <td className="px-4 py-3 text-[11px] text-slate-300">
+                          {s.punch_out_location_name && <div className="font-semibold text-slate-200">{s.punch_out_location_name}</div>}
+                          <div className="font-mono text-[10px] text-slate-400">
+                            {formatCoord(s.punch_out_lat) !== 'N/A' ? `${formatCoord(s.punch_out_lat)}, ${formatCoord(s.punch_out_lng)} (${formatAccuracy(s.punch_out_accuracy)})` : 'N/A'}
+                          </div>
                         </td>
                         <td className="px-4 py-3 font-mono font-semibold text-slate-200">
                           {s.working_hours ? `${s.working_hours} hrs` : '--'}
@@ -446,6 +450,11 @@ export const Attendance: React.FC = () => {
                   <MapPin className="w-4 h-4" />
                   <span>Check-In GPS Location</span>
                 </div>
+                {selectedSession.punch_in_location_name && (
+                  <div className="text-slate-200 font-semibold bg-emerald-950/50 p-2 rounded-lg border border-emerald-800/40">
+                    {selectedSession.punch_in_location_name}
+                  </div>
+                )}
                 <div className="text-slate-300">Timestamp: <span className="font-mono text-slate-200">{selectedSession.check_in ? new Date(selectedSession.check_in).toLocaleString() : 'N/A'}</span></div>
                 <div className="text-slate-300">Latitude: <span className="font-mono text-cyan-400">{selectedSession.punch_in_lat || 'N/A'}</span></div>
                 <div className="text-slate-300">Longitude: <span className="font-mono text-cyan-400">{selectedSession.punch_in_lng || 'N/A'}</span></div>
@@ -458,6 +467,11 @@ export const Attendance: React.FC = () => {
                   <MapPin className="w-4 h-4" />
                   <span>Check-Out GPS Location</span>
                 </div>
+                {selectedSession.punch_out_location_name && (
+                  <div className="text-slate-200 font-semibold bg-rose-950/50 p-2 rounded-lg border border-rose-800/40">
+                    {selectedSession.punch_out_location_name}
+                  </div>
+                )}
                 <div className="text-slate-300">Timestamp: <span className="font-mono text-slate-200">{selectedSession.check_out ? new Date(selectedSession.check_out).toLocaleString() : 'N/A'}</span></div>
                 <div className="text-slate-300">Latitude: <span className="font-mono text-cyan-400">{selectedSession.punch_out_lat || 'N/A'}</span></div>
                 <div className="text-slate-300">Longitude: <span className="font-mono text-cyan-400">{selectedSession.punch_out_lng || 'N/A'}</span></div>
