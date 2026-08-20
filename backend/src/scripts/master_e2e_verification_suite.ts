@@ -3,6 +3,8 @@ import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { CalendarRepository } from '../repositories/calendarRepository';
 import { AssetRepository } from '../repositories/assetRepository';
 import { TimesheetRepository } from '../repositories/timesheetRepository';
+import { ExpenseRepository } from '../repositories/expenseRepository';
+import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import fs from 'fs';
 import path from 'path';
 
@@ -252,11 +254,145 @@ async function runMasterE2EVerificationSuite() {
 
     // ─── 7. EXPENSES & TRIP EXPENSES ──────────────────────────────────────────
     console.log('\n[TEST 7] Expense Claims & Parent/Child Trip Expense Schema...');
-    const expCount = await query('SELECT COUNT(*)::int as count FROM expenses WHERE organization_id = $1', [orgId]);
-    runStep('Expenses query succeeds', typeof expCount.rows[0].count === 'number');
+    
+    // Business Expense Creation without attachment
+    const bizExpNoAttach = await ExpenseRepository.create(orgId, emp.id, {
+      expenseType: 'BUSINESS',
+      category: 'Office Supply',
+      amount: 1500,
+      bucket: 'Primary',
+      description: 'Stationery for office work'
+    });
+    runStep('Business Expense without attachment created successfully', !!bizExpNoAttach.id && bizExpNoAttach.expense_type === 'BUSINESS');
 
-    const tripCount = await query('SELECT COUNT(*)::int as count FROM trip_expenses WHERE organization_id = $1', [orgId]);
-    runStep('Trip expenses query succeeds', typeof tripCount.rows[0].count === 'number');
+    // Business Expense Creation with attachment
+    const bizExpWithAttach = await ExpenseRepository.create(orgId, emp.id, {
+      expenseType: 'BUSINESS',
+      category: 'Courier',
+      amount: 850,
+      bucket: 'Primary',
+      description: 'Document dispatch courier',
+      attachmentName: 'courier_receipt.pdf',
+      receiptUrl: '/uploads/courier_receipt.pdf'
+    });
+    runStep('Business Expense with attachment created and attachment reference preserved', !!bizExpWithAttach.id && bizExpWithAttach.receipt_url === '/uploads/courier_receipt.pdf');
+
+    // Local Travel Creation without attachment
+    const localTravelNoAttach = await ExpenseRepository.create(orgId, emp.id, {
+      expenseType: 'LOCAL_TRAVEL',
+      category: 'Taxi',
+      transportMode: 'Taxi',
+      merchant: 'Uber India',
+      startLocation: 'Sector 62 Noida',
+      endLocation: 'Connaught Place Delhi',
+      amount: 650,
+      bucket: 'Primary',
+      description: 'Client meeting local travel'
+    });
+    runStep('Local Travel Expense created with transport mode, start & end locations', !!localTravelNoAttach.id && localTravelNoAttach.transport_mode === 'Taxi');
+
+    // Local Travel Creation with attachment
+    const localTravelWithAttach = await ExpenseRepository.create(orgId, emp.id, {
+      expenseType: 'LOCAL_TRAVEL',
+      category: 'Metro Train',
+      transportMode: 'Metro',
+      merchant: 'DMRC',
+      startLocation: 'Noida City Centre',
+      endLocation: 'Rajiv Chowk',
+      amount: 120,
+      bucket: 'Primary',
+      description: 'Metro fare for client visit',
+      attachmentName: 'metro_ticket.png',
+      receiptUrl: '/uploads/metro_ticket.png'
+    });
+    runStep('Local Travel Expense with attachment created and receipt URL preserved', !!localTravelWithAttach.id && localTravelWithAttach.receipt_url === '/uploads/metro_ticket.png');
+
+    // Trip Expense Workflow: Parent Creation
+    const tripParent = await TripExpenseRepository.createTrip(orgId, emp.id, {
+      purpose: 'Annual Branch Audit & Partner Conference',
+      startPoint: 'New Delhi',
+      endPoint: 'Mumbai',
+      startDate: todayStr,
+      endDate: todayStr
+    });
+    runStep('Parent Trip Expense created in DRAFT status', !!tripParent.id && tripParent.status === 'DRAFT' && Number(tripParent.total_amount) === 0);
+
+    // Add 2 Travel Children
+    const travel1 = await TripExpenseRepository.addTravelExpense(orgId, emp.id, tripParent.id, {
+      startDate: todayStr,
+      endDate: todayStr,
+      transportMode: 'Flight',
+      purpose: 'Outbound flight to Mumbai',
+      merchant: 'IndiGo Airlines',
+      startLocation: 'IGI Airport Delhi',
+      endLocation: 'BOM Airport Mumbai',
+      amount: 6500
+    });
+
+    const travel2 = await TripExpenseRepository.addTravelExpense(orgId, emp.id, tripParent.id, {
+      startDate: todayStr,
+      endDate: todayStr,
+      transportMode: 'Taxi',
+      purpose: 'Airport transfer to hotel',
+      merchant: 'Uber Mumbai',
+      startLocation: 'BOM Airport Mumbai',
+      endLocation: 'Taj Lands End',
+      amount: 1200
+    });
+    runStep('Added 2 Travel child expenses to parent trip', !!travel1.id && !!travel2.id);
+
+    // Add Accommodation Child
+    const accom1 = await TripExpenseRepository.addAccommodationExpense(orgId, emp.id, tripParent.id, {
+      startDate: todayStr,
+      endDate: todayStr,
+      amount: 4500,
+      accommodationDetails: 'Taj Lands End - Executive Suite'
+    });
+    runStep('Added Accommodation child expense to parent trip', !!accom1.id);
+
+    // Add Other Child
+    const other1 = await TripExpenseRepository.addOtherExpense(orgId, emp.id, tripParent.id, {
+      transactionDate: todayStr,
+      category: 'Food',
+      merchant: 'Taj Lands End Dining',
+      amount: 1800,
+      purpose: 'Client dinner meeting'
+    });
+    runStep('Added Other child expense to parent trip', !!other1.id);
+
+    // Verify Server-Calculated Total (6500 + 1200 + 4500 + 1800 = 14000)
+    let fetchedTrip = await TripExpenseRepository.getTripById(tripParent.id, orgId);
+    runStep('Server-calculated trip total equals sum of children (₹14,000)', Number(fetchedTrip.total_amount) === 14000);
+
+    // Delete Travel Child 2 & Verify Total Recalculation (14000 - 1200 = 12800)
+    await TripExpenseRepository.deleteTravelExpense(travel2.id, tripParent.id, orgId, emp.id);
+    fetchedTrip = await TripExpenseRepository.getTripById(tripParent.id, orgId);
+    runStep('Deleting travel child recalculates server total downwards (₹12,800)', Number(fetchedTrip.total_amount) === 12800);
+
+    // Final Trip Submission -> PENDING
+    const submittedTrip = await TripExpenseRepository.submitTrip(tripParent.id, orgId, emp.id);
+    runStep('Final trip submission transitions status from DRAFT to PENDING', submittedTrip.status === 'PENDING');
+
+    // Attempt to add child expense to PENDING trip -> Rejected
+    try {
+      await TripExpenseRepository.addOtherExpense(orgId, emp.id, tripParent.id, {
+        transactionDate: todayStr,
+        category: 'Food',
+        amount: 500,
+        purpose: 'Post-submission meal'
+      });
+      runStep('Child expense addition to PENDING trip rejected', false);
+    } catch (err: any) {
+      runStep('Child expense addition to PENDING trip correctly rejected', err.message.includes('non-draft'));
+    }
+
+    // Cleanup Test Expense Records
+    await query('DELETE FROM trip_other_expenses WHERE trip_expense_id = $1', [tripParent.id]);
+    await query('DELETE FROM trip_accommodation_expenses WHERE trip_expense_id = $1', [tripParent.id]);
+    await query('DELETE FROM trip_travel_expenses WHERE trip_expense_id = $1', [tripParent.id]);
+    await query('DELETE FROM trip_expenses WHERE id = $1', [tripParent.id]);
+    await query('DELETE FROM expenses WHERE id IN ($1, $2, $3, $4)', [bizExpNoAttach.id, bizExpWithAttach.id, localTravelNoAttach.id, localTravelWithAttach.id]);
+
     summary['7. Expense & Trip Claims'] = 'PASS';
 
 
