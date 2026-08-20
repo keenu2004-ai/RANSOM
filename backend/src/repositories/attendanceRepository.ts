@@ -108,7 +108,7 @@ export class AttendanceRepository {
       ]);
       return res.rows[0];
     } catch (err: any) {
-      if (err.message && (err.message.includes('idx_attendance_active_session') || err.message.includes('unique'))) {
+      if (err.code === '23505' || (err.message && (err.message.includes('idx_attendance_active_session') || err.message.includes('unique')))) {
         throw new Error('Employee has an active check-in session. Please check out before checking in again.');
       }
       throw err;

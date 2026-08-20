@@ -479,7 +479,7 @@ CREATE INDEX IF NOT EXISTS idx_users_org_email ON users(organization_id, email);
 CREATE INDEX IF NOT EXISTS idx_employees_org_code ON employees(organization_id, employee_code);
 CREATE INDEX IF NOT EXISTS idx_employees_user ON employees(user_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_org_emp_date ON attendance(organization_id, employee_id, date);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_active_session ON attendance(organization_id, employee_id) WHERE check_out IS NULL;
+CREATE INDEX IF NOT EXISTS idx_attendance_org_emp ON attendance(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_leave_requests_org_emp ON leave_requests(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_org_emp ON expenses(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_timesheets_org_emp_date ON timesheets(organization_id, employee_id, date);
