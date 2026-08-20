@@ -21,7 +21,7 @@ try {
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.error('❌ ERROR: DATABASE_URL environment variable is missing.');
+  process.stderr.write('❌ ERROR: DATABASE_URL environment variable is missing.\n');
   process.exit(1);
 }
 
@@ -32,10 +32,23 @@ const pool = new Pool({
     : { rejectUnauthorized: false }
 });
 
+function logSync(msg) {
+  process.stdout.write(msg + '\n');
+}
+
+function errorSync(msg) {
+  process.stderr.write(msg + '\n');
+}
+
 async function runMigrations() {
+  logSync('🔄 Connecting to PostgreSQL database...');
+  logSync(`[DB] CWD: ${process.cwd()}`);
+  logSync(`[DB] __dirname: ${__dirname}`);
+
   const client = await pool.connect();
   try {
-    console.log('🔄 Connecting to PostgreSQL database...');
+    const connTest = await client.query('SELECT 1 as conn_test');
+    logSync(`[DB] PostgreSQL connection test passed (SELECT 1 = ${connTest.rows[0].conn_test})`);
     
     // Ensure migrations tracking table exists
     await client.query(`
@@ -48,28 +61,44 @@ async function runMigrations() {
 
     // 1. Execute Baseline Schema DDL Statement by Statement
     const schemaPath = path.resolve(__dirname, '../schema.sql');
-    console.log(`[DB] Schema path: ${schemaPath}`);
+    logSync(`[DB] Schema path: ${schemaPath}`);
 
     if (fs.existsSync(schemaPath)) {
-      console.log('📜 Executing baseline schema DDL (schema.sql)...');
+      const stats = fs.statSync(schemaPath);
+      logSync(`[DB] Schema file size: ${stats.size} bytes`);
       const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      logSync(`[DB] Schema snippet: ${schemaSql.slice(0, 100).replace(/\n/g, ' ')}`);
+
+      logSync('📜 Executing baseline schema DDL (schema.sql)...');
       const statements = splitSqlStatements(schemaSql);
+      logSync(`[DB] Parsed schema statements: ${statements.length}`);
 
       for (let idx = 0; idx < statements.length; idx++) {
         const stmt = statements[idx];
-        if (!hasExecutableSql(stmt.sql)) continue;
+        if (!hasExecutableSql(stmt.sql)) {
+          logSync(`[DB] Skipping non-executable stmt #${idx + 1}`);
+          continue;
+        }
+
+        const preview = stmt.sql.split('\n').filter(l => l.trim() && !l.trim().startsWith('--'))[0] || stmt.sql;
+        logSync(`[DB] Executing stmt #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine}): ${preview.slice(0, 120)}`);
 
         try {
           await client.query(stmt.sql);
         } catch (err) {
-          console.error('\n❌ FAILED SCHEMA STATEMENT:');
-          console.error(`Statement #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine})`);
-          console.error(`Preview: ${stmt.sql.slice(0, 200)}`);
-          console.error(`PostgreSQL Error: ${err.message}\n`);
+          errorSync('\n❌ FAILED SCHEMA STATEMENT:');
+          errorSync(`Statement #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine})`);
+          errorSync(`Preview: ${stmt.sql.slice(0, 200)}`);
+          errorSync(`PostgreSQL Error: ${err.message}`);
+          errorSync(`Error Code: ${err.code || 'N/A'}`);
+          errorSync(`Error Detail: ${err.detail || 'N/A'}`);
+          errorSync(`Error Hint: ${err.hint || 'N/A'}`);
+          errorSync(`Error Position: ${err.position || 'N/A'}`);
+          errorSync(`Error Stack: ${err.stack || 'N/A'}\n`);
           throw err;
         }
       }
-      console.log('✅ Baseline schema loaded successfully.');
+      logSync('✅ Baseline schema loaded successfully.');
     }
 
     // 2. Read Migrations Directory & Execute Pending Migrations
@@ -86,7 +115,7 @@ async function runMigrations() {
         );
 
         if (res.rows.length === 0) {
-          console.log(`🚀 Executing migration: ${file}...`);
+          logSync(`🚀 Executing migration: ${file}...`);
           const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
           const migrationStmts = splitSqlStatements(migrationSql);
 
@@ -101,21 +130,25 @@ async function runMigrations() {
               [file]
             );
             await client.query('COMMIT');
-            console.log(`✅ Applied migration: ${file}`);
+            logSync(`✅ Applied migration: ${file}`);
           } catch (err) {
             await client.query('ROLLBACK');
-            console.error(`❌ Migration failed on file ${file}:`, err.message);
+            errorSync(`❌ Migration failed on file ${file}: ${err.message}`);
+            errorSync(`Error Code: ${err.code || 'N/A'}`);
+            errorSync(`Error Detail: ${err.detail || 'N/A'}`);
+            errorSync(`Error Stack: ${err.stack || 'N/A'}`);
             throw err;
           }
         } else {
-          console.log(`⏭️ Migration already applied: ${file}`);
+          logSync(`⏭️ Migration already applied: ${file}`);
         }
       }
     }
 
-    console.log('🎉 All PostgreSQL database migrations executed successfully!');
+    logSync('🎉 All PostgreSQL database migrations executed successfully!');
   } catch (error) {
-    console.error('❌ MIGRATION ERROR:', error.message);
+    errorSync(`❌ MIGRATION ERROR: ${error.message}`);
+    if (error.stack) errorSync(`Stack: ${error.stack}`);
     throw error;
   } finally {
     client.release();
@@ -124,7 +157,10 @@ async function runMigrations() {
 }
 
 if (require.main === module) {
-  runMigrations().catch(() => process.exit(1));
+  runMigrations().catch((err) => {
+    errorSync(`FATAL: runMigrations CLI failed: ${err.message}`);
+    process.exit(1);
+  });
 }
 
 module.exports = { runMigrations };

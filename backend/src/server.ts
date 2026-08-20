@@ -132,7 +132,8 @@ if (require.main === module) {
         await runMigrations();
         await runSeed(true);
       } catch (err: any) {
-        console.error('❌ FATAL: Database initialization failed:', err.message);
+        process.stderr.write(`❌ FATAL: Database initialization failed: ${err.message}\n`);
+        if (err.stack) process.stderr.write(`Stack: ${err.stack}\n`);
         process.exit(1);
       }
     }
@@ -147,7 +148,8 @@ if (require.main === module) {
   };
 
   startServer().catch((err: any) => {
-    console.error('❌ FATAL: Server startup error:', err.message);
+    process.stderr.write(`❌ FATAL: Server startup error: ${err.message}\n`);
+    if (err.stack) process.stderr.write(`Stack: ${err.stack}\n`);
     process.exit(1);
   });
 }
