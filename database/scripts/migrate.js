@@ -41,9 +41,8 @@ function errorSync(msg) {
 }
 
 async function runMigrations() {
+  const startTime = Date.now();
   logSync('🔄 Connecting to PostgreSQL database...');
-  logSync(`[DB] CWD: ${process.cwd()}`);
-  logSync(`[DB] __dirname: ${__dirname}`);
 
   const client = await pool.connect();
   try {
@@ -59,46 +58,52 @@ async function runMigrations() {
       );
     `);
 
-    // 1. Execute Baseline Schema DDL Statement by Statement
+    // Inspect existing applied migrations
+    const appliedRes = await client.query('SELECT name FROM schema_migrations ORDER BY id ASC');
+    const appliedSet = new Set(appliedRes.rows.map(r => r.name));
+    
+    // Inspect core application tables existence in public schema
+    const tablesRes = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name IN ('organizations', 'users', 'employees', 'attendance')
+    `);
+    const coreTablesCount = tablesRes.rows.length;
+
+    logSync(`[DB] Migration status check: ${appliedSet.size} applied migration(s), ${coreTablesCount} core table(s) present.`);
+
+    // Baseline schema.sql should ONLY run on a completely fresh, uninitialized database
+    const shouldRunBaselineSchema = (appliedSet.size === 0 && coreTablesCount === 0);
+
     const schemaPath = path.resolve(__dirname, '../schema.sql');
-    logSync(`[DB] Schema path: ${schemaPath}`);
 
-    if (fs.existsSync(schemaPath)) {
-      const stats = fs.statSync(schemaPath);
-      logSync(`[DB] Schema file size: ${stats.size} bytes`);
-      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      logSync(`[DB] Schema snippet: ${schemaSql.slice(0, 100).replace(/\n/g, ' ')}`);
+    if (shouldRunBaselineSchema) {
+      if (fs.existsSync(schemaPath)) {
+        const schemaStartTime = Date.now();
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        logSync('📜 Fresh database detected: Executing baseline schema DDL (schema.sql)...');
+        const statements = splitSqlStatements(schemaSql);
+        logSync(`[DB] Parsed ${statements.length} baseline schema statement(s).`);
 
-      logSync('📜 Executing baseline schema DDL (schema.sql)...');
-      const statements = splitSqlStatements(schemaSql);
-      logSync(`[DB] Parsed schema statements: ${statements.length}`);
+        for (let idx = 0; idx < statements.length; idx++) {
+          const stmt = statements[idx];
+          if (!hasExecutableSql(stmt.sql)) continue;
 
-      for (let idx = 0; idx < statements.length; idx++) {
-        const stmt = statements[idx];
-        if (!hasExecutableSql(stmt.sql)) {
-          logSync(`[DB] Skipping non-executable stmt #${idx + 1}`);
-          continue;
+          try {
+            await client.query(stmt.sql);
+          } catch (err) {
+            errorSync('\n❌ FAILED SCHEMA STATEMENT:');
+            errorSync(`Statement #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine})`);
+            errorSync(`Preview: ${stmt.sql.slice(0, 200)}`);
+            errorSync(`PostgreSQL Error: ${err.message}`);
+            errorSync(`Error Code: ${err.code || 'N/A'}`);
+            throw err;
+          }
         }
-
-        const preview = stmt.sql.split('\n').filter(l => l.trim() && !l.trim().startsWith('--'))[0] || stmt.sql;
-        logSync(`[DB] Executing stmt #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine}): ${preview.slice(0, 120)}`);
-
-        try {
-          await client.query(stmt.sql);
-        } catch (err) {
-          errorSync('\n❌ FAILED SCHEMA STATEMENT:');
-          errorSync(`Statement #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine})`);
-          errorSync(`Preview: ${stmt.sql.slice(0, 200)}`);
-          errorSync(`PostgreSQL Error: ${err.message}`);
-          errorSync(`Error Code: ${err.code || 'N/A'}`);
-          errorSync(`Error Detail: ${err.detail || 'N/A'}`);
-          errorSync(`Error Hint: ${err.hint || 'N/A'}`);
-          errorSync(`Error Position: ${err.position || 'N/A'}`);
-          errorSync(`Error Stack: ${err.stack || 'N/A'}\n`);
-          throw err;
-        }
+        logSync(`✅ Baseline schema loaded successfully in ${Date.now() - schemaStartTime} ms.`);
       }
-      logSync('✅ Baseline schema loaded successfully.');
+    } else {
+      logSync(`⏭️ Skipping baseline schema DDL (schema.sql) — database already initialized.`);
     }
 
     // 2. Read Migrations Directory & Execute Pending Migrations
@@ -108,44 +113,41 @@ async function runMigrations() {
         .filter(file => file.endsWith('.sql'))
         .sort();
 
-      for (const file of files) {
-        const res = await client.query(
-          'SELECT name FROM schema_migrations WHERE name = $1',
-          [file]
-        );
+      const appliedList = files.filter(f => appliedSet.has(f));
+      const pendingList = files.filter(f => !appliedSet.has(f));
 
-        if (res.rows.length === 0) {
-          logSync(`🚀 Executing migration: ${file}...`);
-          const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-          const migrationStmts = splitSqlStatements(migrationSql);
+      logSync(`[DB] Applied migrations (${appliedList.length}): ${appliedList.join(', ') || 'None'}`);
+      logSync(`[DB] Pending migrations (${pendingList.length}): ${pendingList.join(', ') || 'None'}`);
 
-          await client.query('BEGIN');
-          try {
-            for (const mStmt of migrationStmts) {
-              if (!hasExecutableSql(mStmt.sql)) continue;
-              await client.query(mStmt.sql);
-            }
-            await client.query(
-              'INSERT INTO schema_migrations (name) VALUES ($1)',
-              [file]
-            );
-            await client.query('COMMIT');
-            logSync(`✅ Applied migration: ${file}`);
-          } catch (err) {
-            await client.query('ROLLBACK');
-            errorSync(`❌ Migration failed on file ${file}: ${err.message}`);
-            errorSync(`Error Code: ${err.code || 'N/A'}`);
-            errorSync(`Error Detail: ${err.detail || 'N/A'}`);
-            errorSync(`Error Stack: ${err.stack || 'N/A'}`);
-            throw err;
+      for (const file of pendingList) {
+        const mStartTime = Date.now();
+        logSync(`🚀 Executing migration: ${file}...`);
+        const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        const migrationStmts = splitSqlStatements(migrationSql);
+
+        await client.query('BEGIN');
+        try {
+          for (const mStmt of migrationStmts) {
+            if (!hasExecutableSql(mStmt.sql)) continue;
+            await client.query(mStmt.sql);
           }
-        } else {
-          logSync(`⏭️ Migration already applied: ${file}`);
+          await client.query(
+            'INSERT INTO schema_migrations (name) VALUES ($1)',
+            [file]
+          );
+          await client.query('COMMIT');
+          logSync(`✅ Migration ${file} completed in ${Date.now() - mStartTime} ms.`);
+        } catch (err) {
+          await client.query('ROLLBACK');
+          errorSync(`❌ Migration failed on file ${file}: ${err.message}`);
+          errorSync(`Error Code: ${err.code || 'N/A'}`);
+          errorSync(`Error Detail: ${err.detail || 'N/A'}`);
+          throw err;
         }
       }
     }
 
-    logSync('🎉 All PostgreSQL database migrations executed successfully!');
+    logSync(`🎉 All PostgreSQL database migrations executed successfully in ${Date.now() - startTime} ms!`);
   } catch (error) {
     errorSync(`❌ MIGRATION ERROR: ${error.message}`);
     if (error.stack) errorSync(`Stack: ${error.stack}`);
