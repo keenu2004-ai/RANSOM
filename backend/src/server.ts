@@ -121,13 +121,7 @@ app.use(errorHandler);
 import path from 'path';
 
 if (require.main === module) {
-  app.listen(config.port, () => {
-    console.log(`====================================================`);
-    console.log(`  THEIAKSHI ENTERPRISE HRMS BACKEND RUNNING`);
-    console.log(`  Port: ${config.port}`);
-    console.log(`  Environment: ${config.env}`);
-    console.log(`====================================================`);
-
+  const startServer = async () => {
     if (process.env.DATABASE_URL) {
       try {
         const migratePath = path.join(__dirname, '../../database/scripts/migrate.js');
@@ -135,17 +129,26 @@ if (require.main === module) {
         const { runMigrations } = require(migratePath);
         const { runSeed } = require(seedPath);
 
-        runMigrations()
-          .then(() => runSeed(true))
-          .catch((err: any) => {
-            console.error('❌ FATAL: Database initialization failed:', err.message);
-            process.exit(1);
-          });
-      } catch (e: any) {
-        console.error('❌ FATAL: Migration script load error:', e.message);
+        await runMigrations();
+        await runSeed(true);
+      } catch (err: any) {
+        console.error('❌ FATAL: Database initialization failed:', err.message);
         process.exit(1);
       }
     }
+
+    app.listen(config.port, () => {
+      console.log(`====================================================`);
+      console.log(`  THEIAKSHI ENTERPRISE HRMS BACKEND RUNNING`);
+      console.log(`  Port: ${config.port}`);
+      console.log(`  Environment: ${config.env}`);
+      console.log(`====================================================`);
+    });
+  };
+
+  startServer().catch((err: any) => {
+    console.error('❌ FATAL: Server startup error:', err.message);
+    process.exit(1);
   });
 }
 
