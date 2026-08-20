@@ -1892,6 +1892,13 @@ export const Expenses: React.FC = () => {
                 )}
               </div>
 
+              {selectedSingleExpense.rejection_reason && (
+                <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-xl space-y-1">
+                  <span className="font-bold text-[10px] text-rose-400 block uppercase">REJECTION REASON</span>
+                  <p>{selectedSingleExpense.rejection_reason}</p>
+                </div>
+              )}
+
               {selectedSingleExpense.receipt_url && (
                 <div className="p-3 bg-slate-950 rounded-xl flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1903,8 +1910,26 @@ export const Expenses: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end pt-3 border-t border-slate-800">
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Close</button>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              {isManagerOrAdmin && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleApproveSingle(id); }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold"
+                  >
+                    Approve Claim
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleRejectSingle(id); }}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold"
+                  >
+                    Reject Claim
+                  </button>
+                </>
+              )}
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Close</button>
             </div>
           </div>
         </div>

@@ -443,10 +443,36 @@ export class TripExpenseRepository {
     const text = `
       UPDATE trip_expenses
       SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4 AND organization_id = $5
-      RETURNING id, status, updated_at
+      WHERE id = $4 AND organization_id = $5 AND status IN ('PENDING', 'SUBMITTED', 'DRAFT')
+      RETURNING id, employee_id, purpose, total_amount, currency, status, updated_at
     `;
     const res = await query(text, [status, reviewerEmployeeId || null, rejectionReason || null, id, organizationId]);
-    return res.rows[0] || null;
+    const row = res.rows[0];
+
+    if (row) {
+      try {
+        const action = status === 'APPROVED' ? 'TRIP_EXPENSE_APPROVED' : 'TRIP_EXPENSE_REJECTED';
+        await query(`
+          INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+          VALUES ($1, $2, $3, 'expenses', 'TripExpense', $4, $5)
+        `, [organizationId, reviewerEmployeeId || null, action, id, JSON.stringify({ status, rejectionReason })]);
+
+        await query(`
+          INSERT INTO notifications (organization_id, employee_id, title, message, type)
+          VALUES ($1, $2, $3, $4, 'EXPENSE')
+        `, [
+          organizationId,
+          row.employee_id,
+          `Trip Expense ${status}`,
+          status === 'APPROVED'
+            ? `Your trip claim "${row.purpose}" (₹${row.total_amount}) has been approved.`
+            : `Your trip claim "${row.purpose}" (₹${row.total_amount}) was rejected: ${rejectionReason || 'No reason specified'}.`
+        ]);
+      } catch (auditErr) {
+        console.warn('Audit log write failed for trip updateStatus:', auditErr);
+      }
+    }
+
+    return row || null;
   }
 }

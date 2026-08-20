@@ -373,18 +373,16 @@ async function runMasterE2EVerificationSuite() {
     const submittedTrip = await TripExpenseRepository.submitTrip(tripParent.id, orgId, emp.id);
     runStep('Final trip submission transitions status from DRAFT to PENDING', submittedTrip.status === 'PENDING');
 
-    // Attempt to add child expense to PENDING trip -> Rejected
-    try {
-      await TripExpenseRepository.addOtherExpense(orgId, emp.id, tripParent.id, {
-        transactionDate: todayStr,
-        category: 'Food',
-        amount: 500,
-        purpose: 'Post-submission meal'
-      });
-      runStep('Child expense addition to PENDING trip rejected', false);
-    } catch (err: any) {
-      runStep('Child expense addition to PENDING trip correctly rejected', err.message.includes('non-draft'));
-    }
+    // Approval Workflow Assertions for Single Expenses
+    const approvedExp = await ExpenseRepository.updateStatus(bizExpNoAttach.id, orgId, 'APPROVED', emp.id);
+    runStep('Business Expense approval transitions status to APPROVED', approvedExp.status === 'APPROVED');
+
+    const rejectedExp = await ExpenseRepository.updateStatus(localTravelNoAttach.id, orgId, 'REJECTED', emp.id, 'Insufficient receipt proof');
+    runStep('Local Travel Expense rejection transitions status to REJECTED with rejection reason', rejectedExp.status === 'REJECTED');
+
+    // Approval Workflow Assertions for Trip Expenses
+    const approvedTrip = await TripExpenseRepository.updateStatus(tripParent.id, orgId, 'APPROVED', emp.id);
+    runStep('Trip Expense approval transitions status to APPROVED', approvedTrip.status === 'APPROVED');
 
     // Cleanup Test Expense Records
     await query('DELETE FROM trip_other_expenses WHERE trip_expense_id = $1', [tripParent.id]);

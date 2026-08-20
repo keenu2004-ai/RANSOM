@@ -246,10 +246,36 @@ export class ExpenseRepository {
     const text = `
       UPDATE expenses
       SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4 AND organization_id = $5
-      RETURNING id, status, updated_at
+      WHERE id = $4 AND organization_id = $5 AND status IN ('SUBMITTED', 'PENDING', 'DRAFT')
+      RETURNING id, employee_id, expense_type, amount, currency, status, updated_at
     `;
     const res = await query(text, [status, reviewerEmployeeId || null, rejectionReason || null, id, organizationId]);
-    return res.rows[0] || null;
+    const row = res.rows[0];
+
+    if (row) {
+      try {
+        const action = status === 'APPROVED' ? 'EXPENSE_APPROVED' : 'EXPENSE_REJECTED';
+        await query(`
+          INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+          VALUES ($1, $2, $3, 'expenses', 'Expense', $4, $5)
+        `, [organizationId, reviewerEmployeeId || null, action, id, JSON.stringify({ status, rejectionReason })]);
+
+        await query(`
+          INSERT INTO notifications (organization_id, employee_id, title, message, type)
+          VALUES ($1, $2, $3, $4, 'EXPENSE')
+        `, [
+          organizationId,
+          row.employee_id,
+          `Expense Claim ${status}`,
+          status === 'APPROVED'
+            ? `Your ${row.expense_type} claim of ₹${row.amount} has been approved.`
+            : `Your ${row.expense_type} claim of ₹${row.amount} was rejected: ${rejectionReason || 'No reason specified'}.`
+        ]);
+      } catch (auditErr) {
+        console.warn('Audit log write failed for expense updateStatus:', auditErr);
+      }
+    }
+
+    return row || null;
   }
 }
