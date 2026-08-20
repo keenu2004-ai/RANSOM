@@ -50,6 +50,34 @@ async function runSeed(skipMigrations = false) {
     const seedSql = fs.readFileSync(seedPath, 'utf8');
     await client.query(seedSql);
 
+    // Automated Seed Foreign Key Referential Integrity Check
+    const checks = [
+      {
+        name: 'assets.category_id -> asset_categories.id',
+        sql: `SELECT COUNT(*) FROM assets a LEFT JOIN asset_categories c ON c.id = a.category_id WHERE a.category_id IS NOT NULL AND c.id IS NULL`
+      },
+      {
+        name: 'assets.organization_id -> organizations.id',
+        sql: `SELECT COUNT(*) FROM assets a LEFT JOIN organizations o ON o.id = a.organization_id WHERE a.organization_id IS NOT NULL AND o.id IS NULL`
+      },
+      {
+        name: 'assets.assigned_employee_id -> employees.id',
+        sql: `SELECT COUNT(*) FROM assets a LEFT JOIN employees e ON e.id = a.assigned_employee_id WHERE a.assigned_employee_id IS NOT NULL AND e.id IS NULL`
+      },
+      {
+        name: 'employees.user_id -> users.id',
+        sql: `SELECT COUNT(*) FROM employees e LEFT JOIN users u ON u.id = e.user_id WHERE e.user_id IS NOT NULL AND u.id IS NULL`
+      }
+    ];
+
+    for (const check of checks) {
+      const res = await client.query(check.sql);
+      const orphanCount = parseInt(res.rows[0].count, 10);
+      if (orphanCount > 0) {
+        throw new Error(`Referential integrity violation on ${check.name}: ${orphanCount} orphan rows found.`);
+      }
+    }
+
     console.log('✅ Baseline seed executed successfully!');
     console.log('----------------------------------------------------');
     console.log('Demo Accounts Initialized (Password: ChangeMe@123):');
@@ -61,7 +89,7 @@ async function runSeed(skipMigrations = false) {
     console.log('----------------------------------------------------');
   } catch (error) {
     console.error('❌ SEED ERROR:', error.message);
-    process.exit(1);
+    throw error;
   } finally {
     client.release();
     await pool.end();
@@ -69,7 +97,7 @@ async function runSeed(skipMigrations = false) {
 }
 
 if (require.main === module) {
-  runSeed();
+  runSeed().catch(() => process.exit(1));
 }
 
 module.exports = { runSeed };

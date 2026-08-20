@@ -275,21 +275,75 @@ VALUES
 ('f0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Mobile Phone', 'CAT-MOBILE', 'Company smartphones and test devices'),
 ('f0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Peripheral', 'CAT-PERIPHERAL', 'Keyboards, mice, headsets, cables'),
 ('f0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Furniture', 'CAT-FURNITURE', 'Office desks, ergonomic chairs, cabinets')
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 -- 10. DEMO ASSETS & ASSIGNMENT HISTORY
 INSERT INTO assets (id, organization_id, asset_code, asset_name, category_id, asset_type, brand, model, serial_number, purchase_date, purchase_price, current_value, condition, status, location, assigned_employee_id, assigned_date, expected_return_date)
 VALUES 
-('f1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'TE-IT-0001', 'Dell Latitude 5440 Laptop', 'f0000000-0000-0000-0000-000000000001', 'HARDWARE', 'Dell', 'Latitude 5440', 'DL-LAT-98765', '2025-01-15', 75000.00, 68000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 3', 'e0000000-0000-0000-0000-000000000003', '2025-02-01', '2026-12-31'),
-('f1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'TE-IT-0002', 'HP UltraSharp 27" 4K Monitor', 'f0000000-0000-0000-0000-000000000003', 'HARDWARE', 'HP', 'UltraSharp Z27', 'HP-MON-44321', '2025-02-10', 32000.00, 29000.00, 'NEW', 'AVAILABLE', 'IT Storage Bay', NULL, NULL, NULL),
-('f1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'TE-MOB-0001', 'Samsung Galaxy S24 Ultra', 'f0000000-0000-0000-0000-000000000004', 'HARDWARE', 'Samsung', 'Galaxy S24 Ultra', 'SM-GAL-11223', '2025-03-01', 110000.00, 98000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 2', 'e0000000-0000-0000-0000-000000000002', '2025-03-05', '2026-12-31'),
-('f1000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'TE-ACC-0001', 'Logitech MX Keys Wireless Combo', 'f0000000-0000-0000-0000-000000000005', 'PERIPHERAL', 'Logitech', 'MX Keys Advanced', 'LOG-MX-88990', '2025-01-20', 12000.00, 10000.00, 'GOOD', 'AVAILABLE', 'IT Storage Bay', NULL, NULL, NULL),
-('f1000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'TE-FUR-0001', 'Ergonomic Mesh Executive Chair', 'f0000000-0000-0000-0000-000000000006', 'FURNITURE', 'Featherlite', 'Optima Mesh', 'FL-OPT-55667', '2024-11-05', 18000.00, 15000.00, 'GOOD', 'AVAILABLE', 'HQ Floor 1', NULL, NULL, NULL)
+(
+  'f1000000-0000-0000-0000-000000000001', 
+  '00000000-0000-0000-0000-000000000001', 
+  'TE-IT-0001', 
+  'Dell Latitude 5440 Laptop', 
+  (SELECT id FROM asset_categories WHERE code = 'CAT-LAPTOP' LIMIT 1), 
+  'HARDWARE', 'Dell', 'Latitude 5440', 'DL-LAT-98765', '2025-01-15', 75000.00, 68000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 3', 
+  (SELECT id FROM employees WHERE employee_code = 'EMP-003' LIMIT 1), 
+  '2025-02-01', '2026-12-31'
+),
+(
+  'f1000000-0000-0000-0000-000000000002', 
+  '00000000-0000-0000-0000-000000000001', 
+  'TE-IT-0002', 
+  'HP UltraSharp 27" 4K Monitor', 
+  (SELECT id FROM asset_categories WHERE code = 'CAT-MONITOR' LIMIT 1), 
+  'HARDWARE', 'HP', 'UltraSharp Z27', 'HP-MON-44321', '2025-02-10', 32000.00, 29000.00, 'NEW', 'AVAILABLE', 'IT Storage Bay', 
+  NULL, NULL, NULL
+),
+(
+  'f1000000-0000-0000-0000-000000000003', 
+  '00000000-0000-0000-0000-000000000001', 
+  'TE-MOB-0001', 
+  'Samsung Galaxy S24 Ultra', 
+  (SELECT id FROM asset_categories WHERE code = 'CAT-MOBILE' LIMIT 1), 
+  'HARDWARE', 'Samsung', 'Galaxy S24 Ultra', 'SM-GAL-11223', '2025-03-01', 110000.00, 98000.00, 'EXCELLENT', 'ASSIGNED', 'HQ Floor 2', 
+  (SELECT id FROM employees WHERE employee_code = 'EMP-002' LIMIT 1), 
+  '2025-03-05', '2026-12-31'
+),
+(
+  'f1000000-0000-0000-0000-000000000004', 
+  '00000000-0000-0000-0000-000000000001', 
+  'TE-ACC-0001', 
+  'Logitech MX Keys Wireless Combo', 
+  (SELECT id FROM asset_categories WHERE code = 'CAT-PERIPHERAL' LIMIT 1), 
+  'PERIPHERAL', 'Logitech', 'MX Keys Advanced', 'LOG-MX-88990', '2025-01-20', 12000.00, 10000.00, 'GOOD', 'AVAILABLE', 'IT Storage Bay', 
+  NULL, NULL, NULL
+),
+(
+  'f1000000-0000-0000-0000-000000000005', 
+  '00000000-0000-0000-0000-000000000001', 
+  'TE-FUR-0001', 
+  'Ergonomic Mesh Executive Chair', 
+  (SELECT id FROM asset_categories WHERE code = 'CAT-FURNITURE' LIMIT 1), 
+  'FURNITURE', 'Featherlite', 'Optima Mesh', 'FL-OPT-55667', '2024-11-05', 18000.00, 15000.00, 'GOOD', 'AVAILABLE', 'HQ Floor 1', 
+  NULL, NULL, NULL
+)
 ON CONFLICT (asset_code) DO NOTHING;
 
 INSERT INTO asset_history (asset_id, organization_id, action, previous_status, new_status, employee_id, notes)
 VALUES 
-('f1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 'e0000000-0000-0000-0000-000000000003', 'Initial laptop allocation for Rohan Gupta'),
-('f1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 'e0000000-0000-0000-0000-000000000002', 'Executive test device allocation for Priya Verma');
+(
+  (SELECT id FROM assets WHERE asset_code = 'TE-IT-0001' LIMIT 1), 
+  '00000000-0000-0000-0000-000000000001', 
+  'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 
+  (SELECT id FROM employees WHERE employee_code = 'EMP-003' LIMIT 1), 
+  'Initial laptop allocation for Rohan Gupta'
+),
+(
+  (SELECT id FROM assets WHERE asset_code = 'TE-MOB-0001' LIMIT 1), 
+  '00000000-0000-0000-0000-000000000001', 
+  'ASSIGNED', 'AVAILABLE', 'ASSIGNED', 
+  (SELECT id FROM employees WHERE employee_code = 'EMP-002' LIMIT 1), 
+  'Executive test device allocation for Priya Verma'
+);
 
 COMMIT;
