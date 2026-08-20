@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
+import { query } from '../db';
 import { UserRepository } from '../repositories/userRepository';
 import { AuthUser } from '../types';
 
@@ -85,5 +86,15 @@ export class AuthService {
 
     const newHash = await bcrypt.hash(newPassword, 10);
     await UserRepository.updatePassword(userId, newHash);
+
+    // Record Audit Log Event
+    try {
+      await query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, 'USER_PASSWORD_CHANGED', 'security', 'User', $2, $3)
+      `, [userWithRole.organization_id, userId, JSON.stringify({ message: 'User updated password successfully' })]);
+    } catch (auditErr) {
+      console.warn('Audit log write failed for password change:', auditErr);
+    }
   }
 }
