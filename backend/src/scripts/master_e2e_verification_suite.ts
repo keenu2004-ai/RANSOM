@@ -5,6 +5,7 @@ import { AssetRepository } from '../repositories/assetRepository';
 import { TimesheetRepository } from '../repositories/timesheetRepository';
 import { ExpenseRepository } from '../repositories/expenseRepository';
 import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
+import { validateExpenseApprover } from '../utils/approvalHierarchy';
 import fs from 'fs';
 import path from 'path';
 
@@ -372,6 +373,33 @@ async function runMasterE2EVerificationSuite() {
     // Final Trip Submission -> PENDING
     const submittedTrip = await TripExpenseRepository.submitTrip(tripParent.id, orgId, emp.id);
     runStep('Final trip submission transitions status from DRAFT to PENDING', submittedTrip.status === 'PENDING');
+
+    // Self-Approval Prohibition Test
+    const selfApprovalCheck = await validateExpenseApprover(orgId, emp.id, {
+      userId: 'test-user-id',
+      role: 'SUPER_ADMIN',
+      organizationId: orgId,
+      employeeId: emp.id
+    });
+    runStep('Self-approval by submitter is strictly forbidden', !selfApprovalCheck.allowed && selfApprovalCheck.reason!.includes('Self-approval'));
+
+    // Cross-Organization Approval Prohibition Test
+    const crossOrgCheck = await validateExpenseApprover('other-org-id', emp.id, {
+      userId: 'other-user-id',
+      role: 'SUPER_ADMIN',
+      organizationId: orgId,
+      employeeId: 'other-emp-id'
+    });
+    runStep('Cross-organization expense approval is strictly forbidden', !crossOrgCheck.allowed && crossOrgCheck.reason!.includes('Cross-organization'));
+
+    // Valid Hierarchical Approval Test (HR_MANAGER approving EMPLOYEE expense)
+    const validHierarchyCheck = await validateExpenseApprover(orgId, emp.id, {
+      userId: 'hr-user-id',
+      role: 'HR_MANAGER',
+      organizationId: orgId,
+      employeeId: 'hr-emp-id'
+    });
+    runStep('HR Manager is authorized to approve Employee expense', validHierarchyCheck.allowed);
 
     // Approval Workflow Assertions for Single Expenses
     const approvedExp = await ExpenseRepository.updateStatus(bizExpNoAttach.id, orgId, 'APPROVED', emp.id);

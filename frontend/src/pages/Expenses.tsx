@@ -1198,7 +1198,7 @@ export const Expenses: React.FC = () => {
                           <button onClick={() => setSelectedSingleExpense(ex)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Details">
                             <Eye className="w-4 h-4" />
                           </button>
-                          {activeRoleTab === 'WORKFORCE' && (ex.status === 'SUBMITTED' || ex.status === 'PENDING') && (
+                          {activeRoleTab === 'WORKFORCE' && user?.employeeId !== ex.employee_id && (ex.status === 'SUBMITTED' || ex.status === 'PENDING') && (
                             <>
                               <button onClick={() => handleApproveSingle(ex.id)} className="px-2 py-0.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
                               <button onClick={() => handleRejectSingle(ex.id)} className="px-2 py-0.5 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">Reject</button>
@@ -1269,7 +1269,7 @@ export const Expenses: React.FC = () => {
                             <ChevronRight className="w-3 h-3" />
                           </button>
 
-                          {activeRoleTab === 'WORKFORCE' && (tr.status === 'SUBMITTED' || tr.status === 'PENDING') && (
+                          {activeRoleTab === 'WORKFORCE' && user?.employeeId !== tr.employee_id && (tr.status === 'SUBMITTED' || tr.status === 'PENDING') && (
                             <>
                               <button onClick={() => handleApproveTrip(tr.id)} className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
                               <button onClick={() => handleRejectTrip(tr.id)} className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">Reject</button>
@@ -1911,7 +1911,7 @@ export const Expenses: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-              {isManagerOrAdmin && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
+              {isManagerOrAdmin && user?.employeeId !== selectedSingleExpense.employee_id && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
                 <>
                   <button
                     type="button"

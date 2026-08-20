@@ -5,6 +5,7 @@ import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import { authenticate } from '../middleware/authMiddleware';
 import { requireEmployee } from '../middleware/requireEmployee';
 import { requireRole } from '../middleware/rbacMiddleware';
+import { validateExpenseApprover } from '../utils/approvalHierarchy';
 import { AuthenticatedRequest } from '../types';
 
 const router = Router();
@@ -312,7 +313,24 @@ router.post('/trips/:id/submit', requireEmployee, async (req: AuthenticatedReque
 // 8. Approve Trip (Approver)
 router.put('/trips/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const updated = await TripExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'APPROVED', req.user!.employeeId || undefined);
+    const organizationId = req.user!.organizationId;
+    const trip = await TripExpenseRepository.getTripById(req.params.id, organizationId);
+    if (!trip) {
+      return res.status(404).json({ success: false, error: 'Trip Expense not found.', code: 'TRIP_NOT_FOUND' });
+    }
+
+    const validation = await validateExpenseApprover(organizationId, trip.employee_id, {
+      userId: req.user!.userId,
+      role: req.user!.role,
+      organizationId,
+      employeeId: req.user!.employeeId
+    });
+
+    if (!validation.allowed) {
+      return res.status(403).json({ success: false, error: validation.reason, code: 'APPROVAL_AUTHORITY_DENIED' });
+    }
+
+    const updated = await TripExpenseRepository.updateStatus(req.params.id, organizationId, 'APPROVED', req.user!.employeeId || undefined);
     return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense approved successfully.' } });
   } catch (error) {
     return next(error);
@@ -322,7 +340,24 @@ router.put('/trips/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER
 // 9. Reject Trip (Approver)
 router.put('/trips/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const updated = await TripExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
+    const organizationId = req.user!.organizationId;
+    const trip = await TripExpenseRepository.getTripById(req.params.id, organizationId);
+    if (!trip) {
+      return res.status(404).json({ success: false, error: 'Trip Expense not found.', code: 'TRIP_NOT_FOUND' });
+    }
+
+    const validation = await validateExpenseApprover(organizationId, trip.employee_id, {
+      userId: req.user!.userId,
+      role: req.user!.role,
+      organizationId,
+      employeeId: req.user!.employeeId
+    });
+
+    if (!validation.allowed) {
+      return res.status(403).json({ success: false, error: validation.reason, code: 'APPROVAL_AUTHORITY_DENIED' });
+    }
+
+    const updated = await TripExpenseRepository.updateStatus(req.params.id, organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
     return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense rejected.' } });
   } catch (error) {
     return next(error);
@@ -533,20 +568,54 @@ router.get('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), as
   }
 });
 
-// Approve single claim (Requires Admin/Manager role)
+// Approve single claim (Requires Admin/Manager role & hierarchical approval authority)
 router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const updated = await ExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'APPROVED', req.user!.employeeId || undefined);
+    const organizationId = req.user!.organizationId;
+    const expense = await ExpenseRepository.findById(req.params.id, organizationId);
+    if (!expense) {
+      return res.status(404).json({ success: false, error: 'Expense claim not found.', code: 'EXPENSE_NOT_FOUND' });
+    }
+
+    const validation = await validateExpenseApprover(organizationId, expense.employee_id, {
+      userId: req.user!.userId,
+      role: req.user!.role,
+      organizationId,
+      employeeId: req.user!.employeeId
+    });
+
+    if (!validation.allowed) {
+      return res.status(403).json({ success: false, error: validation.reason, code: 'APPROVAL_AUTHORITY_DENIED' });
+    }
+
+    const updated = await ExpenseRepository.updateStatus(req.params.id, organizationId, 'APPROVED', req.user!.employeeId || undefined);
     return res.status(200).json({ success: true, data: { expense: updated, message: 'Expense claim approved.' } });
   } catch (error) {
     return next(error);
   }
 });
 
-// Reject single claim (Requires Admin/Manager role)
+// Reject single claim (Requires Admin/Manager role & hierarchical approval authority)
 router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const updated = await ExpenseRepository.updateStatus(req.params.id, req.user!.organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
+    const organizationId = req.user!.organizationId;
+    const expense = await ExpenseRepository.findById(req.params.id, organizationId);
+    if (!expense) {
+      return res.status(404).json({ success: false, error: 'Expense claim not found.', code: 'EXPENSE_NOT_FOUND' });
+    }
+
+    const validation = await validateExpenseApprover(organizationId, expense.employee_id, {
+      userId: req.user!.userId,
+      role: req.user!.role,
+      organizationId,
+      employeeId: req.user!.employeeId
+    });
+
+    if (!validation.allowed) {
+      return res.status(403).json({ success: false, error: validation.reason, code: 'APPROVAL_AUTHORITY_DENIED' });
+    }
+
+    const updated = await ExpenseRepository.updateStatus(req.params.id, organizationId, 'REJECTED', req.user!.employeeId || undefined, req.body.rejectionReason);
     return res.status(200).json({ success: true, data: { expense: updated, message: 'Expense claim rejected.' } });
   } catch (error) {
     return next(error);
