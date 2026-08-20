@@ -26,7 +26,6 @@ remediated_rows AS (
   UPDATE attendance
   SET check_out = check_in,
       working_hours = 0.00,
-      notes = COALESCE(notes, '') || ' [System auto-closed duplicate open session during migration 011]',
       updated_at = CURRENT_TIMESTAMP
   WHERE id IN (
     SELECT id FROM active_ranks WHERE rank > 1
