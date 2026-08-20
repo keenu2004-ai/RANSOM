@@ -1,4 +1,5 @@
 import { query } from '../db';
+import { reverseGeocode } from '../utils/geocoding';
 
 export class AttendanceRepository {
   /**
@@ -8,8 +9,8 @@ export class AttendanceRepository {
     const text = `
       SELECT 
         a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
-        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
-        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
         a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
       FROM attendance a
       WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.check_out IS NULL
@@ -27,8 +28,8 @@ export class AttendanceRepository {
     const text = `
       SELECT 
         a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
-        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
-        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
         a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
       FROM attendance a
       WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.date = $3
@@ -50,9 +51,9 @@ export class AttendanceRepository {
     let firstCheckIn: string | null = null;
     let lastCheckOut: string | null = null;
 
-    sessions.forEach(s => {
-      totalWorkingHours += parseFloat(s.working_hours || 0);
-      totalBreakMins += parseInt(s.break_duration_mins || 0, 10);
+    sessions.forEach((s: any) => {
+      totalWorkingHours += Number(s.working_hours || 0);
+      totalBreakMins += Number(s.break_duration_mins || 0);
       if (!firstCheckIn || new Date(s.check_in) < new Date(firstCheckIn)) {
         firstCheckIn = s.check_in;
       }
@@ -63,10 +64,10 @@ export class AttendanceRepository {
 
     return {
       date: dateStr,
-      activeSession,
       sessions,
+      activeSession,
       totalSessions: sessions.length,
-      totalWorkingHours: Math.round(totalWorkingHours * 100) / 100,
+      totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
       totalBreakMins,
       firstCheckIn,
       lastCheckOut,
@@ -94,17 +95,20 @@ export class AttendanceRepository {
       throw new Error('Employee has an active check-in session. Please check out before checking in again.');
     }
 
+    // 2. Reverse-geocode coordinates for human-readable location name
+    const locationName = await reverseGeocode(latitude, longitude);
+
     const text = `
       INSERT INTO attendance (
         organization_id, employee_id, date, check_in, status,
-        punch_in_lat, punch_in_lng, punch_in_accuracy, shift_name, location_id, ip_address
-      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', $4, $5, $6, $7, $8, $9)
-      RETURNING id, employee_id, date, check_in, status, punch_in_lat, punch_in_lng, punch_in_accuracy, shift_name
+        punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name, location_id, ip_address
+      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', $4, $5, $6, $7, $8, $9, $10)
+      RETURNING id, employee_id, date, check_in, status, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name
     `;
     try {
       const res = await query(text, [
         organizationId, employeeId, dateStr,
-        latitude || null, longitude || null, accuracy || null, shiftName, locationId || null, ipAddress || null
+        latitude || null, longitude || null, accuracy || null, locationName, shiftName, locationId || null, ipAddress || null
       ]);
       return res.rows[0];
     } catch (err: any) {
@@ -130,6 +134,8 @@ export class AttendanceRepository {
       throw new Error('No active check-in session found.');
     }
 
+    const locationName = await reverseGeocode(latitude, longitude);
+
     const text = `
       UPDATE attendance
       SET 
@@ -137,12 +143,13 @@ export class AttendanceRepository {
         punch_out_lat = $1,
         punch_out_lng = $2,
         punch_out_accuracy = $3,
+        punch_out_location_name = $4,
         working_hours = ROUND(GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in)) / 3600.0 - (COALESCE(break_duration_mins, 0) / 60.0))::numeric, 2),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4 AND organization_id = $5 AND check_out IS NULL
-      RETURNING id, employee_id, date, check_in, check_out, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_out_lat, punch_out_lng, punch_out_accuracy, working_hours, break_duration_mins, status
+      WHERE id = $5 AND organization_id = $6 AND check_out IS NULL
+      RETURNING id, employee_id, date, check_in, check_out, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, punch_out_lat, punch_out_lng, punch_out_accuracy, punch_out_location_name, working_hours, break_duration_mins, status
     `;
-    const res = await query(text, [latitude || null, longitude || null, accuracy || null, active.id, organizationId]);
+    const res = await query(text, [latitude || null, longitude || null, accuracy || null, locationName, active.id, organizationId]);
     if (!res.rows[0]) {
       throw new Error('No active check-in session found or session already completed.');
     }
@@ -327,8 +334,8 @@ export class AttendanceRepository {
         e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         d.name as department_name,
         a.date, a.check_in, a.check_out, 
-        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
-        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
         a.break_duration_mins, a.shift_name, a.status, a.working_hours
       FROM attendance a
       INNER JOIN employees e ON a.employee_id = e.id
