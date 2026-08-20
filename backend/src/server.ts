@@ -133,9 +133,13 @@ if (require.main === module) {
 
         runMigrations()
           .then(() => runSeed(true))
-          .catch((err: any) => console.error('Database migration/seed error:', err.message));
+          .catch((err: any) => {
+            console.error('❌ FATAL: Database initialization failed:', err.message);
+            process.exit(1);
+          });
       } catch (e: any) {
-        // Safe fallback if path differs in specific environment
+        console.error('❌ FATAL: Migration script load error:', e.message);
+        process.exit(1);
       }
     }
   });

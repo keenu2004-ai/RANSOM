@@ -1,10 +1,12 @@
 /**
  * THEIAKSHI ENTERPRISE HRMS — DATABASE MIGRATION RUNNER
- * Executes PostgreSQL schema migrations sequentially.
+ * Executes PostgreSQL schema migrations sequentially & safely.
  */
 
 const fs = require('fs');
 const path = require('path');
+const { splitSqlStatements } = require('./validate_sql');
+
 let Pool;
 try {
   Pool = require('pg').Pool;
@@ -12,18 +14,14 @@ try {
   Pool = require(path.join(__dirname, '../../backend/node_modules/pg')).Pool;
 }
 
-// Load environment variables if dotenv is present
 try {
   require('dotenv').config({ path: path.join(__dirname, '../../backend/.env') });
-} catch (e) {
-  // Ignore if dotenv is not available at script initialization
-}
+} catch (e) {}
 
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
   console.error('❌ ERROR: DATABASE_URL environment variable is missing.');
-  console.error('Please set DATABASE_URL in your environment or backend/.env file.');
   process.exit(1);
 }
 
@@ -39,7 +37,7 @@ async function runMigrations() {
   try {
     console.log('🔄 Connecting to PostgreSQL database...');
     
-    // Ensure migrations table exists
+    // Ensure migrations tracking table exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id SERIAL PRIMARY KEY,
@@ -48,17 +46,32 @@ async function runMigrations() {
       );
     `);
 
-    // First ensure base schema is loaded
-    const schemaPath = path.join(__dirname, '../schema.sql');
+    // 1. Execute Baseline Schema DDL Statement by Statement
+    const schemaPath = path.resolve(__dirname, '../schema.sql');
+    console.log(`[DB] Schema path: ${schemaPath}`);
+
     if (fs.existsSync(schemaPath)) {
       console.log('📜 Executing baseline schema DDL (schema.sql)...');
       const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      await client.query(schemaSql);
+      const statements = splitSqlStatements(schemaSql);
+
+      for (let idx = 0; idx < statements.length; idx++) {
+        const stmt = statements[idx];
+        try {
+          await client.query(stmt.sql);
+        } catch (err) {
+          console.error('\n❌ FAILED SCHEMA STATEMENT:');
+          console.error(`Statement #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine})`);
+          console.error(`Preview: ${stmt.sql.slice(0, 200)}`);
+          console.error(`PostgreSQL Error: ${err.message}\n`);
+          throw err;
+        }
+      }
       console.log('✅ Baseline schema loaded successfully.');
     }
 
-    // Read migrations directory
-    const migrationsDir = path.join(__dirname, '../migrations');
+    // 2. Read Migrations Directory & Execute Pending Migrations
+    const migrationsDir = path.resolve(__dirname, '../migrations');
     if (fs.existsSync(migrationsDir)) {
       const files = fs.readdirSync(migrationsDir)
         .filter(file => file.endsWith('.sql'))
@@ -73,10 +86,13 @@ async function runMigrations() {
         if (res.rows.length === 0) {
           console.log(`🚀 Executing migration: ${file}...`);
           const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+          const migrationStmts = splitSqlStatements(migrationSql);
 
           await client.query('BEGIN');
           try {
-            await client.query(migrationSql);
+            for (const mStmt of migrationStmts) {
+              await client.query(mStmt.sql);
+            }
             await client.query(
               'INSERT INTO schema_migrations (name) VALUES ($1)',
               [file]
@@ -97,7 +113,7 @@ async function runMigrations() {
     console.log('🎉 All PostgreSQL database migrations executed successfully!');
   } catch (error) {
     console.error('❌ MIGRATION ERROR:', error.message);
-    process.exit(1);
+    throw error;
   } finally {
     client.release();
     await pool.end();
@@ -105,7 +121,7 @@ async function runMigrations() {
 }
 
 if (require.main === module) {
-  runMigrations();
+  runMigrations().catch(() => process.exit(1));
 }
 
 module.exports = { runMigrations };
