@@ -125,18 +125,18 @@ export const Expenses: React.FC = () => {
     setLoading(true);
     try {
       if (user?.employeeId) {
-        const myRes = await apiFetch('/expenses/my').catch(() => ({ data: { expenses: [] } }));
-        setMyExpenses(myRes.data?.expenses || []);
+        const myRes = await apiFetch('/expenses/my').catch(() => null);
+        setMyExpenses(myRes?.expenses || myRes?.data?.expenses || []);
 
-        const myTripRes = await apiFetch('/expenses/trips/my').catch(() => ({ data: { trips: [] } }));
-        setMyTrips(myTripRes.data?.trips || []);
+        const myTripRes = await apiFetch('/expenses/trips/my').catch(() => null);
+        setMyTrips(myTripRes?.trips || myTripRes?.data?.trips || []);
       }
       if (isManagerOrAdmin) {
-        const allRes = await apiFetch('/expenses').catch(() => ({ data: { expenses: [] } }));
-        setAllExpenses(allRes.data?.expenses || []);
+        const allRes = await apiFetch('/expenses').catch(() => null);
+        setAllExpenses(allRes?.expenses || allRes?.data?.expenses || []);
 
-        const allTripRes = await apiFetch('/expenses/trips/workforce').catch(() => ({ data: { trips: [] } }));
-        setAllTrips(allTripRes.data?.trips || []);
+        const allTripRes = await apiFetch('/expenses/trips/workforce').catch(() => null);
+        setAllTrips(allTripRes?.trips || allTripRes?.data?.trips || []);
       }
     } catch (err) {
       console.error(err);
@@ -152,7 +152,7 @@ export const Expenses: React.FC = () => {
   const loadTripDetails = async (tripId: string) => {
     try {
       const res = await apiFetch(`/expenses/trips/${tripId}`);
-      setActiveTrip(res.data?.trip || null);
+      setActiveTrip(res?.trip || res?.data?.trip || null);
     } catch (err: any) {
       alert(err.message || 'Failed to load trip details.');
     }
@@ -315,7 +315,7 @@ export const Expenses: React.FC = () => {
       });
 
       setShowCreateTripModal(false);
-      const createdTripId = res.data?.trip?.id;
+      const createdTripId = res?.trip?.id || res?.data?.trip?.id;
       fetchData();
       if (createdTripId) {
         await loadTripDetails(createdTripId);

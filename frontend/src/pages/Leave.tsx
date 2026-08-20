@@ -34,12 +34,16 @@ export const Leave: React.FC = () => {
           apiFetch('/leaves/me/balance').catch(() => null),
           apiFetch('/leaves/monthly-usage').catch(() => null)
         ]);
-        setBalances(balRes?.balances || []);
-        if (usageRes?.data) setMonthlyUsage(usageRes.data);
+        setBalances(balRes?.balances || balRes?.data?.balances || []);
+        if (usageRes) {
+          const usageObj = usageRes.clUsedThisMonth !== undefined ? usageRes : usageRes.data;
+          if (usageObj) setMonthlyUsage(usageObj);
+        }
       }
 
       const typesRes = await apiFetch('/leaves/types');
-      const activeTypes = (typesRes.leaveTypes || []).filter((t: any) => t.is_active !== false && t.code !== 'OL');
+      const rawTypes = typesRes?.leaveTypes || typesRes?.data?.leaveTypes || (Array.isArray(typesRes) ? typesRes : []);
+      const activeTypes = rawTypes.filter((t: any) => t.is_active !== false && t.code !== 'OL');
       setLeaveTypes(activeTypes);
 
       if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
