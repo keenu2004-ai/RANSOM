@@ -381,6 +381,15 @@ async function runMasterE2EVerificationSuite() {
 
     const orphanAssets = await query('SELECT COUNT(*)::int as count FROM assets a LEFT JOIN organizations o ON a.organization_id = o.id WHERE o.id IS NULL');
     runStep('Zero orphan asset records', orphanAssets.rows[0].count === 0);
+
+    // Attendance Location Name Columns Schema Check
+    const attCols = await query("SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance' AND column_name IN ('punch_in_location_name', 'punch_out_location_name')");
+    runStep('Attendance punch_in_location_name and punch_out_location_name columns exist', attCols.rows.length === 2);
+
+    // Leave Balances Numeric Schema Check
+    const lbCol = await query("SELECT data_type FROM information_schema.columns WHERE table_name = 'leave_balances' AND column_name = 'quota'");
+    runStep('Leave balances quota column is numeric/decimal type', lbCol.rows[0]?.data_type === 'numeric');
+
     summary['10. Database Integrity'] = 'PASS';
 
 
