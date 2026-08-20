@@ -1,13 +1,74 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Checks if a SQL string contains actual executable SQL statements
+ * (ignoring line comments '--' and block comments '/* ... *\/')
+ */
+function hasExecutableSql(sqlText) {
+  if (!sqlText || !sqlText.trim()) return false;
+  let clean = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let i = 0; i < sqlText.length; i++) {
+    const char = sqlText[i];
+    const nextChar = sqlText[i + 1] || '';
+
+    if (char === '\n') {
+      if (inLineComment) inLineComment = false;
+      continue;
+    }
+
+    if (inLineComment) continue;
+
+    if (inBlockComment) {
+      if (char === '*' && nextChar === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote) {
+      if (char === '-' && nextChar === '-') {
+        inLineComment = true;
+        i++;
+        continue;
+      }
+      if (char === '/' && nextChar === '*') {
+        inBlockComment = true;
+        i++;
+        continue;
+      }
+    }
+
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      clean += char;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      clean += char;
+      continue;
+    }
+
+    clean += char;
+  }
+
+  return clean.replace(/;/g, '').trim().length > 0;
+}
+
 function splitSqlStatements(sqlText) {
   const statements = [];
   let currentStmt = '';
   let inSingleQuote = false;
   let inDoubleQuote = false;
   let inDollarQuote = false;
-  let dollarQuoteTag = '';
   let inLineComment = false;
   let inBlockComment = false;
   
@@ -67,7 +128,7 @@ function splitSqlStatements(sqlText) {
 
     if (char === ';' && !inSingleQuote && !inDoubleQuote && !inDollarQuote) {
       const trimmed = currentStmt.trim();
-      if (trimmed) {
+      if (trimmed && hasExecutableSql(trimmed)) {
         statements.push({
           sql: trimmed,
           startLine: stmtStartLine,
@@ -85,9 +146,10 @@ function splitSqlStatements(sqlText) {
     currentStmt += char;
   }
 
-  if (currentStmt.trim()) {
+  const finalTrimmed = currentStmt.trim();
+  if (finalTrimmed && hasExecutableSql(finalTrimmed)) {
     statements.push({
-      sql: currentStmt.trim(),
+      sql: finalTrimmed,
       startLine: stmtStartLine,
       endLine: line
     });
@@ -108,10 +170,11 @@ function runValidation() {
   const sqlText = fs.readFileSync(schemaPath, 'utf8');
   const statements = splitSqlStatements(sqlText);
 
-  console.log(`Parsed ${statements.length} SQL statements from schema.sql`);
+  console.log(`Parsed ${statements.length} executable SQL statements from schema.sql`);
   statements.forEach((stmt, idx) => {
-    const firstLine = stmt.sql.split('\n')[0];
-    console.log(`Stmt #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine}): ${firstLine.slice(0, 80)}`);
+    const lines = stmt.sql.split('\n').filter(l => l.trim() && !l.trim().startsWith('--'));
+    const firstExecLine = lines[0] || stmt.sql.split('\n')[0];
+    console.log(`Stmt #${idx + 1} (Lines ${stmt.startLine}-${stmt.endLine}): ${firstExecLine.slice(0, 80)}`);
   });
 }
 
@@ -119,4 +182,4 @@ if (require.main === module) {
   runValidation();
 }
 
-module.exports = { splitSqlStatements };
+module.exports = { splitSqlStatements, hasExecutableSql };

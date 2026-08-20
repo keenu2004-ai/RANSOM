@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { splitSqlStatements } = require('./validate_sql');
+const { splitSqlStatements, hasExecutableSql } = require('./validate_sql');
 
 let Pool;
 try {
@@ -57,6 +57,8 @@ async function runMigrations() {
 
       for (let idx = 0; idx < statements.length; idx++) {
         const stmt = statements[idx];
+        if (!hasExecutableSql(stmt.sql)) continue;
+
         try {
           await client.query(stmt.sql);
         } catch (err) {
@@ -91,6 +93,7 @@ async function runMigrations() {
           await client.query('BEGIN');
           try {
             for (const mStmt of migrationStmts) {
+              if (!hasExecutableSql(mStmt.sql)) continue;
               await client.query(mStmt.sql);
             }
             await client.query(
