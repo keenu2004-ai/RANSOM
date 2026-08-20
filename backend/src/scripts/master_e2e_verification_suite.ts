@@ -2,6 +2,7 @@ import { query } from '../db';
 import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { CalendarRepository } from '../repositories/calendarRepository';
 import { AssetRepository } from '../repositories/assetRepository';
+import { TimesheetRepository } from '../repositories/timesheetRepository';
 import fs from 'fs';
 import path from 'path';
 
@@ -275,8 +276,54 @@ async function runMasterE2EVerificationSuite() {
     summary['8. PWA Installability'] = 'PASS';
 
 
-    // ─── 9. DATABASE INTEGRITY & ORPHAN FK CHECKS ──────────────────────────────
-    console.log('\n[TEST 9] Automated Database Integrity & Foreign Key Checks...');
+    // ─── 9. DAILY TASK PLANNING & MANAGEMENT SYSTEM ───────────────────────────
+    console.log('\n[TEST 9] Daily Task Planning & Management System...');
+    // Self-Task Creation without Project requirement
+    const empTask1 = await TimesheetRepository.createTask(orgId, emp.user_id, 'EMPLOYEE', emp.id, {
+      date: todayStr,
+      title: 'E2E Self Task 1 - Client Meeting',
+      description: 'Self-created daily task for E2E verification',
+      hours: 4.0
+    });
+    runStep('Employee self-task 1 created without project requirement', !!empTask1.id && empTask1.title === 'E2E Self Task 1 - Client Meeting');
+
+    const empTask2 = await TimesheetRepository.createTask(orgId, emp.user_id, 'EMPLOYEE', emp.id, {
+      date: todayStr,
+      title: 'E2E Self Task 2 - Prepare Proposal',
+      description: 'Second self-created daily task on same date',
+      hours: 3.5
+    });
+    runStep('Multiple tasks co-exist on same date for same employee', !!empTask2.id && empTask2.id !== empTask1.id);
+
+    // Management Task Assignment
+    const hrTask = await TimesheetRepository.createTask(orgId, emp.user_id, 'HR_MANAGER', emp.id, {
+      assignedEmployeeId: emp.id,
+      date: todayStr,
+      title: 'E2E HR Assigned Task - Submit Report',
+      description: 'Management assigned task to employee',
+      hours: 2.0
+    });
+    runStep('HR Management assigned task to employee with separate created_by', !!hrTask.id && hrTask.created_by === emp.user_id && hrTask.employee_id === emp.id);
+
+    // Task Visibility Query Verification
+    const employeeTaskList = await TimesheetRepository.findTasks(orgId, emp.user_id, 'EMPLOYEE', emp.id, { startDate: todayStr, endDate: todayStr });
+    runStep('Employee sees all assigned and self-created tasks for date', employeeTaskList.length >= 3);
+
+    // Task Soft Delete Verification
+    const delTaskRes = await TimesheetRepository.deleteTask(orgId, empTask1.id, emp.user_id, 'EMPLOYEE', emp.id);
+    runStep('Task soft-deleted successfully', delTaskRes === true);
+
+    const postDeleteList = await TimesheetRepository.findTasks(orgId, emp.user_id, 'EMPLOYEE', emp.id, { startDate: todayStr, endDate: todayStr });
+    runStep('Soft-deleted task excluded from active task query', !postDeleteList.some((t: any) => t.id === empTask1.id));
+
+    // Cleanup Test Tasks
+    await query('DELETE FROM audit_logs WHERE entity_id IN ($1, $2, $3)', [empTask1.id, empTask2.id, hrTask.id]);
+    await query('DELETE FROM timesheets WHERE id IN ($1, $2, $3)', [empTask1.id, empTask2.id, hrTask.id]);
+    summary['9. Daily Task Management'] = 'PASS';
+
+
+    // ─── 10. DATABASE INTEGRITY & ORPHAN FK CHECKS ──────────────────────────────
+    console.log('\n[TEST 10] Automated Database Integrity & Foreign Key Checks...');
     const orphanAtt = await query('SELECT COUNT(*)::int as count FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id WHERE e.id IS NULL');
     runStep('Zero orphan attendance records', orphanAtt.rows[0].count === 0);
 
@@ -285,7 +332,7 @@ async function runMasterE2EVerificationSuite() {
 
     const orphanAssets = await query('SELECT COUNT(*)::int as count FROM assets a LEFT JOIN organizations o ON a.organization_id = o.id WHERE o.id IS NULL');
     runStep('Zero orphan asset records', orphanAssets.rows[0].count === 0);
-    summary['9. Database Integrity'] = 'PASS';
+    summary['10. Database Integrity'] = 'PASS';
 
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────

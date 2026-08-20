@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X, CheckCircle2 } from 'lucide-react';
+import { FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X, CheckCircle2, User, Clock, AlertTriangle, Filter } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 export const Timesheets: React.FC = () => {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [timesheets, setTimesheets] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,12 +28,16 @@ export const Timesheets: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [formData, setFormData] = useState({
-    projectId: '',
+    assignedEmployeeId: '',
+    title: '',
+    description: '',
     date: new Date().toISOString().split('T')[0],
     hours: 8,
-    description: ''
+    status: 'PLANNED'
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  const isManagement = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
 
   // Week Days Array (Monday -> Sunday)
   const weekDays = useMemo(() => {
@@ -74,53 +78,59 @@ export const Timesheets: React.FC = () => {
     setSelectedMonday(monday);
   };
 
-  const fetchTimesheets = useCallback(async () => {
+  const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const projRes = await apiFetch('/timesheets/projects').catch(() => ({ projects: [] }));
-      setProjects(projRes.projects || []);
+      const startDate = weekDays[0].dateStr;
+      const endDate = weekDays[6].dateStr;
 
-      let resData: any[] = [];
-      if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
-        const allRes = await apiFetch('/timesheets', { params: { limit: 500 } }).catch(() => ({ timesheets: [] }));
-        resData = allRes.timesheets || [];
-      } else if (user?.employeeId) {
-        const myRes = await apiFetch('/timesheets/my').catch(() => ({ timesheets: [] }));
-        resData = myRes.timesheets || [];
-      }
+      const [taskRes, empRes] = await Promise.all([
+        apiFetch('/timesheets', { params: { startDate, endDate } }).catch(() => null),
+        isManagement ? apiFetch('/employees').catch(() => []) : Promise.resolve([])
+      ]);
 
-      setTimesheets(resData);
+      const rawTasks = Array.isArray(taskRes) ? taskRes : (taskRes?.tasks || taskRes?.timesheets || taskRes?.data?.tasks || []);
+      setTasks(rawTasks);
+
+      const fetchedEmps = Array.isArray(empRes) ? empRes : (empRes?.employees || empRes?.data || []);
+      setEmployees(fetchedEmps);
 
       // Map to Calendar Events
-      const events: CalendarEvent[] = resData.map((t: any) => ({
+      const events: CalendarEvent[] = rawTasks.map((t: any) => ({
         id: `task-${t.id}`,
-        date: t.date,
+        date: t.date.split('T')[0],
         type: 'TASK',
-        title: `${t.project_name || 'Task'}: ${t.hours}h`,
-        status: t.status || 'SUBMITTED',
-        employeeName: t.employee_name,
-        metadata: { description: t.description, hours: t.hours, project: t.project_name }
+        title: `${t.assigned_employee_name || 'Employee'}: ${t.title || t.description || 'Daily Task'}`,
+        status: t.status || 'PLANNED',
+        employeeName: t.assigned_employee_name,
+        metadata: {
+          description: t.description,
+          hours: t.hours,
+          createdBy: t.created_by_email
+        }
       }));
 
       setCalendarEvents(events);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching tasks:', err);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [weekDays, isManagement]);
 
   useEffect(() => {
-    fetchTimesheets();
-  }, [fetchTimesheets]);
+    fetchTasks();
+  }, [fetchTasks]);
 
   const openCreateModalForDate = (dateStr: string) => {
     setEditingTask(null);
     setFormData({
-      projectId: projects[0]?.id || '',
+      assignedEmployeeId: user?.employeeId || (employees.length > 0 ? employees[0].id : ''),
+      title: '',
+      description: '',
       date: dateStr,
       hours: 8,
-      description: ''
+      status: 'PLANNED'
     });
     setFormError(null);
     setShowModal(true);
@@ -128,12 +138,13 @@ export const Timesheets: React.FC = () => {
 
   const openEditModal = (task: any) => {
     setEditingTask(task);
-    const proj = projects.find(p => p.name === task.project_name);
     setFormData({
-      projectId: proj?.id || projects[0]?.id || '',
+      assignedEmployeeId: task.assigned_employee_id || '',
+      title: task.title || task.description || '',
+      description: task.description || '',
       date: task.date.split('T')[0],
       hours: task.hours || 8,
-      description: task.description || ''
+      status: task.status || 'PLANNED'
     });
     setFormError(null);
     setShowModal(true);
@@ -142,6 +153,12 @@ export const Timesheets: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (!formData.title || formData.title.trim() === '') {
+      setFormError('Task Title is required.');
+      return;
+    }
+
     try {
       if (editingTask) {
         await apiFetch(`/timesheets/${editingTask.id}`, {
@@ -155,22 +172,33 @@ export const Timesheets: React.FC = () => {
         });
       }
       setShowModal(false);
-      fetchTimesheets();
+      await fetchTasks();
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save task entry.');
+      setFormError(err.message || 'Failed to save daily task entry.');
     }
   };
 
-  // Group timesheets by date
+  const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await apiFetch(`/timesheets/${taskId}`, { method: 'DELETE' });
+      await fetchTasks();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete task.');
+    }
+  };
+
+  // Group tasks by date
   const tasksByDate = useMemo(() => {
     const map = new Map<string, any[]>();
-    timesheets.forEach(t => {
+    tasks.forEach(t => {
       const dKey = t.date.split('T')[0];
       if (!map.has(dKey)) map.set(dKey, []);
       map.get(dKey)!.push(t);
     });
     return map;
-  }, [timesheets]);
+  }, [tasks]);
 
   const weekStartStr = weekDays[0].date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
   const weekEndStr = weekDays[6].date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -182,9 +210,9 @@ export const Timesheets: React.FC = () => {
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <FileText className="w-6 h-6 text-cyan-400" />
-            <span>Weekly Work Plan & Timesheets</span>
+            <span>Weekly Work Plan & Daily Task Management</span>
           </h1>
-          <p className="text-xs text-slate-400">Plan tasks for each day of the week, log daily project hours, and visualize team workloads</p>
+          <p className="text-xs text-slate-400">Plan daily tasks, assign work items to team members, and track daily progress</p>
         </div>
 
         <button
@@ -192,7 +220,7 @@ export const Timesheets: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Work Item</span>
+          <span>Create Daily Task</span>
         </button>
       </div>
 
@@ -202,9 +230,9 @@ export const Timesheets: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-cyan-400" />
-              <span>Weekly Work Plan: {weekStartStr} — {weekEndStr}</span>
+              <span>Weekly Tasks: {weekStartStr} — {weekEndStr}</span>
             </h2>
-            <p className="text-xs text-slate-400">Click any weekday to quickly create a planned task for that date</p>
+            <p className="text-xs text-slate-400">Click any weekday to add a daily task for that date</p>
           </div>
 
           <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
@@ -241,7 +269,7 @@ export const Timesheets: React.FC = () => {
               <div
                 key={idx}
                 onClick={() => openCreateModalForDate(day.dateStr)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[160px] group ${
+                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[180px] group ${
                   isToday 
                     ? 'bg-cyan-950/20 border-cyan-500/50 hover:bg-cyan-950/30' 
                     : 'bg-slate-950/60 border-slate-800 hover:bg-slate-800/40 hover:border-slate-700'
@@ -260,26 +288,53 @@ export const Timesheets: React.FC = () => {
                   </div>
 
                   {/* Tasks List */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {dayTasks.map((t, tIdx) => (
                       <div
-                        key={tIdx}
+                        key={t.id || tIdx}
                         onClick={(e) => {
                           e.stopPropagation();
                           openEditModal(t);
                         }}
-                        className="p-2 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-xl text-xs space-y-0.5 transition-all shadow"
+                        className="p-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-xl text-xs space-y-1 transition-all shadow group/item relative"
                       >
-                        <div className="font-semibold text-slate-100 truncate">{t.project_name || 'Project'}</div>
-                        <div className="text-[11px] text-slate-400 line-clamp-2">{t.description}</div>
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 font-mono text-[10px]">
-                          <span className="text-cyan-400 font-bold">{t.hours} hrs</span>
-                          {t.employee_code && <span className="text-slate-500">{t.employee_code}</span>}
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="font-bold text-slate-100 line-clamp-1">{t.title || t.description || 'Task'}</div>
+                          <button
+                            onClick={(e) => handleDeleteTask(t.id, e)}
+                            className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover/item:opacity-100 transition-opacity"
+                            title="Delete Task"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {t.description && <div className="text-[11px] text-slate-400 line-clamp-2">{t.description}</div>}
+
+                        <div className="pt-1.5 border-t border-slate-800/60 flex flex-col gap-1 text-[10px]">
+                          <div className="flex items-center justify-between text-slate-400">
+                            <span>Assigned: <strong className="text-slate-200">{t.assigned_employee_name || 'You'}</strong></span>
+                            <span className="font-mono text-cyan-400 font-bold">{t.hours}h</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[9px] border ${
+                              t.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                              t.status === 'IN_PROGRESS' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
+                              'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}>
+                              {t.status || 'PLANNED'}
+                            </span>
+                            {t.created_by_email && (
+                              <span className="text-[9px] text-slate-500 truncate max-w-[80px]" title={`Created by ${t.created_by_email}`}>
+                                By: {t.created_by_email.split('@')[0]}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
                     {dayTasks.length === 0 && (
-                      <div className="text-[11px] text-slate-500 italic py-4 text-center group-hover:text-slate-400">
+                      <div className="text-[11px] text-slate-500 italic py-6 text-center group-hover:text-slate-400">
                         + Add Task
                       </div>
                     )}
@@ -301,7 +356,7 @@ export const Timesheets: React.FC = () => {
           setCurrentMonth(m);
         }}
         title="Weekly Plan & Task Calendar"
-        subtitle="Visualizing planned work items, logged project hours, company holidays, and leaves"
+        subtitle="Visualizing planned work items, assigned employee tasks, company holidays, and leaves"
       />
 
       {/* Task Create / Edit Modal */}
@@ -310,7 +365,7 @@ export const Timesheets: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white">
-                {editingTask ? 'Edit Work Item' : 'Create Weekly Work Item'}
+                {editingTask ? 'Edit Daily Task' : 'Create Daily Task'}
               </h3>
               <button type="button" onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -318,19 +373,54 @@ export const Timesheets: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>
+              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{formError}</span>
+              </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              {isManagement ? (
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Assigned Employee *</label>
+                  <select
+                    value={formData.assignedEmployeeId}
+                    onChange={e => setFormData({ ...formData, assignedEmployeeId: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
+                  >
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs flex items-center justify-between">
+                  <span className="text-slate-400">Assigned To:</span>
+                  <strong className="text-cyan-400 font-semibold">You (Self-Assigned)</strong>
+                </div>
+              )}
+
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Project *</label>
-                <select
-                  value={formData.projectId}
-                  onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+                <label className="block text-slate-300 mb-1 font-medium">Task Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                >
-                  {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                </select>
+                  placeholder="e.g. Visit Client Site / Prepare Proposal"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Description</label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="Additional task details and expected deliverables..."
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -349,6 +439,7 @@ export const Timesheets: React.FC = () => {
                   <input
                     type="number"
                     step="0.5"
+                    min="0.5"
                     required
                     value={formData.hours}
                     onChange={e => setFormData({ ...formData, hours: parseFloat(e.target.value) || 1 })}
@@ -358,15 +449,16 @@ export const Timesheets: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Task Title & Description *</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                  placeholder="Describe planned tasks and deliverables..."
-                />
+                <label className="block text-slate-300 mb-1 font-medium">Status *</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
+                >
+                  <option value="PLANNED">PLANNED</option>
+                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
@@ -381,7 +473,7 @@ export const Timesheets: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
                 >
-                  {editingTask ? 'Save Changes' : 'Create Work Item'}
+                  {editingTask ? 'Save Changes' : 'Create Task'}
                 </button>
               </div>
             </form>

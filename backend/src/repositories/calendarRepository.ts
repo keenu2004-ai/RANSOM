@@ -81,12 +81,13 @@ export class CalendarRepository {
       let sql = `
         SELECT 
           t.id, t.employee_id, t.date::text as date_str, t.hours, t.description, t.status,
+          COALESCE(t.title, t.description, 'Daily Task') as task_title,
           p.name as project_name,
           CONCAT(e.first_name, ' ', e.last_name) as employee_name
         FROM timesheets t
-        INNER JOIN projects p ON t.project_id = p.id
-        INNER JOIN employees e ON t.employee_id = e.id
-        WHERE t.organization_id = $1 AND t.date >= $2 AND t.date <= $3
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN employees e ON t.employee_id = e.id
+        WHERE t.organization_id = $1 AND t.date >= $2 AND t.date <= $3 AND t.deleted_at IS NULL
       `;
       const params: any[] = [organizationId, startDate, endDate];
       if (filterEmployeeId) {
@@ -226,14 +227,15 @@ export class CalendarRepository {
         id: `task-${t.id}`,
         type: 'TASK',
         date: t.date_str,
-        title: `${t.project_name}: ${t.description.substring(0, 35)}`,
-        description: t.description,
+        title: t.project_name ? `${t.employee_name} (${t.project_name}): ${t.task_title}` : `${t.employee_name}: ${t.task_title}`,
+        description: t.description || t.task_title,
         status: t.status,
         sourceId: t.id,
         employeeId: t.employee_id,
         employeeName: t.employee_name,
         metadata: {
-          projectName: t.project_name,
+          taskTitle: t.task_title,
+          projectName: t.project_name || 'General Task',
           hours: t.hours
         }
       });
