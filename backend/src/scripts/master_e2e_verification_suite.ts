@@ -162,14 +162,39 @@ async function runMasterE2EVerificationSuite() {
     summary['5. Unified Calendar'] = 'PASS';
 
 
-    // ─── 6. ASSETS & EMPLOYEE ASSET REQUISITIONS ────────────────────────────────
-    console.log('\n[TEST 6] Asset Inventory & Employee Asset Requisition Workflow...');
-    const catRes = await query('SELECT id FROM asset_categories WHERE organization_id = $1 LIMIT 1', [orgId]);
-    const catId = catRes.rows[0]?.id;
+    // ─── 6. ASSETS, CATEGORIES & EMPLOYEE ASSIGNED ASSETS ──────────────────────
+    console.log('\n[TEST 6] Asset Inventory, Categories & Assigned Assets Workflow...');
+    const categories = await AssetRepository.getCategories(orgId);
+    runStep('Asset categories loaded (Electronic, Hardware, Parts, Machine present)', categories.length >= 4);
 
-    // Create Asset Request
+    // Create New Category
+    const testCatCode = `CAT-TEST-${Date.now()}`;
+    const newCategory = await AssetRepository.createCategory(orgId, {
+      name: 'Lab Equipment',
+      code: testCatCode,
+      description: 'Test category created during E2E verification'
+    });
+    runStep('New Asset Category created successfully', newCategory.code === testCatCode);
+
+    // Create Asset & Verify Immediate Listing
+    const testAsset = await AssetRepository.create(orgId, emp.user_id, {
+      assetName: 'E2E Test Laptop Workstation',
+      assetType: 'HARDWARE',
+      categoryId: categories[0].id,
+      purchasePrice: 85000,
+      currentValue: 85000,
+      condition: 'NEW',
+      assignmentStatus: 'IN_STOCK'
+    });
+    runStep('Asset registered with generated asset code', !!testAsset.asset_code && testAsset.status === 'AVAILABLE');
+
+    const inventory = await AssetRepository.findAll(orgId, {});
+    const listedAsset = inventory.assets.find(a => a.id === testAsset.id);
+    runStep('Newly registered asset appears in GET inventory query', !!listedAsset);
+
+    // Asset Request
     const assetReq = await AssetRepository.createRequest(orgId, emp.id, emp.user_id, {
-      categoryId: catId,
+      categoryId: categories[0].id,
       reason: 'Need workstation for E2E testing',
       priority: 'HIGH'
     });
@@ -179,23 +204,18 @@ async function runMasterE2EVerificationSuite() {
     const appReq = await AssetRepository.approveRequest(orgId, assetReq.id, emp.id, emp.user_id);
     runStep('Asset Request APPROVED', appReq.status === 'APPROVED');
 
-    // Create Available Asset & Fulfill Request
-    const testAssetCode = `E2E-AST-${Date.now()}`;
-    const testAssetRes = await query(`
-      INSERT INTO assets (
-        organization_id, asset_code, asset_name, category_id, asset_type, purchase_price, current_value, status, created_by
-      ) VALUES ($1, $2, 'E2E Test Laptop', $3, 'HARDWARE', 75000, 75000, 'AVAILABLE', $4)
-      RETURNING *
-    `, [orgId, testAssetCode, catId, emp.user_id]);
-    const testAsset = testAssetRes.rows[0];
-
     const fulfillResult = await AssetRepository.fulfillRequest(orgId, assetReq.id, testAsset.id, emp.user_id);
     runStep('Asset Request FULFILLED and asset assigned', fulfillResult.request.status === 'FULFILLED' && fulfillResult.asset.status === 'ASSIGNED');
+
+    // Verify Employee Assigned Assets Query
+    const empAssigned = await AssetRepository.findAll(orgId, { assignedEmployeeId: emp.id });
+    runStep('Assigned asset appears in employee assigned assets query', empAssigned.assets.some(a => a.id === testAsset.id));
 
     // Cleanup Asset Test
     await query('DELETE FROM asset_history WHERE asset_id = $1', [testAsset.id]);
     await query('DELETE FROM assets WHERE id = $1', [testAsset.id]);
     await query('DELETE FROM asset_requests WHERE id = $1', [assetReq.id]);
+    await query('DELETE FROM asset_categories WHERE id = $1', [newCategory.id]);
     summary['6. Assets & Requisitions'] = 'PASS';
 
 

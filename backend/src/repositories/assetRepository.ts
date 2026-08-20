@@ -640,7 +640,7 @@ export class AssetRepository {
 
   // Categories CRUD
   static async getCategories(organizationId: string) {
-    const res = await query(`
+    let res = await query(`
       SELECT c.*, COUNT(a.id)::int as total_assets
       FROM asset_categories c
       LEFT JOIN assets a ON c.id = a.category_id AND a.deleted_at IS NULL
@@ -648,6 +648,28 @@ export class AssetRepository {
       GROUP BY c.id
       ORDER BY c.name ASC
     `, [organizationId]);
+
+    if (res.rows.length === 0) {
+      await query(`
+        INSERT INTO asset_categories (id, organization_id, name, code, description)
+        VALUES 
+          (gen_random_uuid(), $1, 'Electronic', 'CAT-ELECTRONIC', 'Electronic equipment, devices & appliances'),
+          (gen_random_uuid(), $1, 'Hardware', 'CAT-HARDWARE', 'IT hardware, laptops, servers & computer peripherals'),
+          (gen_random_uuid(), $1, 'Parts', 'CAT-PARTS', 'Component parts, spare parts & replacement modules'),
+          (gen_random_uuid(), $1, 'Machine', 'CAT-MACHINE', 'Industrial machines, lab tools & heavy equipment')
+        ON CONFLICT (code) DO NOTHING
+      `, [organizationId]);
+
+      res = await query(`
+        SELECT c.*, COUNT(a.id)::int as total_assets
+        FROM asset_categories c
+        LEFT JOIN assets a ON c.id = a.category_id AND a.deleted_at IS NULL
+        WHERE c.organization_id = $1
+        GROUP BY c.id
+        ORDER BY c.name ASC
+      `, [organizationId]);
+    }
+
     return res.rows;
   }
 

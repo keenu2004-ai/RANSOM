@@ -269,11 +269,11 @@ ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING;
 -- 9. ASSET CATEGORIES BASELINE
 INSERT INTO asset_categories (id, organization_id, name, code, description)
 VALUES 
-('f0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Laptop', 'CAT-LAPTOP', 'Portable laptops and notebooks'),
-('f0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Desktop', 'CAT-DESKTOP', 'Desktop workstations & towers'),
-('f0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Monitor', 'CAT-MONITOR', 'Display monitors and screens'),
-('f0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Mobile Phone', 'CAT-MOBILE', 'Company smartphones and test devices'),
-('f0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Peripheral', 'CAT-PERIPHERAL', 'Keyboards, mice, headsets, cables'),
+('f0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Electronic', 'CAT-ELECTRONIC', 'Electronic equipment, devices & appliances'),
+('f0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Hardware', 'CAT-HARDWARE', 'IT hardware, laptops, servers & computer peripherals'),
+('f0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Parts', 'CAT-PARTS', 'Component parts, spare parts & replacement modules'),
+('f0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Machine', 'CAT-MACHINE', 'Industrial machines, lab tools & heavy equipment'),
+('f0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Laptop', 'CAT-LAPTOP', 'Portable laptops and notebooks'),
 ('f0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Furniture', 'CAT-FURNITURE', 'Office desks, ergonomic chairs, cabinets')
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
