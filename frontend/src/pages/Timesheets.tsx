@@ -124,8 +124,9 @@ export const Timesheets: React.FC = () => {
 
   const openCreateModalForDate = (dateStr: string) => {
     setEditingTask(null);
+    const defaultEmpId = user?.employeeId || (employees.length > 0 ? employees[0].id : '');
     setFormData({
-      assignedEmployeeId: user?.employeeId || (employees.length > 0 ? employees[0].id : ''),
+      assignedEmployeeId: defaultEmpId,
       title: '',
       description: '',
       date: dateStr,
@@ -159,16 +160,23 @@ export const Timesheets: React.FC = () => {
       return;
     }
 
+    const payload = { ...formData };
+    if (isManagement && (!payload.assignedEmployeeId || payload.assignedEmployeeId.trim() === '')) {
+      if (employees.length > 0) {
+        payload.assignedEmployeeId = employees[0].id;
+      }
+    }
+
     try {
       if (editingTask) {
         await apiFetch(`/timesheets/${editingTask.id}`, {
           method: 'PUT',
-          body: JSON.stringify(formData)
+          body: JSON.stringify(payload)
         });
       } else {
         await apiFetch('/timesheets', {
           method: 'POST',
-          body: JSON.stringify(formData)
+          body: JSON.stringify(payload)
         });
       }
       setShowModal(false);
@@ -384,7 +392,7 @@ export const Timesheets: React.FC = () => {
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Assigned Employee *</label>
                   <select
-                    value={formData.assignedEmployeeId}
+                    value={formData.assignedEmployeeId || (employees.length > 0 ? employees[0].id : '')}
                     onChange={e => setFormData({ ...formData, assignedEmployeeId: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
                   >

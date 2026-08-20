@@ -13,6 +13,7 @@ export class TimesheetRepository {
     actorEmployeeId: string | null,
     data: {
       assignedEmployeeId?: string;
+      employeeId?: string;
       projectId?: string;
       date: string;
       title: string;
@@ -21,23 +22,38 @@ export class TimesheetRepository {
       status?: string;
     }
   ) {
-    let finalAssignedEmpId = actorEmployeeId;
+    const isManagement = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(actorRole);
+    const targetEmpInput = (data.assignedEmployeeId || data.employeeId || '').trim();
 
-    if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(actorRole)) {
-      if (data.assignedEmployeeId && data.assignedEmployeeId.trim() !== '') {
+    let finalAssignedEmpId: string | null = null;
+
+    if (isManagement) {
+      if (targetEmpInput) {
         const empCheck = await query(
-          'SELECT id, user_id, status FROM employees WHERE id = $1 AND organization_id = $2',
-          [data.assignedEmployeeId.trim(), organizationId]
+          'SELECT id, user_id, status, organization_id FROM employees WHERE id = $1',
+          [targetEmpInput]
         );
-        if (empCheck.rows.length === 0 || empCheck.rows[0].status !== 'ACTIVE') {
-          throw new Error('Assigned employee must be an active employee within your organization.');
+        if (empCheck.rows.length === 0) {
+          throw new Error('Selected assigned employee does not exist.');
         }
-        finalAssignedEmpId = data.assignedEmployeeId.trim();
+        if (empCheck.rows[0].organization_id !== organizationId) {
+          throw new Error('Unauthorized to assign tasks to employees outside your organization.');
+        }
+        if (empCheck.rows[0].status !== 'ACTIVE') {
+          throw new Error('Cannot assign task to an inactive employee.');
+        }
+        finalAssignedEmpId = targetEmpInput;
+      } else if (actorEmployeeId) {
+        finalAssignedEmpId = actorEmployeeId;
+      } else {
+        throw new Error('Please select an active employee to assign this task.');
       }
-    }
-
-    if (!finalAssignedEmpId) {
-      throw new Error('A valid assigned employee profile is required to create a daily task.');
+    } else {
+      // Self-task rule for normal employee
+      if (!actorEmployeeId) {
+        throw new Error('Your account is not linked to an employee profile.');
+      }
+      finalAssignedEmpId = actorEmployeeId;
     }
 
     const title = data.title && data.title.trim() !== '' ? data.title.trim() : 'Daily Work Task';

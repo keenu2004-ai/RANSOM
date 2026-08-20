@@ -305,9 +305,49 @@ async function runMasterE2EVerificationSuite() {
     });
     runStep('HR Management assigned task to employee with separate created_by', !!hrTask.id && hrTask.created_by === emp.user_id && hrTask.employee_id === emp.id);
 
+    // Management Assignment by HR user WITHOUT employee profile (actorEmployeeId = null)
+    const hrWithoutEmpProfileTask = await TimesheetRepository.createTask(
+      orgId,
+      emp.user_id,
+      'HR_MANAGER',
+      null, // HR user has no linked employee profile
+      {
+        assignedEmployeeId: emp.id,
+        date: todayStr,
+        title: 'Ghaziabad training',
+        description: 'Going to training camp in Ghaziabad',
+        hours: 8.0,
+        status: 'PLANNED'
+      }
+    );
+    runStep('Management user WITHOUT employee profile successfully assigned task to employee', !!hrWithoutEmpProfileTask.id && hrWithoutEmpProfileTask.created_by === emp.user_id && hrWithoutEmpProfileTask.employee_id === emp.id);
+
+    // Negative Test 1: Employee self-task without linked employee profile rejects
+    try {
+      await TimesheetRepository.createTask(orgId, emp.user_id, 'EMPLOYEE', null, {
+        date: todayStr,
+        title: 'Unlinked Self Task'
+      });
+      runStep('Self-task creation by employee without linked profile rejected', false);
+    } catch (err: any) {
+      runStep('Self-task creation by employee without linked profile correctly rejected', err.message.includes('not linked to an employee profile'));
+    }
+
+    // Negative Test 2: Management assigning to non-existent employee rejects
+    try {
+      await TimesheetRepository.createTask(orgId, emp.user_id, 'ADMIN', null, {
+        assignedEmployeeId: '00000000-0000-0000-0000-000000000099',
+        date: todayStr,
+        title: 'Invalid Assignment Task'
+      });
+      runStep('Management assignment to non-existent employee rejected', false);
+    } catch (err: any) {
+      runStep('Management assignment to non-existent employee correctly rejected', err.message.includes('does not exist'));
+    }
+
     // Task Visibility Query Verification
     const employeeTaskList = await TimesheetRepository.findTasks(orgId, emp.user_id, 'EMPLOYEE', emp.id, { startDate: todayStr, endDate: todayStr });
-    runStep('Employee sees all assigned and self-created tasks for date', employeeTaskList.length >= 3);
+    runStep('Employee sees all assigned and self-created tasks for date', employeeTaskList.length >= 4);
 
     // Task Soft Delete Verification
     const delTaskRes = await TimesheetRepository.deleteTask(orgId, empTask1.id, emp.user_id, 'EMPLOYEE', emp.id);
@@ -317,8 +357,8 @@ async function runMasterE2EVerificationSuite() {
     runStep('Soft-deleted task excluded from active task query', !postDeleteList.some((t: any) => t.id === empTask1.id));
 
     // Cleanup Test Tasks
-    await query('DELETE FROM audit_logs WHERE entity_id IN ($1, $2, $3)', [empTask1.id, empTask2.id, hrTask.id]);
-    await query('DELETE FROM timesheets WHERE id IN ($1, $2, $3)', [empTask1.id, empTask2.id, hrTask.id]);
+    await query('DELETE FROM audit_logs WHERE entity_id IN ($1, $2, $3, $4)', [empTask1.id, empTask2.id, hrTask.id, hrWithoutEmpProfileTask.id]);
+    await query('DELETE FROM timesheets WHERE id IN ($1, $2, $3, $4)', [empTask1.id, empTask2.id, hrTask.id, hrWithoutEmpProfileTask.id]);
     summary['9. Daily Task Management'] = 'PASS';
 
 
