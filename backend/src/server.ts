@@ -132,7 +132,7 @@ if (require.main === module) {
         const { runSeed } = require(seedPath);
 
         runMigrations()
-          .then(() => runSeed())
+          .then(() => runSeed(true))
           .catch((err: any) => console.error('Database migration/seed error:', err.message));
       } catch (e: any) {
         // Safe fallback if path differs in specific environment

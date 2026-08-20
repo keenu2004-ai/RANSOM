@@ -32,9 +32,11 @@ const pool = new Pool({
 
 const { runMigrations } = require('./migrate');
 
-async function runSeed() {
+async function runSeed(skipMigrations = false) {
   // Ensure schema DDL and migrations execute first
-  await runMigrations();
+  if (!skipMigrations) {
+    await runMigrations();
+  }
 
   const client = await pool.connect();
   try {
