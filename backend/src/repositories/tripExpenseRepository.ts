@@ -423,7 +423,7 @@ export class TripExpenseRepository {
         (SELECT COUNT(*)::int FROM trip_accommodation_expenses WHERE trip_expense_id = te.id) as accom_count,
         (SELECT COUNT(*)::int FROM trip_other_expenses WHERE trip_expense_id = te.id) as other_count
       FROM trip_expenses te
-      INNER JOIN employees emp ON te.employee_id = emp.id
+      LEFT JOIN employees emp ON te.employee_id = emp.id
       ${whereClause}
       ORDER BY te.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

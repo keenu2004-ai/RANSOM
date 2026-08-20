@@ -21,7 +21,7 @@ export class AssetRepository {
         e.last_name as employee_last_name,
         e.email as employee_email
       FROM assets a
-      JOIN asset_categories c ON a.category_id = c.id
+      LEFT JOIN asset_categories c ON a.category_id = c.id
       LEFT JOIN employees e ON a.assigned_employee_id = e.id
       WHERE a.organization_id = $1 AND a.deleted_at IS NULL
     `;

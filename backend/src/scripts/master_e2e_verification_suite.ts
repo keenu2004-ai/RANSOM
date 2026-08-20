@@ -211,6 +211,11 @@ async function runMasterE2EVerificationSuite() {
     const fulfillResult = await AssetRepository.fulfillRequest(orgId, assetReq.id, testAsset.id, emp.user_id);
     runStep('Asset Request FULFILLED and asset assigned', fulfillResult.request.status === 'FULFILLED' && fulfillResult.asset.status === 'ASSIGNED');
 
+    // Verify Management Asset Summary vs Inventory List Synchronization
+    const summaryMetrics = await AssetRepository.getSummaryMetrics(orgId);
+    const managementInventory = await AssetRepository.findAll(orgId, {});
+    runStep('Asset Management summary count matches inventory list count', summaryMetrics.total_assets === managementInventory.assets.length && summaryMetrics.total_assets > 0);
+
     // Verify Employee Assigned Assets Query
     const empAssigned = await AssetRepository.findAll(orgId, { assignedEmployeeId: emp.id });
     runStep('Assigned asset appears in employee assigned assets query', empAssigned.assets.some(a => a.id === testAsset.id));
@@ -373,6 +378,13 @@ async function runMasterE2EVerificationSuite() {
     // Final Trip Submission -> PENDING
     const submittedTrip = await TripExpenseRepository.submitTrip(tripParent.id, orgId, emp.id);
     runStep('Final trip submission transitions status from DRAFT to PENDING', submittedTrip.status === 'PENDING');
+
+    // Management Expense & Trip Summary vs List Sync Verification
+    const workforceExpenses = await ExpenseRepository.findAll(orgId, {});
+    runStep('Workforce Expense list count matches total records count', workforceExpenses.pagination.total === workforceExpenses.expenses.length && workforceExpenses.expenses.length > 0);
+
+    const workforceTrips = await TripExpenseRepository.findAll(orgId, {});
+    runStep('Workforce Trip list count matches total trips count', workforceTrips.pagination.total === workforceTrips.trips.length && workforceTrips.trips.length > 0);
 
     // Self-Approval Prohibition Test
     const selfApprovalCheck = await validateExpenseApprover(orgId, emp.id, {

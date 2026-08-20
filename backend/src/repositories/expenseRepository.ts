@@ -171,7 +171,7 @@ export class ExpenseRepository {
         CONCAT(emp.first_name, ' ', emp.last_name) as employee_name, emp.employee_code
       FROM expenses ex
       LEFT JOIN expense_categories ec ON ex.category_id = ec.id
-      INNER JOIN employees emp ON ex.employee_id = emp.id
+      LEFT JOIN employees emp ON ex.employee_id = emp.id
       ${whereClause}
       ORDER BY ex.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
