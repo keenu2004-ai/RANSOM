@@ -278,6 +278,15 @@ async function runMasterE2EVerificationSuite() {
 
     // ─── 9. DAILY TASK PLANNING & MANAGEMENT SYSTEM ───────────────────────────
     console.log('\n[TEST 9] Daily Task Planning & Management System...');
+
+    // Schema Integrity Check: Verify timesheets.project_id is NULLABLE in PostgreSQL
+    const colCheck = await query(`
+      SELECT is_nullable
+      FROM information_schema.columns
+      WHERE table_name = 'timesheets' AND column_name = 'project_id'
+    `);
+    runStep('timesheets.project_id column exists and is NULLABLE in database schema', colCheck.rows.length > 0 && colCheck.rows[0].is_nullable === 'YES');
+
     // Self-Task Creation without Project requirement
     const empTask1 = await TimesheetRepository.createTask(orgId, emp.user_id, 'EMPLOYEE', emp.id, {
       date: todayStr,
@@ -285,7 +294,7 @@ async function runMasterE2EVerificationSuite() {
       description: 'Self-created daily task for E2E verification',
       hours: 4.0
     });
-    runStep('Employee self-task 1 created without project requirement', !!empTask1.id && empTask1.title === 'E2E Self Task 1 - Client Meeting');
+    runStep('Employee self-task 1 created without project requirement (project_id = NULL)', !!empTask1.id && empTask1.project_id === null && empTask1.title === 'E2E Self Task 1 - Client Meeting');
 
     const empTask2 = await TimesheetRepository.createTask(orgId, emp.user_id, 'EMPLOYEE', emp.id, {
       date: todayStr,
