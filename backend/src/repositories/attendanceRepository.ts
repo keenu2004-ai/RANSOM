@@ -1,72 +1,133 @@
 import { query } from '../db';
 
 export class AttendanceRepository {
-  static async findTodayByEmployee(employeeId: string, organizationId: string, dateStr: string) {
+  /**
+   * Find current open active session (check_out IS NULL)
+   */
+  static async findActiveSession(employeeId: string, organizationId: string) {
     const text = `
       SELECT 
         a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
-        a.punch_in_lat, a.punch_in_lng, a.punch_out_lat, a.punch_out_lng,
-        a.break_duration_mins, a.shift_name, a.is_late, a.is_overtime,
-        a.status, a.working_hours, a.late_minutes, a.overtime_minutes, a.location_id
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
       FROM attendance a
-      WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.date = $3
+      WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.check_out IS NULL
+      ORDER BY a.check_in DESC
       LIMIT 1
     `;
-    const res = await query(text, [employeeId, organizationId, dateStr]);
+    const res = await query(text, [employeeId, organizationId]);
     return res.rows[0] || null;
   }
 
+  /**
+   * Find all attendance sessions for an employee on a given date
+   */
+  static async findTodaySessions(employeeId: string, organizationId: string, dateStr: string) {
+    const text = `
+      SELECT 
+        a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
+      FROM attendance a
+      WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.date = $3
+      ORDER BY a.check_in ASC
+    `;
+    const res = await query(text, [employeeId, organizationId, dateStr]);
+    return res.rows;
+  }
+
+  /**
+   * Aggregate daily summary across all sessions for an employee on a date
+   */
+  static async getTodaySummary(employeeId: string, organizationId: string, dateStr: string) {
+    const sessions = await this.findTodaySessions(employeeId, organizationId, dateStr);
+    const activeSession = await this.findActiveSession(employeeId, organizationId);
+
+    let totalWorkingHours = 0;
+    let totalBreakMins = 0;
+    let firstCheckIn: string | null = null;
+    let lastCheckOut: string | null = null;
+
+    sessions.forEach(s => {
+      totalWorkingHours += parseFloat(s.working_hours || 0);
+      totalBreakMins += parseInt(s.break_duration_mins || 0, 10);
+      if (!firstCheckIn || new Date(s.check_in) < new Date(firstCheckIn)) {
+        firstCheckIn = s.check_in;
+      }
+      if (s.check_out && (!lastCheckOut || new Date(s.check_out) > new Date(lastCheckOut))) {
+        lastCheckOut = s.check_out;
+      }
+    });
+
+    return {
+      date: dateStr,
+      activeSession,
+      sessions,
+      totalSessions: sessions.length,
+      totalWorkingHours: Math.round(totalWorkingHours * 100) / 100,
+      totalBreakMins,
+      firstCheckIn,
+      lastCheckOut,
+      status: activeSession ? 'ACTIVE' : (sessions.length > 0 ? 'COMPLETED' : 'NOT_CHECKED_IN')
+    };
+  }
+
+  /**
+   * Create a new attendance check-in session
+   */
   static async checkIn(
     organizationId: string,
     employeeId: string,
     dateStr: string,
     latitude?: number,
     longitude?: number,
+    accuracy?: number,
     shiftName: string = 'General Shift',
     locationId?: string,
     ipAddress?: string
   ) {
-    // 1. Check duplicate punch-in
-    const existing = await this.findTodayByEmployee(employeeId, organizationId, dateStr);
-    if (existing && existing.check_in) {
-      throw new Error('Employee is already punched in today.');
+    // 1. Guard against active session in application layer
+    const active = await this.findActiveSession(employeeId, organizationId);
+    if (active) {
+      throw new Error('Employee has an active check-in session. Please check out before checking in again.');
     }
 
     const text = `
       INSERT INTO attendance (
         organization_id, employee_id, date, check_in, status,
-        punch_in_lat, punch_in_lng, shift_name, location_id, ip_address
-      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', $4, $5, $6, $7, $8)
-      ON CONFLICT (employee_id, date) 
-      DO UPDATE SET 
-        check_in = COALESCE(attendance.check_in, EXCLUDED.check_in),
-        punch_in_lat = COALESCE(attendance.punch_in_lat, EXCLUDED.punch_in_lat),
-        punch_in_lng = COALESCE(attendance.punch_in_lng, EXCLUDED.punch_in_lng),
-        shift_name = COALESCE(attendance.shift_name, EXCLUDED.shift_name),
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING id, employee_id, date, check_in, status, punch_in_lat, punch_in_lng, shift_name
+        punch_in_lat, punch_in_lng, punch_in_accuracy, shift_name, location_id, ip_address
+      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', $4, $5, $6, $7, $8, $9)
+      RETURNING id, employee_id, date, check_in, status, punch_in_lat, punch_in_lng, punch_in_accuracy, shift_name
     `;
-    const res = await query(text, [
-      organizationId, employeeId, dateStr,
-      latitude || null, longitude || null, shiftName, locationId || null, ipAddress || null
-    ]);
-    return res.rows[0];
+    try {
+      const res = await query(text, [
+        organizationId, employeeId, dateStr,
+        latitude || null, longitude || null, accuracy || null, shiftName, locationId || null, ipAddress || null
+      ]);
+      return res.rows[0];
+    } catch (err: any) {
+      if (err.message && (err.message.includes('idx_attendance_active_session') || err.message.includes('unique'))) {
+        throw new Error('Employee has an active check-in session. Please check out before checking in again.');
+      }
+      throw err;
+    }
   }
 
+  /**
+   * Complete the currently active check-in session
+   */
   static async checkOut(
     organizationId: string,
     employeeId: string,
-    dateStr: string,
     latitude?: number,
-    longitude?: number
+    longitude?: number,
+    accuracy?: number
   ) {
-    // 1. Check state transitions & duplicate punch-out
-    const existing = await this.findTodayByEmployee(employeeId, organizationId, dateStr);
-    if (!existing || !existing.check_in) {
-      throw new Error('No active check-in record found for today.');
-    }
-    if (existing.check_out) {
-      throw new Error('Employee has already punched out today.');
+    const active = await this.findActiveSession(employeeId, organizationId);
+    if (!active) {
+      throw new Error('No active check-in session found.');
     }
 
     const text = `
@@ -75,22 +136,26 @@ export class AttendanceRepository {
         check_out = CURRENT_TIMESTAMP,
         punch_out_lat = $1,
         punch_out_lng = $2,
+        punch_out_accuracy = $3,
         working_hours = ROUND(GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in)) / 3600.0 - (COALESCE(break_duration_mins, 0) / 60.0))::numeric, 2),
         updated_at = CURRENT_TIMESTAMP
-      WHERE employee_id = $3 AND organization_id = $4 AND date = $5 AND check_out IS NULL
-      RETURNING id, employee_id, date, check_in, check_out, punch_out_lat, punch_out_lng, working_hours, break_duration_mins, status
+      WHERE id = $4 AND organization_id = $5 AND check_out IS NULL
+      RETURNING id, employee_id, date, check_in, check_out, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_out_lat, punch_out_lng, punch_out_accuracy, working_hours, break_duration_mins, status
     `;
-    const res = await query(text, [latitude || null, longitude || null, employeeId, organizationId, dateStr]);
-    return res.rows[0] || null;
+    const res = await query(text, [latitude || null, longitude || null, accuracy || null, active.id, organizationId]);
+    if (!res.rows[0]) {
+      throw new Error('No active check-in session found or session already completed.');
+    }
+    return res.rows[0];
   }
 
-  static async updateBreak(organizationId: string, employeeId: string, dateStr: string, breakMinutes: number) {
-    const existing = await this.findTodayByEmployee(employeeId, organizationId, dateStr);
-    if (!existing || !existing.check_in) {
-      throw new Error('Must be checked in to record a break.');
-    }
-    if (existing.check_out) {
-      throw new Error('Cannot add break after check-out.');
+  /**
+   * Record break duration for the currently active session
+   */
+  static async updateBreak(organizationId: string, employeeId: string, breakMinutes: number) {
+    const active = await this.findActiveSession(employeeId, organizationId);
+    if (!active) {
+      throw new Error('Must have an active check-in session to record a break.');
     }
 
     const text = `
@@ -98,10 +163,10 @@ export class AttendanceRepository {
       SET 
         break_duration_mins = COALESCE(break_duration_mins, 0) + $1,
         updated_at = CURRENT_TIMESTAMP
-      WHERE employee_id = $2 AND organization_id = $3 AND date = $4
+      WHERE id = $2 AND organization_id = $3 AND check_out IS NULL
       RETURNING id, employee_id, date, break_duration_mins
     `;
-    const res = await query(text, [breakMinutes, employeeId, organizationId, dateStr]);
+    const res = await query(text, [breakMinutes, active.id, organizationId]);
     return res.rows[0];
   }
 
@@ -177,7 +242,7 @@ export class AttendanceRepository {
       [approverId, regularizationId]
     );
 
-    // 2. Upsert/Update attendance record
+    // 2. Insert new regularized session
     const dateStr = new Date(reg.attendance_date).toISOString().split('T')[0];
     const checkInTime = reg.requested_punch_in ? new Date(reg.requested_punch_in) : null;
     const checkOutTime = reg.requested_punch_out ? new Date(reg.requested_punch_out) : null;
@@ -187,20 +252,13 @@ export class AttendanceRepository {
       workingHours = Math.max(0, Number(((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60)).toFixed(2)));
     }
 
-    const upsertSql = `
+    const insertSql = `
       INSERT INTO attendance (
         organization_id, employee_id, date, check_in, check_out, working_hours, status
       ) VALUES ($1, $2, $3, $4, $5, $6, 'PRESENT')
-      ON CONFLICT (employee_id, date)
-      DO UPDATE SET
-        check_in = COALESCE(EXCLUDED.check_in, attendance.check_in),
-        check_out = COALESCE(EXCLUDED.check_out, attendance.check_out),
-        working_hours = CASE WHEN EXCLUDED.check_out IS NOT NULL THEN EXCLUDED.working_hours ELSE attendance.working_hours END,
-        status = 'PRESENT',
-        updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `;
-    const attRes = await query(upsertSql, [organizationId, reg.employee_id, dateStr, checkInTime, checkOutTime, workingHours]);
+    const attRes = await query(insertSql, [organizationId, reg.employee_id, dateStr, checkInTime, checkOutTime, workingHours]);
 
     return { regularization: { ...reg, status: 'APPROVED' }, attendance: attRes.rows[0] };
   }
@@ -268,9 +326,10 @@ export class AttendanceRepository {
         a.id, a.organization_id, a.employee_id,
         e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         d.name as department_name,
-        a.date, a.check_in, a.check_out, a.punch_in_lat, a.punch_in_lng, a.punch_out_lat, a.punch_out_lng,
-        a.break_duration_mins, a.shift_name, a.is_late, a.is_overtime,
-        a.status, a.working_hours, a.late_minutes
+        a.date, a.check_in, a.check_out, 
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy,
+        a.break_duration_mins, a.shift_name, a.status, a.working_hours
       FROM attendance a
       INNER JOIN employees e ON a.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
@@ -297,8 +356,8 @@ export class AttendanceRepository {
     const text = `
       SELECT 
         (SELECT COUNT(*)::int FROM employees WHERE organization_id = $1 AND status = 'ACTIVE') as total_employees,
-        (SELECT COUNT(*)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status = 'PRESENT') as present_today,
-        (SELECT COUNT(*)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status = 'LATE') as late_today,
+        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status IN ('PRESENT', 'LATE')) as present_today,
+        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status = 'LATE') as late_today,
         (SELECT COUNT(*)::int FROM leave_requests WHERE organization_id = $1 AND $2 BETWEEN start_date AND end_date AND status = 'APPROVED') as on_leave_today
     `;
     const res = await query(text, [organizationId, dateStr]);
@@ -307,7 +366,7 @@ export class AttendanceRepository {
 
     return {
       totalEmployees: row.total_employees,
-      presentToday: row.present_today + row.late_today,
+      presentToday: row.present_today,
       lateToday: row.late_today,
       onLeaveToday: row.on_leave_today,
       absentToday: absent_today

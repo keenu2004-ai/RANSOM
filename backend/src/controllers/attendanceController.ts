@@ -3,7 +3,7 @@ import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { AuthenticatedRequest } from '../types';
 
 export class AttendanceController {
-  // Personal self-service: Requires employeeId
+  // Personal self-service: Returns multi-session summary & active status
   static async getToday(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
@@ -18,23 +18,26 @@ export class AttendanceController {
       }
 
       const dateStr = new Date().toISOString().split('T')[0];
-      const todayRecord = await AttendanceRepository.findTodayByEmployee(employeeId, organizationId, dateStr);
+      const summary = await AttendanceRepository.getTodaySummary(employeeId, organizationId, dateStr);
 
       return res.status(200).json({
         success: true,
-        data: { attendance: todayRecord }
+        data: { 
+          summary, 
+          attendance: summary.activeSession || summary.sessions[summary.sessions.length - 1] || null 
+        }
       });
     } catch (error) {
       return next(error);
     }
   }
 
-  // Personal self-service: Requires employeeId
+  // Personal self-service: Check-in new session
   static async checkIn(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
       const employeeId = req.user!.employeeId;
-      const { latitude, longitude, shiftName, locationId } = req.body;
+      const { latitude, longitude, accuracy, shiftName, locationId } = req.body;
       const ipAddress = req.ip;
 
       const dateStr = new Date().toISOString().split('T')[0];
@@ -44,6 +47,7 @@ export class AttendanceController {
         dateStr,
         latitude ? parseFloat(latitude) : undefined,
         longitude ? parseFloat(longitude) : undefined,
+        accuracy ? parseFloat(accuracy) : undefined,
         shiftName || 'General Shift',
         locationId,
         ipAddress
@@ -62,20 +66,19 @@ export class AttendanceController {
     }
   }
 
-  // Personal self-service: Requires employeeId
+  // Personal self-service: Check-out active session
   static async checkOut(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
       const employeeId = req.user!.employeeId;
-      const { latitude, longitude } = req.body;
+      const { latitude, longitude, accuracy } = req.body;
 
-      const dateStr = new Date().toISOString().split('T')[0];
       const record = await AttendanceRepository.checkOut(
         organizationId,
         employeeId!,
-        dateStr,
         latitude ? parseFloat(latitude) : undefined,
-        longitude ? parseFloat(longitude) : undefined
+        longitude ? parseFloat(longitude) : undefined,
+        accuracy ? parseFloat(accuracy) : undefined
       );
 
       return res.status(200).json({
@@ -91,7 +94,7 @@ export class AttendanceController {
     }
   }
 
-  // Break duration recording
+  // Break duration recording for active session
   static async updateBreak(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
@@ -99,8 +102,7 @@ export class AttendanceController {
       const { breakMinutes } = req.body;
 
       const mins = parseInt(breakMinutes, 10) || 15;
-      const dateStr = new Date().toISOString().split('T')[0];
-      const record = await AttendanceRepository.updateBreak(organizationId, employeeId!, dateStr, mins);
+      const record = await AttendanceRepository.updateBreak(organizationId, employeeId!, mins);
 
       return res.status(200).json({
         success: true,
@@ -211,7 +213,7 @@ export class AttendanceController {
     }
   }
 
-  // Administrative / Workforce View: Does NOT require employeeId
+  // Administrative / Workforce View
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
@@ -236,7 +238,7 @@ export class AttendanceController {
     }
   }
 
-  // Administrative Summary: Does NOT require employeeId
+  // Administrative Summary
   static async workforceSummary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;

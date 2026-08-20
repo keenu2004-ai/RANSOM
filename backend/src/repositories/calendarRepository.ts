@@ -104,28 +104,71 @@ export class CalendarRepository {
       taskPromise
     ]);
 
-    // 1. Map Attendance Events
+    // 1. Map Attendance Events (Grouped per employee per date for multi-session support)
+    const attGrouped = new Map<string, any[]>();
     attRows.forEach(a => {
+      const key = `${a.employee_id}_${a.date_str}`;
+      if (!attGrouped.has(key)) {
+        attGrouped.set(key, []);
+      }
+      attGrouped.get(key)!.push(a);
+    });
+
+    attGrouped.forEach((sessions, key) => {
+      const first = sessions[0];
+      let totalHours = 0;
+      let totalBreak = 0;
+      let minCheckIn: string | null = null;
+      let maxCheckOut: string | null = null;
+      let hasActive = false;
+
+      sessions.forEach(s => {
+        totalHours += parseFloat(s.working_hours || 0);
+        totalBreak += parseInt(s.break_duration_mins || 0, 10);
+        if (!minCheckIn || new Date(s.check_in) < new Date(minCheckIn)) {
+          minCheckIn = s.check_in;
+        }
+        if (s.check_out) {
+          if (!maxCheckOut || new Date(s.check_out) > new Date(maxCheckOut)) {
+            maxCheckOut = s.check_out;
+          }
+        } else {
+          hasActive = true;
+        }
+      });
+
+      const sessionCount = sessions.length;
+      const roundedHours = Math.round(totalHours * 100) / 100;
       const formatTime = (ts: any) => ts ? new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : undefined;
+      const statusStr = hasActive ? 'PRESENT (Active)' : first.status;
+      const titleStr = sessionCount > 1 
+        ? `${first.employee_name}: ${statusStr} (${sessionCount} sessions, ${roundedHours} hrs)` 
+        : `${first.employee_name}: ${statusStr}`;
+
       events.push({
-        id: `att-${a.id}`,
+        id: `att-${first.id}`,
         type: 'ATTENDANCE',
-        date: a.date_str,
-        title: `${a.employee_name}: ${a.status}`,
-        status: a.status,
-        startTime: formatTime(a.check_in),
-        endTime: formatTime(a.check_out),
-        sourceId: a.id,
-        employeeId: a.employee_id,
-        employeeName: a.employee_name,
+        date: first.date_str,
+        title: titleStr,
+        status: first.status,
+        startTime: formatTime(minCheckIn),
+        endTime: formatTime(maxCheckOut),
+        sourceId: first.id,
+        employeeId: first.employee_id,
+        employeeName: first.employee_name,
         metadata: {
-          checkIn: a.check_in,
-          checkOut: a.check_out,
-          workingHours: a.working_hours,
-          breakDurationMins: a.break_duration_mins,
-          shiftName: a.shift_name,
-          isLate: a.is_late,
-          isOvertime: a.is_overtime
+          sessionCount,
+          totalWorkingHours: roundedHours,
+          totalBreakDurationMins: totalBreak,
+          firstCheckIn: minCheckIn,
+          lastCheckOut: maxCheckOut,
+          sessions: sessions.map(s => ({
+            id: s.id,
+            checkIn: s.check_in,
+            checkOut: s.check_out,
+            workingHours: s.working_hours,
+            breakDurationMins: s.break_duration_mins
+          }))
         }
       });
     });

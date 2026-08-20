@@ -54,8 +54,8 @@ async function runMasterE2EVerificationSuite() {
     summary['2. Authentication & RBAC'] = 'PASS';
 
 
-    // ─── 3. ATTENDANCE STATE MACHINE & GPS & REGULARIZATION ────────────────────
-    console.log('\n[TEST 3] Attendance State Machine, Duplicate Punch Rejection & Regularization...');
+    // ─── 3. ATTENDANCE STATE MACHINE, MULTI-SESSION GPS & REGULARIZATION ────
+    console.log('\n[TEST 3] Attendance State Machine, Multi-Session GPS & Regularization...');
     const todayStr = new Date().toISOString().split('T')[0];
 
     // Clean up existing attendance for today for test employee
@@ -63,37 +63,48 @@ async function runMasterE2EVerificationSuite() {
     await query('DELETE FROM attendance WHERE employee_id = $1 AND date = $2', [emp.id, todayStr]);
 
     // Check Initial State
-    const initStatus = await AttendanceRepository.findTodayByEmployee(emp.id, orgId, todayStr);
-    runStep('Initial state: NOT CHECKED IN', !initStatus || !initStatus.check_in);
+    const activeSession = await AttendanceRepository.findActiveSession(emp.id, orgId);
+    runStep('Initial state: NO ACTIVE SESSION', !activeSession);
 
-    // Punch In with GPS
-    const punchInRec = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566, 'General Shift');
-    runStep('Punch-In record created with GPS coordinates', !!punchInRec.check_in && Number(punchInRec.punch_in_lat) === 12.971598);
+    // Session 1: Punch In with GPS & Accuracy
+    const punchInRec = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566, 10.0, 'General Shift');
+    runStep('Session 1 Punch-In record created with GPS coordinates & accuracy', !!punchInRec.check_in && Number(punchInRec.punch_in_lat) === 12.971598);
 
-    // Duplicate Punch-In Check
+    // Duplicate Active Punch-In Check
     try {
       await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566);
-      runStep('Duplicate punch-in rejected', false);
+      runStep('Duplicate active punch-in rejected', false);
     } catch (err: any) {
-      runStep('Duplicate punch-in correctly rejected', err.message.includes('already punched in'));
+      runStep('Duplicate active punch-in correctly rejected', err.message.includes('active check-in session'));
     }
 
-    // Break Update
-    await AttendanceRepository.updateBreak(orgId, emp.id, todayStr, 30);
-    const breakStatus = await AttendanceRepository.findTodayByEmployee(emp.id, orgId, todayStr);
-    runStep('Break duration incremented to 30 mins', breakStatus?.break_duration_mins === 30);
+    // Break Update on Session 1
+    await AttendanceRepository.updateBreak(orgId, emp.id, 30);
+    const breakActive = await AttendanceRepository.findActiveSession(emp.id, orgId);
+    runStep('Break duration incremented on active session', breakActive?.break_duration_mins === 30);
 
-    // Punch Out with GPS
-    const punchOutRec = await AttendanceRepository.checkOut(orgId, emp.id, todayStr, 12.971598, 77.594566);
-    runStep('Punch-Out record completed with working hours', !!punchOutRec.check_out && punchOutRec.status === 'PRESENT');
+    // Session 1: Punch Out with GPS
+    const punchOutRec = await AttendanceRepository.checkOut(orgId, emp.id, 12.971598, 77.594566, 10.0);
+    runStep('Session 1 Punch-Out completed with working hours', !!punchOutRec.check_out && punchOutRec.status === 'PRESENT');
 
-    // Duplicate Punch-Out Check
+    // Duplicate Punch-Out Check (No active session)
     try {
-      await AttendanceRepository.checkOut(orgId, emp.id, todayStr, 12.971598, 77.594566);
-      runStep('Duplicate punch-out rejected', false);
+      await AttendanceRepository.checkOut(orgId, emp.id, 12.971598, 77.594566);
+      runStep('Check-out with no active session rejected', false);
     } catch (err: any) {
-      runStep('Duplicate punch-out correctly rejected', err.message.includes('already punched out'));
+      runStep('Check-out with no active session correctly rejected', err.message.includes('No active check-in session'));
     }
+
+    // Session 2: Second Check-In & Check-Out on Same Date
+    const s2CheckIn = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 28.5355, 77.3910, 5.0, 'Client Site');
+    runStep('Session 2 Punch-In created on same date', !!s2CheckIn.check_in);
+
+    const s2CheckOut = await AttendanceRepository.checkOut(orgId, emp.id, 28.5355, 77.3910, 5.0);
+    runStep('Session 2 Punch-Out completed on same date', !!s2CheckOut.check_out);
+
+    // Multi-Session Daily Aggregation Verification
+    const daySummary = await AttendanceRepository.getTodaySummary(emp.id, orgId, todayStr);
+    runStep('Multi-session daily aggregation counts 2 sessions', daySummary.totalSessions === 2);
 
     // Regularization Workflow
     const regReq = await AttendanceRepository.applyRegularization(

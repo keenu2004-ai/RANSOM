@@ -192,13 +192,12 @@ CREATE TABLE IF NOT EXISTS attendance (
     is_overtime BOOLEAN DEFAULT FALSE,
     status VARCHAR(50) NOT NULL DEFAULT 'PRESENT' CHECK (status IN ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE')),
     working_hours NUMERIC(4, 2) DEFAULT 0.00,
-    late_minutes INT DEFAULT 0,
-    overtime_minutes INT DEFAULT 0,
+    punch_in_accuracy NUMERIC(8, 2),
+    punch_out_accuracy NUMERIC(8, 2),
     location_id UUID REFERENCES attendance_locations(id) ON DELETE SET NULL,
     ip_address VARCHAR(45),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_employee_attendance_date UNIQUE (employee_id, date)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS attendance_regularizations (
@@ -477,6 +476,7 @@ CREATE INDEX IF NOT EXISTS idx_users_org_email ON users(organization_id, email);
 CREATE INDEX IF NOT EXISTS idx_employees_org_code ON employees(organization_id, employee_code);
 CREATE INDEX IF NOT EXISTS idx_employees_user ON employees(user_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_org_emp_date ON attendance(organization_id, employee_id, date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_active_session ON attendance(organization_id, employee_id) WHERE check_out IS NULL;
 CREATE INDEX IF NOT EXISTS idx_leave_requests_org_emp ON leave_requests(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_org_emp ON expenses(organization_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_timesheets_org_emp_date ON timesheets(organization_id, employee_id, date);
