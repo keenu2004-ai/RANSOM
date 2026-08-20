@@ -1,5 +1,5 @@
 // THEIAKSHI ENTERPRISE HRMS — PRODUCTION PWA SERVICE WORKER
-const CACHE_NAME = 'theiakshi-pwa-v1.0.0';
+const CACHE_NAME = 'theiakshi-pwa-v1.0.1';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -39,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // CRITICAL SECURITY RULE: Never cache API requests or authenticated endpoints
-  if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
+  if (url.pathname.includes('/api/') || event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }

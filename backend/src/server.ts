@@ -15,24 +15,28 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // Explicit CORS setup
-const allowedOrigins = config.corsAllowedOrigins;
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server or curl/postman without origin in dev
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error(`CORS policy rejection for origin: ${origin}`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
+const allowedOrigins = config.corsAllowedOrigins.map(o => o.trim().replace(/\/$/, ''));
 
-// Preflight OPTIONS handling before auth
-app.options('*', cors());
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      return callback(null, true);
+    }
+    const cleanOrigin = origin.trim().replace(/\/$/, '');
+    const isAllowed = allowedOrigins.some(allowed => allowed === cleanOrigin);
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    console.warn(`[CORS Blocked] Request origin "${origin}" not in allowed list:`, allowedOrigins);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Rate Limiting
 const apiLimiter = rateLimit({
