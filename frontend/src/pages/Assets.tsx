@@ -5,7 +5,7 @@ import {
   Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck, 
   RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2, 
   AlertTriangle, Clock, X, Edit3, Trash2, Tag, Calendar, User, DollarSign,
-  Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye, Check, XCircle, Monitor, Laptop, HardDrive
+  Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye, Check, XCircle, Monitor, Laptop, HardDrive, AlertOctagon
 } from 'lucide-react';
 
 export const Assets: React.FC = () => {
@@ -31,7 +31,8 @@ export const Assets: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showMaintModal, setShowMaintModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   
   // Phase 4 Asset Request Modals
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -83,6 +84,11 @@ export const Assets: React.FC = () => {
     notes: ''
   });
 
+  const [statusUpdateForm, setStatusUpdateForm] = useState({
+    status: 'RETIRED',
+    notes: ''
+  });
+
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     code: '',
@@ -97,12 +103,14 @@ export const Assets: React.FC = () => {
   });
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
   const canManageCategories = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+  const canDeleteAssets = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -436,6 +444,57 @@ export const Assets: React.FC = () => {
     }
   };
 
+  // Safe Soft Delete Handlers
+  const handleOpenDelete = (asset: any) => {
+    setSelectedAsset(asset);
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteAsset = async () => {
+    if (!selectedAsset) return;
+    setDeleteError(null);
+
+    try {
+      await apiFetch(`/assets/${selectedAsset.id}`, { method: 'DELETE' });
+      setShowDeleteModal(false);
+      setSuccessMsg(`Asset '${selectedAsset.asset_code}' removed from active inventory.`);
+      await fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete asset.');
+    }
+  };
+
+  // Status Change (Retire / Dispose / Lost / Damaged)
+  const handleOpenStatusModal = (asset: any) => {
+    setSelectedAsset(asset);
+    setStatusUpdateForm({
+      status: asset.status === 'AVAILABLE' ? 'RETIRED' : asset.status,
+      notes: ''
+    });
+    setShowStatusModal(true);
+  };
+
+  const handleUpdateStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAsset) return;
+
+    try {
+      await apiFetch(`/assets/${selectedAsset.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(statusUpdateForm)
+      });
+
+      setShowStatusModal(false);
+      setSuccessMsg(`Asset '${selectedAsset.asset_code}' status updated to ${statusUpdateForm.status}.`);
+      await fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update asset status.');
+    }
+  };
+
   const exportCSV = () => {
     const headers = ['Asset Code', 'Name', 'Category', 'Type', 'Serial Number', 'Status', 'Condition', 'Assigned To', 'Price'];
     const rows = assets.map(a => [
@@ -662,6 +721,7 @@ export const Assets: React.FC = () => {
                 <option value="DAMAGED">DAMAGED</option>
                 <option value="LOST">LOST</option>
                 <option value="RETIRED">RETIRED</option>
+                <option value="DISPOSED">DISPOSED</option>
               </select>
 
               <select
@@ -700,7 +760,8 @@ export const Assets: React.FC = () => {
                         a.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
                         a.status === 'ASSIGNED' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
                         a.status === 'UNDER_MAINTENANCE' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                        'bg-slate-800 text-slate-400 border-slate-700'
+                        a.status === 'RETIRED' || a.status === 'DISPOSED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                        'bg-rose-500/10 text-rose-400 border-rose-500/30'
                       }`}>
                         {a.status === 'AVAILABLE' ? 'IN STOCK' : a.status}
                       </span>
@@ -718,14 +779,28 @@ export const Assets: React.FC = () => {
                       <button onClick={() => handleViewDetails(a)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Audit Details">
                         <Eye className="w-4 h-4" />
                       </button>
+                      
+                      {isManagerOrAdmin && (
+                        <button onClick={() => handleOpenStatusModal(a)} className="p-1 text-slate-400 hover:text-amber-400" title="Update Status (Retire/Dispose/Maintenance)">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+
                       {isManagerOrAdmin && a.status === 'AVAILABLE' && (
                         <button onClick={() => handleOpenAssign(a)} className="px-2 py-0.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded text-[10px] font-bold">
                           Assign
                         </button>
                       )}
+                      
                       {isManagerOrAdmin && a.status === 'ASSIGNED' && (
                         <button onClick={() => handleOpenReturn(a)} className="px-2 py-0.5 bg-amber-950 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded text-[10px] font-bold">
                           Return
+                        </button>
+                      )}
+
+                      {canDeleteAssets && (
+                        <button onClick={() => handleOpenDelete(a)} className="p-1 text-slate-400 hover:text-rose-400" title="Soft Delete Asset">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </td>
@@ -929,6 +1004,110 @@ export const Assets: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* SOFT DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && selectedAsset && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-rose-400 flex items-center gap-2">
+                <AlertOctagon className="w-5 h-5" />
+                <span>Confirm Asset Soft-Delete</span>
+              </h3>
+              <button type="button" onClick={() => setShowDeleteModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+              <div>Asset Code: <strong className="font-mono text-cyan-400">{selectedAsset.asset_code}</strong></div>
+              <div>Asset Name: <strong className="text-white">{selectedAsset.asset_name}</strong></div>
+              <div>Current Status: <strong className="text-emerald-400">{selectedAsset.status}</strong></div>
+              {selectedAsset.assigned_employee_id && (
+                <div className="text-rose-400 font-bold">Assigned To: {selectedAsset.employee_first_name} {selectedAsset.employee_last_name}</div>
+              )}
+            </div>
+
+            {selectedAsset.status === 'ASSIGNED' ? (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Cannot delete an assigned asset. Please return the asset to available stock first.</span>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>This action will soft-delete the asset from active inventory. Historical audit logs will be preserved.</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button type="button" onClick={() => setShowDeleteModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium text-xs">Cancel</button>
+              <button
+                type="button"
+                onClick={handleDeleteAsset}
+                disabled={selectedAsset.status === 'ASSIGNED'}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold uppercase shadow disabled:opacity-50"
+              >
+                YES, SOFT-DELETE ASSET
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPDATE STATUS MODAL (RETIRE / DISPOSE / MAINTENANCE / DAMAGED) */}
+      {showStatusModal && selectedAsset && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-amber-400" />
+                <span>Update Asset Status: {selectedAsset.asset_code}</span>
+              </h3>
+              <button type="button" onClick={() => setShowStatusModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleUpdateStatus} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">New Status *</label>
+                <select
+                  value={statusUpdateForm.status}
+                  onChange={e => setStatusUpdateForm({ ...statusUpdateForm, status: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
+                >
+                  <option value="AVAILABLE">AVAILABLE (In Stock)</option>
+                  <option value="UNDER_MAINTENANCE">UNDER MAINTENANCE</option>
+                  <option value="DAMAGED">DAMAGED</option>
+                  <option value="LOST">LOST</option>
+                  <option value="RETIRED">RETIRED (Decommissioned)</option>
+                  <option value="DISPOSED">DISPOSED (Scrapped)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Audit Notes</label>
+                <textarea
+                  rows={3}
+                  value={statusUpdateForm.notes}
+                  onChange={e => setStatusUpdateForm({ ...statusUpdateForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="State reason for retiring or changing status..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setShowStatusModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold uppercase shadow">UPDATE STATUS</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

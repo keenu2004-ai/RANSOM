@@ -25,7 +25,7 @@ router.get('/', AssetController.list);
 router.post('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), AssetController.create);
 router.get('/:id', AssetController.getById);
 router.put('/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), AssetController.update);
-router.delete('/:id', requireRole('SUPER_ADMIN', 'ADMIN'), AssetController.delete);
+router.delete('/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), AssetController.delete);
 
 // Lifecycle Operations
 router.post('/:id/assign', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AssetController.assign);

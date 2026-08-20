@@ -211,7 +211,37 @@ async function runMasterE2EVerificationSuite() {
     const empAssigned = await AssetRepository.findAll(orgId, { assignedEmployeeId: emp.id });
     runStep('Assigned asset appears in employee assigned assets query', empAssigned.assets.some(a => a.id === testAsset.id));
 
-    // Cleanup Asset Test
+    // Verify Assigned Asset Soft-Delete Rejection
+    try {
+      await AssetRepository.softDelete(testAsset.id, orgId, emp.user_id);
+      runStep('Direct soft-delete of ASSIGNED asset rejected', false);
+    } catch (err: any) {
+      runStep('Direct soft-delete of ASSIGNED asset correctly rejected', err.message.includes('currently assigned to an employee'));
+    }
+
+    // Return Asset to Available Stock
+    await AssetRepository.returnAsset(testAsset.id, orgId, emp.user_id, {
+      returnedDate: new Date().toISOString().split('T')[0],
+      notes: 'Returned during E2E verification test'
+    });
+
+    // Soft Delete Available Asset
+    const deleteRes = await AssetRepository.softDelete(testAsset.id, orgId, emp.user_id);
+    runStep('Available asset soft-deleted successfully', deleteRes === true);
+
+    // Verify Asset Disappears from Active Inventory
+    const activeInventoryPostDelete = await AssetRepository.findAll(orgId, {});
+    runStep('Soft-deleted asset excluded from active inventory queries', !activeInventoryPostDelete.assets.some(a => a.id === testAsset.id));
+
+    // Verify Asset History & Audit Log Preserved
+    const historyPostDelete = await AssetRepository.getHistory(testAsset.id, orgId);
+    runStep('Asset lifecycle history preserved post-deletion', historyPostDelete.some(h => h.action === 'DELETED'));
+
+    const auditLog = await query(`SELECT * FROM audit_logs WHERE entity_id = $1 AND action = 'DELETE_ASSET'`, [testAsset.id]);
+    runStep('DELETE_ASSET audit log recorded', auditLog.rows.length > 0);
+
+    // Cleanup Asset Test Records
+    await query('DELETE FROM audit_logs WHERE entity_id = $1', [testAsset.id]);
     await query('DELETE FROM asset_history WHERE asset_id = $1', [testAsset.id]);
     await query('DELETE FROM assets WHERE id = $1', [testAsset.id]);
     await query('DELETE FROM asset_requests WHERE id = $1', [assetReq.id]);

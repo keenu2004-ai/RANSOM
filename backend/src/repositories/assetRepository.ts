@@ -541,6 +541,11 @@ export class AssetRepository {
         [id, organizationId]
       );
       if (assetRes.rows.length === 0) throw new Error('Asset not found.');
+      const asset = assetRes.rows[0];
+
+      if (asset.status === 'ASSIGNED') {
+        throw new Error('Cannot delete asset currently assigned to an employee. Return the asset to available stock first.');
+      }
 
       await client.query(`
         UPDATE assets SET
@@ -553,7 +558,13 @@ export class AssetRepository {
         INSERT INTO asset_history (
           organization_id, asset_id, action, previous_status, new_status, performed_by, notes
         ) VALUES ($1, $2, 'DELETED', $3, 'DELETED', $4, 'Asset record soft-deleted')
-      `, [organizationId, id, assetRes.rows[0].status, userId]);
+      `, [organizationId, id, asset.status, userId]);
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, old_values
+        ) VALUES ($1, $2, 'DELETE_ASSET', 'assets', 'Asset', $3, $4)
+      `, [organizationId, userId, id, JSON.stringify({ assetCode: asset.asset_code, name: asset.asset_name, status: asset.status })]);
 
       return true;
     });
