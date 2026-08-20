@@ -34,17 +34,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Fetch Event — Strict Security & Offline Handling
+// 3. Fetch Event — Strict Security & Offline / SPA Navigation Handling
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // CRITICAL SECURITY RULE: Never cache API requests or authenticated endpoints
+  // CRITICAL SECURITY RULE: Never cache API requests or non-GET endpoints
   if (url.pathname.includes('/api/') || event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Network-First with Stale Cache Fallback for navigation & static assets
+  // Handle HTML navigation requests (SPA Routing)
+  const isNavigation = event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'));
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            return networkResponse;
+          }
+          // If server returns 404/non-200 for SPA subroute, fallback to /index.html
+          return caches.match('/index.html').then((cachedIndex) => {
+            return cachedIndex || fetch('/index.html');
+          });
+        })
+        .catch(() => {
+          return caches.match('/index.html').then((cachedIndex) => {
+            return cachedIndex || fetch('/index.html');
+          });
+        })
+    );
+    return;
+  }
+
+  // Network-First with Stale Cache Fallback for static assets
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -57,15 +80,7 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // SPA Fallback to /index.html for HTML navigation requests
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
-          }
-        });
+        return caches.match(event.request);
       })
   );
 });
