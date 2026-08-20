@@ -52,9 +52,21 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// Body Parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body Parsing with 10 MB payload limit for attachments
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Custom 413 Payload Too Large Exception Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) {
+    return res.status(413).json({
+      success: false,
+      error: 'Attachment exceeds the maximum allowed file size (10 MB).',
+      code: 'ATTACHMENT_TOO_LARGE'
+    });
+  }
+  next(err);
+});
 
 // Import All API Routes
 import authRoutes from './routes/authRoutes';
