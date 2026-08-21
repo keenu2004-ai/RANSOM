@@ -579,6 +579,12 @@ async function runMasterE2EVerificationSuite() {
     const opManagerCanViewWorkforce = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_VIEW_WORKFORCE', 'TEAM');
     runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_VIEW_WORKFORCE', opManagerCanViewWorkforce);
 
+    const opManagerCanCreateTeamEmp = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_CREATE', 'TEAM');
+    runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_CREATE', opManagerCanCreateTeamEmp);
+
+    const opManagerCanUpdateTeamEmp = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_UPDATE', 'TEAM');
+    runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_UPDATE', opManagerCanUpdateTeamEmp);
+
     const hrManagerCanCreateEmp = hasPermission('HR_MANAGER', 'EMPLOYEE_CREATE', 'ORGANIZATION');
     runStep('HR_MANAGER has ORGANIZATION scope for EMPLOYEE_CREATE', hrManagerCanCreateEmp);
 
