@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import {
   Receipt, Plus, Check, X, FileText, MapPin, Navigation,
   Building, Calendar, Upload, Trash2, Eye, AlertTriangle,
@@ -20,7 +21,7 @@ const OTHER_EXPENSE_CATEGORIES = ['Food', 'General Expense', 'Other', 'Courier',
 
 export const Expenses: React.FC = () => {
   const { user } = useAuth();
-  const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
+  const isManagerOrAdmin = hasPermission(user?.role, 'EXPENSE_WORKFORCE_VIEW');
 
   // Claims lists
   const [myExpenses, setMyExpenses] = useState<any[]>([]);

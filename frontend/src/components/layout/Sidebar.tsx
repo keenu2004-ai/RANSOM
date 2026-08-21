@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
+import { hasPermission } from '../../utils/permissions';
+
 interface SidebarProps {
   mobileOpen?: boolean;
   setMobileOpen?: (open: boolean) => void;
@@ -16,22 +18,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   const role = user?.role;
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Employees', path: '/employees', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'] },
-    { label: 'Attendance', path: '/attendance', icon: Clock, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Leave Management', path: '/leave', icon: CalendarDays, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Holidays & Calendar', path: '/holidays', icon: CalendarCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Expense Claims', path: '/expenses', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Weekly Plan', path: '/timesheets', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Asset Management', path: '/assets', icon: Package, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'] },
-    { label: 'Audit Logs', path: '/audit-logs', icon: History, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { label: 'Settings', path: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'] },
-    { label: 'Admin Control', path: '/admin-control', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN'] }
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, perm: null },
+    { label: 'Employees', path: '/employees', icon: Users, perm: 'EMPLOYEE_VIEW_WORKFORCE' },
+    { label: 'Attendance', path: '/attendance', icon: Clock, perm: null },
+    { label: 'Leave Management', path: '/leave', icon: CalendarDays, perm: null },
+    { label: 'Holidays & Calendar', path: '/holidays', icon: CalendarCheck, perm: null },
+    { label: 'Expense Claims', path: '/expenses', icon: Receipt, perm: null },
+    { label: 'Weekly Plan', path: '/timesheets', icon: FileText, perm: null },
+    { label: 'Asset Management', path: '/assets', icon: Package, perm: null },
+    { label: 'Notifications', path: '/notifications', icon: Bell, perm: null },
+    { label: 'Reports', path: '/reports', icon: BarChart3, perm: 'REPORTS_WORKFORCE_VIEW' },
+    { label: 'Audit Logs', path: '/audit-logs', icon: History, perm: 'AUDIT_LOG_VIEW' },
+    { label: 'Settings', path: '/settings', icon: Settings, perm: null },
+    { label: 'Admin Control', path: '/admin-control', icon: ShieldCheck, perm: 'USER_ROLE_ASSIGN' }
   ];
 
-  const allowedNav = navItems.filter(item => role && item.roles.includes(role));
+  const allowedNav = navItems.filter(item => !item.perm || hasPermission(role, item.perm));
 
   const content = (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800 text-slate-300 w-64">

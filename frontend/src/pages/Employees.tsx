@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
+import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import { 
   Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network, 
   ChevronLeft, ChevronRight, CheckCircle2, Edit3, X, Building2, Briefcase
 } from 'lucide-react';
 
 export const Employees: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'list' | 'orgChart'>('list');
   const [employees, setEmployees] = useState<any[]>([]);
   const [orgChart, setOrgChart] = useState<any[]>([]);
@@ -277,13 +280,15 @@ export const Employees: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Employee</span>
-          </button>
+          {hasPermission(user?.role, 'EMPLOYEE_CREATE') && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Employee</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { TimesheetRepository } from '../repositories/timesheetRepository';
 import { ExpenseRepository } from '../repositories/expenseRepository';
 import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import { validateExpenseApprover } from '../utils/approvalHierarchy';
+import { hasPermission } from '../config/permissions';
 import fs from 'fs';
 import path from 'path';
 
@@ -565,6 +566,32 @@ async function runMasterE2EVerificationSuite() {
     runStep('Leave balances quota column is numeric/decimal type', lbCol.rows[0]?.data_type === 'numeric');
 
     summary['10. Database Integrity'] = 'PASS';
+
+    // ─── 11. CENTRALIZED RBAC PERMISSION MATRIX & SCOPE ────────────────────────
+    console.log('\n[TEST 11] Centralized RBAC Permission Matrix & Scope Enforcement...');
+
+    const employeeCanCreateEmp = hasPermission('EMPLOYEE', 'EMPLOYEE_CREATE');
+    runStep('EMPLOYEE role cannot create employees', !employeeCanCreateEmp);
+
+    const employeeCanApproveExpense = hasPermission('EMPLOYEE', 'EXPENSE_APPROVE');
+    runStep('EMPLOYEE role cannot approve expenses', !employeeCanApproveExpense);
+
+    const opManagerCanViewWorkforce = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_VIEW_WORKFORCE', 'TEAM');
+    runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_VIEW_WORKFORCE', opManagerCanViewWorkforce);
+
+    const hrManagerCanCreateEmp = hasPermission('HR_MANAGER', 'EMPLOYEE_CREATE', 'ORGANIZATION');
+    runStep('HR_MANAGER has ORGANIZATION scope for EMPLOYEE_CREATE', hrManagerCanCreateEmp);
+
+    const adminCanAssignRoles = hasPermission('ADMIN', 'USER_ROLE_ASSIGN', 'ORGANIZATION');
+    runStep('ADMIN role can assign roles at ORGANIZATION level', adminCanAssignRoles);
+
+    const superAdminFullAccess = hasPermission('SUPER_ADMIN', 'ANY_SYSTEM_PERMISSION');
+    runStep('SUPER_ADMIN role has implicit full system access', superAdminFullAccess);
+
+    const adminNormalizedAlias = hasPermission('ADMINISTRATOR', 'EMPLOYEE_CREATE');
+    runStep('ADMINISTRATOR alias correctly normalizes to ADMIN role permissions', adminNormalizedAlias);
+
+    summary['11. Centralized RBAC System'] = 'PASS';
 
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
