@@ -71,6 +71,9 @@ export class TimesheetRepository {
     }
 
     const title = data.title && data.title.trim() !== '' ? data.title.trim() : 'Daily Work Task';
+    const description = (data.description !== undefined && data.description !== null)
+      ? String(data.description).trim()
+      : ((data as any).taskDescription !== undefined && (data as any).taskDescription !== null ? String((data as any).taskDescription).trim() : '');
     const hours = data.hours !== undefined ? Number(data.hours) : 1.0;
     const status = data.status || 'PLANNED';
     const projectId = data.projectId && data.projectId.trim() !== '' ? data.projectId.trim() : null;
@@ -92,7 +95,7 @@ export class TimesheetRepository {
       title,
       data.date,
       hours,
-      data.description || null,
+      description,
       status,
       actorUserId,
       (data as any).customerName || (data as any).customer_name || null,
@@ -262,7 +265,9 @@ export class TimesheetRepository {
     }
 
     const title = data.title !== undefined ? data.title : task.title;
-    const description = data.description !== undefined ? data.description : task.description;
+    const description = data.description !== undefined
+      ? (data.description !== null ? String(data.description).trim() : '')
+      : task.description;
     const hours = data.hours !== undefined ? Number(data.hours) : task.hours;
     const status = data.status !== undefined ? data.status : task.status;
     const date = data.date !== undefined ? data.date : task.date;

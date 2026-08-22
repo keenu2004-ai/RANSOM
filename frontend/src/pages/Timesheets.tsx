@@ -270,7 +270,10 @@ export const Timesheets: React.FC = () => {
       return;
     }
 
-    const payload = { ...formData };
+    const payload = { 
+      ...formData,
+      description: formData.description ? formData.description.trim() : ''
+    };
     if (isManagement && (!payload.assignedEmployeeId || payload.assignedEmployeeId.trim() === '')) {
       if (employees.length > 0) {
         payload.assignedEmployeeId = employees[0].id;
