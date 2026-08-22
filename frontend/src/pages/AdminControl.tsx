@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getAllowedAssignableRoles, hasPermission } from '../utils/permissions';
 import { 
   ShieldCheck, Users, KeyRound, Shield, Search, Edit3, X, 
-  CheckCircle2, AlertTriangle, RefreshCw, Key, Lock
+  CheckCircle2, AlertTriangle, RefreshCw, Key, Lock, Eye, EyeOff, Copy, Check
 } from 'lucide-react';
 
 export const AdminControl: React.FC = () => {
@@ -27,6 +27,8 @@ export const AdminControl: React.FC = () => {
   // Reset Password Modal
   const [resettingUser, setResettingUser] = useState<any | null>(null);
   const [tempPasswordInput, setTempPasswordInput] = useState<string>('');
+  const [showTempPassword, setShowTempPassword] = useState<boolean>(true);
+  const [copied, setCopied] = useState<boolean>(false);
   const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
@@ -68,7 +70,15 @@ export const AdminControl: React.FC = () => {
   const handleOpenResetModal = (targetUser: any) => {
     setResettingUser(targetUser);
     setTempPasswordInput(`TempPass#${Math.floor(1000 + Math.random() * 9000)}`);
+    setShowTempPassword(true);
+    setCopied(false);
     setResetErrorMsg(null);
+  };
+
+  const handleCopyTempPassword = (textToCopy: string) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const handleSaveAccessChange = async (e: React.FormEvent) => {
@@ -113,6 +123,11 @@ export const AdminControl: React.FC = () => {
     e.preventDefault();
     if (!resettingUser) return;
 
+    if (resettingUser.id === currentUser?.userId) {
+      setResetErrorMsg('For your own account password change, please use Settings -> Change Password.');
+      return;
+    }
+
     setResetting(true);
     setResetErrorMsg(null);
 
@@ -125,7 +140,7 @@ export const AdminControl: React.FC = () => {
       const tempPass = res.data?.temporaryPassword || tempPasswordInput;
       setSuccessMsg(`Password reset successfully for ${resettingUser.email}. Temporary password: ${tempPass}`);
       setResettingUser(null);
-      setTimeout(() => setSuccessMsg(null), 8000);
+      setTimeout(() => setSuccessMsg(null), 10000);
     } catch (err: any) {
       setResetErrorMsg(err.message || 'Failed to reset user password.');
     } finally {
@@ -148,10 +163,13 @@ export const AdminControl: React.FC = () => {
     <div className="space-y-6">
       {/* Success Notification Banner */}
       {successMsg && (
-        <div className="p-4 bg-emerald-950/60 border border-emerald-800 rounded-xl text-emerald-300 text-xs font-medium flex items-center justify-between shadow-lg animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
+        <div className="p-4 bg-emerald-950/80 border border-emerald-700 rounded-xl text-emerald-300 text-xs font-medium flex items-center justify-between shadow-lg animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span className="font-mono">{successMsg}</span>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-slate-100">{successMsg}</p>
+              <p className="text-[11px] text-emerald-400/80">User should sign in using the temporary password and change it in Settings immediately.</p>
+            </div>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-emerald-900 rounded"><X className="w-4 h-4" /></button>
         </div>
@@ -291,7 +309,7 @@ export const AdminControl: React.FC = () => {
                                 </button>
                               )}
 
-                              {canResetPassword && (
+                              {canResetPassword && !isSelf && (
                                 <button
                                   onClick={() => handleOpenResetModal(u)}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold transition-all"
@@ -358,7 +376,7 @@ export const AdminControl: React.FC = () => {
             <form onSubmit={handleSaveAccessChange} className="space-y-4">
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
                 <p className="text-slate-400 font-medium">Target User: <span className="text-slate-100 font-bold">{editingUser.email}</span></p>
-                <p className="text-slate-400 font-medium">Linked Profile: <span className="text-cyan-400 font-mono">{editingUser.employee_name || 'Management Only'}</span></p>
+                <p className="text-slate-400 font-medium">Linked Profile: <span className="text-cyan-400 font-mono">{editingUser.employee_name ? `${editingUser.employee_name} (${editingUser.employee_code})` : 'Management Only'}</span></p>
               </div>
 
               {editingUser.id === currentUser?.userId && (
@@ -443,7 +461,8 @@ export const AdminControl: React.FC = () => {
             <form onSubmit={handleAdminResetPasswordSubmit} className="space-y-4">
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
                 <p className="text-slate-400 font-medium">Target Account: <span className="text-slate-100 font-bold">{resettingUser.email}</span></p>
-                <p className="text-slate-500 text-[11px]">The old password will be overwritten securely in PostgreSQL using bcrypt hashing.</p>
+                <p className="text-slate-400 font-medium">Linked Employee: <span className="text-amber-400 font-mono">{resettingUser.employee_name ? `${resettingUser.employee_name} (${resettingUser.employee_code})` : 'Management Only'}</span></p>
+                <p className="text-slate-500 text-[11px] pt-1">The existing password will be securely overwritten in PostgreSQL using bcrypt hashing.</p>
               </div>
 
               <div>
@@ -457,16 +476,36 @@ export const AdminControl: React.FC = () => {
                     Auto-Generate
                   </button>
                 </div>
-                <input
-                  type="text"
-                  required
-                  value={tempPasswordInput}
-                  onChange={e => setTempPasswordInput(e.target.value)}
-                  placeholder="Enter or generate temporary password..."
-                  className="w-full bg-slate-950 border border-slate-800 text-amber-300 font-mono text-xs px-3 py-2.5 rounded-xl focus:border-amber-500 outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type={showTempPassword ? 'text' : 'password'}
+                    required
+                    value={tempPasswordInput}
+                    onChange={e => setTempPasswordInput(e.target.value)}
+                    placeholder="Enter or generate temporary password..."
+                    className="w-full bg-slate-950 border border-slate-800 text-amber-300 font-mono text-xs pl-3 pr-20 py-2.5 rounded-xl focus:border-amber-500 outline-none"
+                  />
+                  <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowTempPassword(!showTempPassword)}
+                      className="p-1 text-slate-400 hover:text-slate-200 rounded"
+                      title={showTempPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showTempPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTempPassword(tempPasswordInput)}
+                      className="p-1 text-cyan-400 hover:text-cyan-300 rounded"
+                      title="Copy temporary password"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  User will sign in using this temporary password and should change it in Settings immediately.
+                  Provide this temporary password securely to the user. They must change it in Settings immediately after signing in.
                 </p>
               </div>
 
