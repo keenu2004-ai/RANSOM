@@ -20,6 +20,20 @@ export class TimesheetRepository {
       description?: string;
       hours?: number;
       status?: string;
+      customerName?: string;
+      contactPerson?: string;
+      contactDetails?: string;
+      visitLocation?: string;
+      visitType?: string;
+      timeSlot?: string;
+      productsToPresent?: string;
+      visitObjective?: string;
+      outcomeSummary?: string;
+      nextAction?: string;
+      followUpDate?: string;
+      opportunityStage?: string;
+      estimatedValue?: number;
+      priority?: string;
     }
   ) {
     const isManagement = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(actorRole);
@@ -63,8 +77,11 @@ export class TimesheetRepository {
 
     const insertSql = `
       INSERT INTO timesheets (
-        organization_id, employee_id, project_id, title, date, hours, description, status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        organization_id, employee_id, project_id, title, date, hours, description, status, created_by,
+        customer_name, contact_person, contact_details, visit_location, visit_type, time_slot,
+        products_to_present, visit_objective, outcome_summary, next_action, follow_up_date,
+        opportunity_stage, estimated_value, priority
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *
     `;
 
@@ -77,7 +94,21 @@ export class TimesheetRepository {
       hours,
       data.description || null,
       status,
-      actorUserId
+      actorUserId,
+      data.customerName || null,
+      data.contactPerson || null,
+      data.contactDetails || null,
+      data.visitLocation || null,
+      data.visitType || null,
+      data.timeSlot || null,
+      data.productsToPresent || null,
+      data.visitObjective || null,
+      data.outcomeSummary || null,
+      data.nextAction || null,
+      data.followUpDate || null,
+      data.opportunityStage || null,
+      data.estimatedValue !== undefined ? Number(data.estimatedValue) : null,
+      data.priority || 'MEDIUM'
     ]);
 
     const newTask = res.rows[0];
@@ -114,6 +145,9 @@ export class TimesheetRepository {
       endDate?: string;
       assignedEmployeeId?: string;
       status?: string;
+      visitType?: string;
+      priority?: string;
+      opportunityStage?: string;
     }
   ) {
     const conditions: string[] = ['t.organization_id = $1', 't.deleted_at IS NULL'];
@@ -146,9 +180,29 @@ export class TimesheetRepository {
       conditions.push(`t.status = $${params.length}`);
     }
 
+    if (filters.visitType) {
+      params.push(filters.visitType);
+      conditions.push(`t.visit_type = $${params.length}`);
+    }
+
+    if (filters.priority) {
+      params.push(filters.priority);
+      conditions.push(`t.priority = $${params.length}`);
+    }
+
+    if (filters.opportunityStage) {
+      params.push(filters.opportunityStage);
+      conditions.push(`t.opportunity_stage = $${params.length}`);
+    }
+
     const dataSql = `
       SELECT 
         t.id, t.date, t.hours, t.title, t.description, t.status, t.project_id,
+        t.customer_name, t.contact_person, t.contact_details, t.visit_location,
+        t.visit_type, t.time_slot, t.products_to_present, t.visit_objective,
+        t.outcome_summary, t.next_action, t.follow_up_date, t.opportunity_stage,
+        t.estimated_value, t.priority, t.cancelled_at, t.cancelled_by, t.cancellation_reason,
+        t.rescheduled_from_task_id, t.rescheduled_to_task_id, t.reschedule_count, t.reschedule_reason,
         t.employee_id as assigned_employee_id,
         CONCAT(e.first_name, ' ', e.last_name) as assigned_employee_name,
         e.employee_code as assigned_employee_code,
@@ -179,6 +233,21 @@ export class TimesheetRepository {
       hours?: number;
       status?: string;
       date?: string;
+      customerName?: string;
+      contactPerson?: string;
+      contactDetails?: string;
+      visitLocation?: string;
+      visitType?: string;
+      timeSlot?: string;
+      productsToPresent?: string;
+      visitObjective?: string;
+      outcomeSummary?: string;
+      nextAction?: string;
+      followUpDate?: string;
+      opportunityStage?: string;
+      estimatedValue?: number;
+      priority?: string;
+      cancellationReason?: string;
     }
   ) {
     const existing = await query('SELECT * FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
@@ -198,6 +267,31 @@ export class TimesheetRepository {
     const status = data.status !== undefined ? data.status : task.status;
     const date = data.date !== undefined ? data.date : task.date;
 
+    const customerName = data.customerName !== undefined ? data.customerName : task.customer_name;
+    const contactPerson = data.contactPerson !== undefined ? data.contactPerson : task.contact_person;
+    const contactDetails = data.contactDetails !== undefined ? data.contactDetails : task.contact_details;
+    const visitLocation = data.visitLocation !== undefined ? data.visitLocation : task.visit_location;
+    const visitType = data.visitType !== undefined ? data.visitType : task.visit_type;
+    const timeSlot = data.timeSlot !== undefined ? data.timeSlot : task.time_slot;
+    const productsToPresent = data.productsToPresent !== undefined ? data.productsToPresent : task.products_to_present;
+    const visitObjective = data.visitObjective !== undefined ? data.visitObjective : task.visit_objective;
+    const outcomeSummary = data.outcomeSummary !== undefined ? data.outcomeSummary : task.outcome_summary;
+    const nextAction = data.nextAction !== undefined ? data.nextAction : task.next_action;
+    const followUpDate = data.followUpDate !== undefined ? data.followUpDate : task.follow_up_date;
+    const opportunityStage = data.opportunityStage !== undefined ? data.opportunityStage : task.opportunity_stage;
+    const estimatedValue = data.estimatedValue !== undefined ? Number(data.estimatedValue) : task.estimated_value;
+    const priority = data.priority !== undefined ? data.priority : task.priority;
+
+    let cancelledAt = task.cancelled_at;
+    let cancelledBy = task.cancelled_by;
+    let cancellationReason = task.cancellation_reason;
+
+    if (status === 'CANCELLED' && task.status !== 'CANCELLED') {
+      cancelledAt = new Date().toISOString();
+      cancelledBy = actorUserId;
+      cancellationReason = data.cancellationReason || 'Task cancelled by user';
+    }
+
     const res = await query(`
       UPDATE timesheets SET
         title = $1,
@@ -205,10 +299,34 @@ export class TimesheetRepository {
         hours = $3,
         status = $4,
         date = $5,
+        customer_name = $6,
+        contact_person = $7,
+        contact_details = $8,
+        visit_location = $9,
+        visit_type = $10,
+        time_slot = $11,
+        products_to_present = $12,
+        visit_objective = $13,
+        outcome_summary = $14,
+        next_action = $15,
+        follow_up_date = $16,
+        opportunity_stage = $17,
+        estimated_value = $18,
+        priority = $19,
+        cancelled_at = $20,
+        cancelled_by = $21,
+        cancellation_reason = $22,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6 AND organization_id = $7
+      WHERE id = $23 AND organization_id = $24
       RETURNING *
-    `, [title, description, hours, status, date, taskId, organizationId]);
+    `, [
+      title, description, hours, status, date,
+      customerName, contactPerson, contactDetails, visitLocation, visitType,
+      timeSlot, productsToPresent, visitObjective, outcomeSummary, nextAction,
+      followUpDate, opportunityStage, estimatedValue, priority,
+      cancelledAt, cancelledBy, cancellationReason,
+      taskId, organizationId
+    ]);
 
     const updatedTask = res.rows[0];
 
@@ -216,9 +334,134 @@ export class TimesheetRepository {
       INSERT INTO audit_logs (
         organization_id, user_id, action, module, entity_name, entity_id, new_values
       ) VALUES ($1, $2, 'TASK_UPDATED', 'tasks', 'DailyTask', $3, $4)
-    `, [organizationId, actorUserId, taskId, JSON.stringify({ title, status, hours })]);
+    `, [organizationId, actorUserId, taskId, JSON.stringify({ title, status, hours, outcomeSummary })]);
 
     return updatedTask;
+  }
+
+  static async rescheduleTask(
+    organizationId: string,
+    taskId: string,
+    actorUserId: string,
+    actorRole: string,
+    actorEmployeeId: string | null,
+    newDate: string,
+    reason?: string
+  ) {
+    const existing = await query('SELECT * FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
+    if (existing.rows.length === 0) {
+      throw new Error('Task not found.');
+    }
+    const orig = existing.rows[0];
+
+    if (actorRole === 'EMPLOYEE' && orig.employee_id !== actorEmployeeId && orig.created_by !== actorUserId) {
+      throw new Error('Unauthorized to reschedule this task.');
+    }
+
+    const newRescheduleCount = (orig.reschedule_count || 0) + 1;
+
+    // Create new task on newDate linked to original
+    const newInsertSql = `
+      INSERT INTO timesheets (
+        organization_id, employee_id, project_id, title, date, hours, description, status, created_by,
+        customer_name, contact_person, contact_details, visit_location, visit_type, time_slot,
+        products_to_present, visit_objective, opportunity_stage, estimated_value, priority,
+        rescheduled_from_task_id, reschedule_count, reschedule_reason
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'PLANNED', $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+      RETURNING *
+    `;
+
+    const newRes = await query(newInsertSql, [
+      organizationId,
+      orig.employee_id,
+      orig.project_id,
+      orig.title,
+      newDate,
+      orig.hours,
+      orig.description,
+      actorUserId,
+      orig.customer_name,
+      orig.contact_person,
+      orig.contact_details,
+      orig.visit_location,
+      orig.visit_type,
+      orig.time_slot,
+      orig.products_to_present,
+      orig.visit_objective,
+      orig.opportunity_stage,
+      orig.estimated_value,
+      orig.priority || 'MEDIUM',
+      taskId,
+      newRescheduleCount,
+      reason || 'Rescheduled to next week'
+    ]);
+
+    const newTask = newRes.rows[0];
+
+    // Update original task link to new task
+    await query(`
+      UPDATE timesheets
+      SET rescheduled_to_task_id = $1, reschedule_reason = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3 AND organization_id = $4
+    `, [newTask.id, reason || 'Rescheduled to next week', taskId, organizationId]);
+
+    // Audit Log
+    await query(`
+      INSERT INTO audit_logs (
+        organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values
+      ) VALUES ($1, $2, 'TASK_RESCHEDULED', 'tasks', 'DailyTask', $3, $4, $5)
+    `, [
+      organizationId,
+      actorUserId,
+      taskId,
+      JSON.stringify({ date: orig.date, title: orig.title }),
+      JSON.stringify({ newTaskId: newTask.id, newDate, reason })
+    ]);
+
+    return { originalTask: orig, newTask };
+  }
+
+  static async findPendingCarryForward(
+    organizationId: string,
+    actorUserId: string,
+    actorRole: string,
+    actorEmployeeId: string | null,
+    beforeDate?: string
+  ) {
+    const cutoffDate = beforeDate || new Date().toISOString().split('T')[0];
+    const conditions: string[] = [
+      't.organization_id = $1',
+      't.deleted_at IS NULL',
+      't.date < $2',
+      "t.status IN ('PLANNED', 'IN_PROGRESS')",
+      't.rescheduled_to_task_id IS NULL'
+    ];
+    const params: any[] = [organizationId, cutoffDate];
+
+    if (actorRole === 'EMPLOYEE') {
+      if (!actorEmployeeId) return [];
+      params.push(actorEmployeeId, actorUserId);
+      conditions.push(`(t.employee_id = $3 OR t.created_by = $4)`);
+    }
+
+    const dataSql = `
+      SELECT 
+        t.id, t.date, t.hours, t.title, t.description, t.status, t.project_id,
+        t.customer_name, t.contact_person, t.contact_details, t.visit_location,
+        t.visit_type, t.time_slot, t.products_to_present, t.visit_objective,
+        t.outcome_summary, t.next_action, t.follow_up_date, t.opportunity_stage,
+        t.estimated_value, t.priority, t.rescheduled_from_task_id, t.rescheduled_to_task_id, t.reschedule_count,
+        t.employee_id as assigned_employee_id,
+        CONCAT(e.first_name, ' ', e.last_name) as assigned_employee_name,
+        e.employee_code as assigned_employee_code
+      FROM timesheets t
+      LEFT JOIN employees e ON t.employee_id = e.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY t.date DESC
+    `;
+
+    const res = await query(dataSql, params);
+    return res.rows;
   }
 
   static async deleteTask(organizationId: string, taskId: string, actorUserId: string, actorRole: string, actorEmployeeId: string | null) {

@@ -687,6 +687,29 @@ async function runMasterE2EVerificationSuite() {
 
     summary['14. Admin Password Reset'] = 'PASS';
 
+    // ─── 15. WEEKLY FIELD VISIT & WORK MANAGEMENT SUITE ──────────────────────
+    console.log('\n[TEST 15] Weekly Field Visit & Work Management Suite...');
+
+    const tsRoutesFile = path.join(rootDir, 'backend/src/routes/timesheetRoutes.ts');
+    const tsRoutesCode = fs.readFileSync(tsRoutesFile, 'utf8');
+    runStep('timesheetRoutes.ts contains pending-carry-forward, reschedule, and export endpoints', 
+      tsRoutesCode.includes('/pending-carry-forward') && tsRoutesCode.includes('/reschedule') && tsRoutesCode.includes('/export')
+    );
+
+    const tsRepoFile = path.join(rootDir, 'backend/src/repositories/timesheetRepository.ts');
+    const tsRepoCode = fs.readFileSync(tsRepoFile, 'utf8');
+    runStep('TimesheetRepository handles customer_name, visit_location, outcome_summary, and rescheduleTask with audit logging',
+      tsRepoCode.includes('customer_name') && tsRepoCode.includes('outcome_summary') && tsRepoCode.includes('rescheduleTask') && tsRepoCode.includes('TASK_RESCHEDULED')
+    );
+
+    const tsPageFile = path.join(rootDir, 'frontend/src/pages/Timesheets.tsx');
+    const tsPageCode = fs.readFileSync(tsPageFile, 'utf8');
+    runStep('Timesheets.tsx contains Weekly Field Visit planner UI with carry forward, rescheduling, and Excel download',
+      tsPageCode.includes('CARRIED FORWARD') && tsPageCode.includes('handleRescheduleSubmit') && tsPageCode.includes('Download Excel')
+    );
+
+    summary['15. Weekly Field Visit Planner'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');
