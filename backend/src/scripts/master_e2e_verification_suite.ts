@@ -548,7 +548,8 @@ async function runMasterE2EVerificationSuite() {
 
     const dashFile = path.join(rootDir, 'frontend/src/pages/Dashboard.tsx');
     const dashCode = fs.readFileSync(dashFile, 'utf8');
-    runStep('Dashboard.tsx contains clickable KPI cards routing to /employees, /attendance, /leave, and /expenses',
+    runStep('Dashboard.tsx contains DesktopKpiCard component and clickable KPI cards routing to /employees, /attendance, /leave, and /expenses',
+      dashCode.includes('DesktopKpiCard') &&
       dashCode.includes("navigate('/employees')") &&
       dashCode.includes("navigate('/attendance')") &&
       dashCode.includes("navigate('/leave')") &&

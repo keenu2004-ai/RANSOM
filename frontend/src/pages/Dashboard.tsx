@@ -10,6 +10,51 @@ import {
   FileText, CalendarCheck, Bell, BarChart3, History, Gift, ChevronRight, Fingerprint, Clock
 } from 'lucide-react';
 
+interface DesktopKpiCardProps {
+  title: string;
+  value: number | string;
+  path: string;
+  icon: React.ElementType;
+  hoverBorderColor: string;
+  hoverTextColor: string;
+  iconBgColor: string;
+  iconTextColor: string;
+  valueTextColor?: string;
+}
+
+const DesktopKpiCard: React.FC<DesktopKpiCardProps> = ({
+  title,
+  value,
+  path,
+  icon: Icon,
+  hoverBorderColor,
+  hoverTextColor,
+  iconBgColor,
+  iconTextColor,
+  valueTextColor = "text-white"
+}) => {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        console.log('[DESKTOP KPI CLICK]', title, path);
+        navigate(path);
+      }}
+      className={`p-5 bg-slate-900 border border-slate-800 ${hoverBorderColor} hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10`}
+      title={`Navigate to ${title}`}
+    >
+      <div className="pointer-events-none">
+        <p className={`text-xs text-slate-400 font-medium ${hoverTextColor} transition-colors`}>{title}</p>
+        <p className={`text-2xl font-bold ${valueTextColor} mt-1`}>{value}</p>
+      </div>
+      <div className={`p-3 ${iconBgColor} ${iconTextColor} rounded-xl group-hover:scale-105 transition-transform pointer-events-none`}>
+        <Icon className="w-6 h-6" />
+      </div>
+    </button>
+  );
+};
+
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { todaySummary, actionLoading, handlePunch } = useAttendance();
@@ -67,7 +112,7 @@ export const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              console.log('[KPI CLICK] employees');
+              console.log('[MOBILE KPI CLICK] employees');
               navigate('/employees');
             }}
             className="p-4 bg-white border border-slate-200/80 hover:border-cyan-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
@@ -86,7 +131,7 @@ export const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              console.log('[KPI CLICK] attendance');
+              console.log('[MOBILE KPI CLICK] attendance');
               navigate('/attendance');
             }}
             className="p-4 bg-white border border-slate-200/80 hover:border-emerald-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
@@ -105,7 +150,7 @@ export const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              console.log('[KPI CLICK] leave');
+              console.log('[MOBILE KPI CLICK] leave');
               navigate('/leave');
             }}
             className="p-4 bg-white border border-slate-200/80 hover:border-amber-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
@@ -124,7 +169,7 @@ export const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              console.log('[KPI CLICK] expenses');
+              console.log('[MOBILE KPI CLICK] expenses');
               navigate('/expenses');
             }}
             className="p-4 bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
@@ -251,83 +296,59 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Overview Summary Metrics Cards (Clickable Navigation for Entire Card Surface) */}
+        {/* Overview Summary Metrics Cards (Four-Column Grid Layout) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 1. Total Active Employees -> /employees */}
-          <button
-            type="button"
-            onClick={() => {
-              console.log('[KPI CLICK] employees');
-              navigate('/employees');
-            }}
-            className="p-5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
-            title="Navigate to Employees Directory"
-          >
-            <div className="pointer-events-none">
-              <p className="text-xs text-slate-400 font-medium group-hover:text-cyan-400 transition-colors">Total Active Employees</p>
-              <p className="text-2xl font-bold text-white mt-1">{summary.totalEmployees ?? 0}</p>
-            </div>
-            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
-              <Users className="w-6 h-6" />
-            </div>
-          </button>
+          <DesktopKpiCard
+            title="Total Active Employees"
+            value={summary.totalEmployees ?? 0}
+            path="/employees"
+            icon={Users}
+            hoverBorderColor="hover:border-cyan-500/50"
+            hoverTextColor="group-hover:text-cyan-400"
+            iconBgColor="bg-cyan-500/10 border border-cyan-500/20"
+            iconTextColor="text-cyan-400"
+            valueTextColor="text-white"
+          />
 
           {/* 2. Present Today -> /attendance */}
-          <button
-            type="button"
-            onClick={() => {
-              console.log('[KPI CLICK] attendance');
-              navigate('/attendance');
-            }}
-            className="p-5 bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
-            title="Navigate to Attendance Module"
-          >
-            <div className="pointer-events-none">
-              <p className="text-xs text-slate-400 font-medium group-hover:text-emerald-400 transition-colors">Present Today</p>
-              <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.presentToday ?? 0}</p>
-            </div>
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-          </button>
+          <DesktopKpiCard
+            title="Present Today"
+            value={summary.presentToday ?? 0}
+            path="/attendance"
+            icon={CheckCircle2}
+            hoverBorderColor="hover:border-emerald-500/50"
+            hoverTextColor="group-hover:text-emerald-400"
+            iconBgColor="bg-emerald-500/10 border border-emerald-500/20"
+            iconTextColor="text-emerald-400"
+            valueTextColor="text-emerald-400"
+          />
 
           {/* 3. Pending Leave Requests -> /leave */}
-          <button
-            type="button"
-            onClick={() => {
-              console.log('[KPI CLICK] leave');
-              navigate('/leave');
-            }}
-            className="p-5 bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
-            title="Navigate to Leave Management"
-          >
-            <div className="pointer-events-none">
-              <p className="text-xs text-slate-400 font-medium group-hover:text-amber-400 transition-colors">Pending Leave Requests</p>
-              <p className="text-2xl font-bold text-amber-400 mt-1">{summary.pendingLeaves ?? 0}</p>
-            </div>
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
-              <CalendarDays className="w-6 h-6" />
-            </div>
-          </button>
+          <DesktopKpiCard
+            title="Pending Leave Requests"
+            value={summary.pendingLeaves ?? 0}
+            path="/leave"
+            icon={CalendarDays}
+            hoverBorderColor="hover:border-amber-500/50"
+            hoverTextColor="group-hover:text-amber-400"
+            iconBgColor="bg-amber-500/10 border border-amber-500/20"
+            iconTextColor="text-amber-400"
+            valueTextColor="text-amber-400"
+          />
 
           {/* 4. Pending Expense Claims -> /expenses */}
-          <button
-            type="button"
-            onClick={() => {
-              console.log('[KPI CLICK] expenses');
-              navigate('/expenses');
-            }}
-            className="p-5 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
-            title="Navigate to Expense Claims"
-          >
-            <div className="pointer-events-none">
-              <p className="text-xs text-slate-400 font-medium group-hover:text-indigo-400 transition-colors">Pending Expense Claims</p>
-              <p className="text-2xl font-bold text-indigo-400 mt-1">{summary.pendingExpenses ?? 0}</p>
-            </div>
-            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
-              <Receipt className="w-6 h-6" />
-            </div>
-          </button>
+          <DesktopKpiCard
+            title="Pending Expense Claims"
+            value={summary.pendingExpenses ?? 0}
+            path="/expenses"
+            icon={Receipt}
+            hoverBorderColor="hover:border-indigo-500/50"
+            hoverTextColor="group-hover:text-indigo-400"
+            iconBgColor="bg-indigo-500/10 border border-indigo-500/20"
+            iconTextColor="text-indigo-400"
+            valueTextColor="text-indigo-400"
+          />
         </div>
 
         {/* Grid Content */}
