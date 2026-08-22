@@ -647,6 +647,8 @@ async function runMasterE2EVerificationSuite() {
     const userRepoCode = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/userRepository.ts'), 'utf8');
     const hasOuterJoinForUpdate = /LEFT\s+JOIN[\s\S]*?FOR\s+UPDATE/i.test(userRepoCode);
     runStep('UserRepository updateRole uses direct row-locking without OUTER JOINs on FOR UPDATE', !hasOuterJoinForUpdate);
+    const hasInvalidActorIdCol = /INSERT\s+INTO\s+audit_logs[\s\S]*?actor_id/i.test(userRepoCode);
+    runStep('UserRepository updateRole audit_logs INSERT uses user_id instead of non-existent actor_id', !hasInvalidActorIdCol);
 
     summary['12. User Role Assignment'] = 'PASS';
 

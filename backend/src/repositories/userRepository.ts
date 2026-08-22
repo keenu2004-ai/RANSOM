@@ -202,18 +202,18 @@ export class UserRepository {
 
       // 7. Audit Logging for Role Change
       await client.query(`
-        INSERT INTO audit_logs (organization_id, actor_id, entity_type, entity_id, action, details)
-        VALUES ($1, $2, 'USER', $3, 'USER_ROLE_CHANGED', $4)
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [
         actorUser.organizationId,
         actorUser.id,
+        'USER_ROLE_CHANGED',
+        'users',
+        'User',
         targetUserId,
-        JSON.stringify({
-          target_user_email: targetUser.email,
-          old_role: currentRole,
-          new_role: canonicalRequestedRole,
-          timestamp: new Date().toISOString()
-        })
+        JSON.stringify({ role: currentRole }),
+        JSON.stringify({ role: canonicalRequestedRole, target_user_email: targetUser.email })
       ]);
 
       // 8. In-App Notification to Target User
