@@ -328,7 +328,7 @@ export const Timesheets: React.FC = () => {
           priority: filterPriority || undefined,
           opportunityStage: filterOpportunity || undefined
         }
-      }, `THEIAKSHI_Weekly_Plan_${startDate}_to_${endDate}.csv`);
+      }, `THEIAKSHI_Weekly_Plan_${startDate}_to_${endDate}.xlsx`);
     } catch (err: any) {
       alert(err.message || 'Unable to download Weekly Plan export.');
     } finally {

@@ -108,7 +108,7 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
   }
 }
 
-export async function apiDownload(endpoint: string, options: ApiOptions = {}, defaultFilename = 'THEIAKSHI_Weekly_Plan.csv'): Promise<void> {
+export async function apiDownload(endpoint: string, options: ApiOptions = {}, defaultFilename = 'THEIAKSHI_Weekly_Plan.xlsx'): Promise<void> {
   const { params, headers, ...customConfig } = options;
 
   let url = getApiUrl(endpoint);

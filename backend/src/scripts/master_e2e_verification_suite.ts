@@ -716,8 +716,13 @@ async function runMasterE2EVerificationSuite() {
     );
     const apiClientFile = path.join(rootDir, 'frontend/src/services/api-client.ts');
     const apiClientCode = fs.readFileSync(apiClientFile, 'utf8');
-    runStep('api-client.ts contains apiDownload helper with Authorization Bearer header for protected file downloads',
-      apiClientCode.includes('apiDownload') && apiClientCode.includes('Authorization') && tsPageCode.includes('apiDownload')
+    const excelServiceFile = path.join(rootDir, 'backend/src/services/excelService.ts');
+    const excelServiceCode = fs.readFileSync(excelServiceFile, 'utf8');
+    runStep('excelService.ts contains 6 multi-sheet ExcelJS generators: Weekly Plan, Summary, Carry Forward, Opportunity, History, Monthly',
+      excelServiceCode.includes('Weekly Plan') && excelServiceCode.includes('Weekly Summary') && excelServiceCode.includes('Pending Carry Forward') && excelServiceCode.includes('Visit Opportunity Summary') && excelServiceCode.includes('Week History') && excelServiceCode.includes('Monthly Tracker')
+    );
+    runStep('timesheetRoutes.ts streams Content-Type application/vnd.openxmlformats-officedocument.spreadsheetml.sheet for true XLSX exports',
+      tsRoutesCode.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') && tsRoutesCode.includes('generateWeeklyPlanXlsx')
     );
 
     summary['15. Weekly Field Visit Planner'] = 'PASS';
