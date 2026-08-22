@@ -714,6 +714,11 @@ async function runMasterE2EVerificationSuite() {
     runStep('TimesheetRepository normalizes optional description to empty string avoiding NOT NULL constraint violation',
       tsRepoCode.includes("description = (data.description !== undefined && data.description !== null)") || tsRepoCode.includes("String(data.description).trim()")
     );
+    const apiClientFile = path.join(rootDir, 'frontend/src/services/api-client.ts');
+    const apiClientCode = fs.readFileSync(apiClientFile, 'utf8');
+    runStep('api-client.ts contains apiDownload helper with Authorization Bearer header for protected file downloads',
+      apiClientCode.includes('apiDownload') && apiClientCode.includes('Authorization') && tsPageCode.includes('apiDownload')
+    );
 
     summary['15. Weekly Field Visit Planner'] = 'PASS';
 

@@ -107,3 +107,81 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
     throw new ApiError(message, 0, 'NETWORK_ERROR');
   }
 }
+
+export async function apiDownload(endpoint: string, options: ApiOptions = {}, defaultFilename = 'THEIAKSHI_Weekly_Plan.csv'): Promise<void> {
+  const { params, headers, ...customConfig } = options;
+
+  let url = getApiUrl(endpoint);
+  if (params) {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+    const queryString = queryParams.toString();
+    if (queryString) {
+      const separator = url.includes('?') ? '&' : '?';
+      url += `${separator}${queryString}`;
+    }
+  }
+
+  const token = localStorage.getItem('theiakshi_auth_token');
+
+  const config: RequestInit = {
+    method: 'GET',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers
+    },
+    ...customConfig
+  };
+
+  try {
+    const response = await fetch(url, config);
+
+    if (response.status === 401) {
+      localStorage.removeItem('theiakshi_auth_token');
+      localStorage.removeItem('theiakshi_auth_user');
+      throw new ApiError('Your session has expired. Please sign in again.', 401, 'UNAUTHENTICATED');
+    }
+
+    if (response.status === 403) {
+      throw new ApiError('You do not have permission to export this Weekly Plan.', 403, 'PERMISSION_DENIED');
+    }
+
+    if (!response.ok) {
+      let errorMsg = 'Unable to download Weekly Plan export.';
+      try {
+        const errJson = await response.json();
+        errorMsg = errJson.error || errJson.message || errorMsg;
+      } catch (_) {}
+      throw new ApiError(errorMsg, response.status, 'DOWNLOAD_FAILED');
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
+    let filename = defaultFilename;
+
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^";]+)"?/i) || contentDisposition.match(/filename\*=UTF-8''([^";]+)/i);
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1].trim());
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(error.message || 'Unable to download file export.', 0, 'DOWNLOAD_ERROR');
+  }
+}

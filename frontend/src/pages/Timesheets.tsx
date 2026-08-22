@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { apiFetch } from '../services/api-client';
+import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { 
   FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X, 
@@ -310,11 +310,30 @@ export const Timesheets: React.FC = () => {
     }
   };
 
-  const handleDownloadExcel = () => {
-    const startDate = weekDays[0].dateStr;
-    const endDate = weekDays[6].dateStr;
-    const url = `/api/timesheets/export?startDate=${startDate}&endDate=${endDate}&assignedEmployeeId=${filterEmployeeId}&status=${filterStatus}&visitType=${filterVisitType}&priority=${filterPriority}`;
-    window.open(url, '_blank');
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadExcel = async () => {
+    setDownloading(true);
+    try {
+      const startDate = weekDays[0].dateStr;
+      const endDate = weekDays[6].dateStr;
+
+      await apiDownload('/timesheets/export', {
+        params: {
+          startDate,
+          endDate,
+          assignedEmployeeId: filterEmployeeId || undefined,
+          status: filterStatus || undefined,
+          visitType: filterVisitType || undefined,
+          priority: filterPriority || undefined,
+          opportunityStage: filterOpportunity || undefined
+        }
+      }, `THEIAKSHI_Weekly_Plan_${startDate}_to_${endDate}.csv`);
+    } catch (err: any) {
+      alert(err.message || 'Unable to download Weekly Plan export.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // Group tasks by date
@@ -367,12 +386,14 @@ export const Timesheets: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            disabled={downloading}
             onClick={handleDownloadExcel}
-            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-xl transition-all"
+            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
             title="Export Weekly Plan to Excel / CSV"
           >
             <Download className="w-4 h-4" />
-            <span>Download Excel</span>
+            <span>{downloading ? 'Downloading...' : 'Download Excel'}</span>
           </button>
 
           <button
