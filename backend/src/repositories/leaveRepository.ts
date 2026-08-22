@@ -16,14 +16,59 @@ export class LeaveRepository {
     const text = `
       SELECT 
         lb.id, lb.employee_id, lb.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
-        lb.year, lb.quota, lb.used, lb.pending, lb.available
+        lt.annual_quota as organization_entitlement,
+        lb.year, lb.used, lb.pending,
+        ela.adjustment_type, ela.adjustment_value
       FROM leave_balances lb
       INNER JOIN leave_types lt ON lb.leave_type_id = lt.id
+      LEFT JOIN LATERAL (
+        SELECT adjustment_type, adjustment_value
+        FROM employee_leave_adjustments
+        WHERE organization_id = $2 AND employee_id = $1 AND leave_type_id = lb.leave_type_id AND period_year = $3
+        ORDER BY created_at DESC LIMIT 1
+      ) ela ON TRUE
       WHERE lb.employee_id = $1 AND lb.organization_id = $2 AND lb.year = $3 AND lt.is_active = TRUE
       ORDER BY lt.name ASC
     `;
     const res = await query(text, [employeeId, organizationId, year]);
-    return res.rows;
+
+    return res.rows.map(row => {
+      const orgQuota = parseFloat(row.organization_entitlement || '0');
+      let effectiveAdjustment = 0;
+      let finalEntitlement = orgQuota;
+
+      if (row.adjustment_type === 'INCREMENT') {
+        effectiveAdjustment = parseFloat(row.adjustment_value || '0');
+        finalEntitlement = orgQuota + effectiveAdjustment;
+      } else if (row.adjustment_type === 'DECREMENT') {
+        const adjVal = parseFloat(row.adjustment_value || '0');
+        effectiveAdjustment = -adjVal;
+        finalEntitlement = Math.max(0, orgQuota - adjVal);
+      } else if (row.adjustment_type === 'OVERRIDE') {
+        finalEntitlement = parseFloat(row.adjustment_value || '0');
+        effectiveAdjustment = finalEntitlement - orgQuota;
+      }
+
+      const used = parseFloat(row.used || '0');
+      const pending = parseFloat(row.pending || '0');
+      const available = Math.max(0, finalEntitlement - used - pending);
+
+      return {
+        id: row.id,
+        employee_id: row.employee_id,
+        leave_type_id: row.leave_type_id,
+        leave_type_name: row.leave_type_name,
+        leave_type_code: row.leave_type_code,
+        organizationEntitlement: orgQuota,
+        employeeAdjustment: effectiveAdjustment,
+        finalEntitlement: finalEntitlement,
+        year: row.year,
+        quota: finalEntitlement,
+        used: used,
+        pending: pending,
+        available: available
+      };
+    });
   }
 
   static async getMonthlyCLUsage(employeeId: string, organizationId: string, year: number, month: number) {
@@ -48,28 +93,43 @@ export class LeaveRepository {
     return withTransaction(async (client) => {
       const currentYear = new Date().getFullYear();
 
-      // Update leave_types
+      // Update leave_types - handle both 'EL' and 'PL' codes for Earned/Privilege leave
       await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.clQuota, organizationId, 'CL']);
-      await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.elQuota, organizationId, 'EL']);
+      await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code IN (\'EL\', \'PL\')', [quotas.elQuota, organizationId]);
       await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.slQuota, organizationId, 'SL']);
 
-      // Synchronize leave_balances for active year
-      const updates = [
-        { code: 'CL', quota: quotas.clQuota },
-        { code: 'EL', quota: quotas.elQuota },
-        { code: 'SL', quota: quotas.slQuota }
-      ];
+      // Synchronize all leave_balances for active year according to current policy + active employee adjustments
+      const balancesRes = await client.query(`
+        SELECT lb.id, lb.employee_id, lb.leave_type_id, lt.annual_quota as org_quota,
+               ela.adjustment_type, ela.adjustment_value
+        FROM leave_balances lb
+        INNER JOIN leave_types lt ON lb.leave_type_id = lt.id
+        LEFT JOIN LATERAL (
+          SELECT adjustment_type, adjustment_value
+          FROM employee_leave_adjustments
+          WHERE organization_id = $1 AND employee_id = lb.employee_id AND leave_type_id = lb.leave_type_id AND period_year = $2
+          ORDER BY created_at DESC LIMIT 1
+        ) ela ON TRUE
+        WHERE lb.organization_id = $1 AND lb.year = $2
+      `, [organizationId, currentYear]);
 
-      for (const item of updates) {
-        const typeRes = await client.query('SELECT id FROM leave_types WHERE organization_id = $1 AND code = $2', [organizationId, item.code]);
-        if (typeRes.rows.length > 0) {
-          const typeId = typeRes.rows[0].id;
-          await client.query(`
-            UPDATE leave_balances
-            SET quota = $1, available = GREATEST(0, $1 - used - pending), updated_at = CURRENT_TIMESTAMP
-            WHERE organization_id = $2 AND leave_type_id = $3 AND year = $4
-          `, [item.quota, organizationId, typeId, currentYear]);
+      for (const row of balancesRes.rows) {
+        const orgQuota = parseFloat(row.org_quota || '0');
+        let finalEntitlement = orgQuota;
+
+        if (row.adjustment_type === 'INCREMENT') {
+          finalEntitlement = orgQuota + parseFloat(row.adjustment_value || '0');
+        } else if (row.adjustment_type === 'DECREMENT') {
+          finalEntitlement = Math.max(0, orgQuota - parseFloat(row.adjustment_value || '0'));
+        } else if (row.adjustment_type === 'OVERRIDE') {
+          finalEntitlement = parseFloat(row.adjustment_value || '0');
         }
+
+        await client.query(`
+          UPDATE leave_balances
+          SET quota = $1, available = GREATEST(0, $1 - used - pending), updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+        `, [finalEntitlement, row.id]);
       }
 
       return { message: 'Leave policy updated successfully.' };
@@ -131,9 +191,9 @@ export class LeaveRepository {
         if (elDays === 0) {
           targetLeaveTypeId = data.leaveTypeId;
         } else if (clDays === 0) {
-          // All requested days overflowed to EL -> switch target to EL
-          const elTypeRes = await client.query("SELECT id FROM leave_types WHERE organization_id = $1 AND code = 'EL'", [organizationId]);
-          if (elTypeRes.rows.length === 0) throw new Error('Earned Leave type not configured.');
+          // All requested days overflowed to EL -> switch target to EL/PL
+          const elTypeRes = await client.query("SELECT id FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
+          if (elTypeRes.rows.length === 0) throw new Error('Earned / Privilege Leave type not configured.');
           targetLeaveTypeId = elTypeRes.rows[0].id;
         }
       }
@@ -198,7 +258,7 @@ export class LeaveRepository {
 
       const req = reqRes.rows[0];
       if (req.status !== 'PENDING') {
-        throw new Error(`Cannot update leave request with current status: ${req.status}`);
+        throw new Error(`Cannot update status for a request that is already ${req.status}.`);
       }
 
       const year = new Date(req.start_date).getFullYear();
@@ -212,7 +272,7 @@ export class LeaveRepository {
             updated_at = CURRENT_TIMESTAMP
           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
         `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
-      } else if (status === 'REJECTED' || status === 'CANCELLED') {
+      } else if (status === 'REJECTED') {
         await client.query(`
           UPDATE leave_balances
           SET 
@@ -223,69 +283,58 @@ export class LeaveRepository {
         `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
       }
 
-      const updateRes = await client.query(`
+      const updatedRes = await client.query(`
         UPDATE leave_requests
-        SET 
-          status = $1,
-          reviewed_by = $2,
-          reviewed_at = CURRENT_TIMESTAMP,
-          rejection_reason = $3,
-          updated_at = CURRENT_TIMESTAMP
+        SET status = $1, reviewer_employee_id = $2, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
         WHERE id = $4 AND organization_id = $5
-        RETURNING id, employee_id, status, reviewed_at
+        RETURNING *
       `, [status, reviewerEmployeeId || null, rejectionReason || null, id, organizationId]);
 
-      return updateRes.rows[0];
+      return updatedRes.rows[0];
     });
   }
 
-  static async findAll(organizationId: string, filters: { status?: string; page?: number; limit?: number }) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 20;
+  static async findAll(organizationId: string, options: { status?: string; page?: number; limit?: number }) {
+    const { status, page = 1, limit = 20 } = options;
     const offset = (page - 1) * limit;
 
-    let whereClause = `WHERE lr.organization_id = $1`;
+    let whereClause = 'WHERE lr.organization_id = $1';
     const params: any[] = [organizationId];
-    let paramIndex = 2;
 
-    if (filters.status) {
-      whereClause += ` AND lr.status = $${paramIndex}`;
-      params.push(filters.status);
-      paramIndex++;
+    if (status && status !== 'ALL') {
+      params.push(status);
+      whereClause += ` AND lr.status = $${params.length}`;
     }
 
-    const countSql = `SELECT COUNT(*)::int as total FROM leave_requests lr ${whereClause}`;
-    const countRes = await query<{ total: number }>(countSql, params);
-
-    const dataSql = `
-      SELECT 
-        lr.id, lr.organization_id, lr.employee_id,
-        CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-        e.employee_code,
-        d.name as department_name,
-        lt.name as leave_type_name,
-        lt.code as leave_type_code,
-        lr.start_date, lr.end_date, lr.total_days, lr.reason, lr.status,
-        lr.created_at
-      FROM leave_requests lr
-      INNER JOIN employees e ON lr.employee_id = e.id
-      LEFT JOIN departments d ON e.department_id = d.id
-      INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
-      ${whereClause}
-      ORDER BY lr.created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    const countText = `SELECT COUNT(*) FROM leave_requests lr ${whereClause}`;
+    const countRes = await query(countText, params);
+    const total = parseInt(countRes.rows[0].count, 10);
 
     params.push(limit, offset);
-    const dataRes = await query(dataSql, params);
+    const dataText = `
+      SELECT 
+        lr.id, lr.employee_id, lr.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
+        lr.start_date, lr.end_date, lr.total_days, lr.reason, lr.status, lr.rejection_reason, lr.created_at,
+        e.first_name, e.last_name, e.employee_code,
+        rev.first_name as reviewer_first_name, rev.last_name as reviewer_last_name
+      FROM leave_requests lr
+      INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
+      INNER JOIN employees e ON lr.employee_id = e.id
+      LEFT JOIN employees rev ON lr.reviewer_employee_id = rev.id
+      ${whereClause}
+      ORDER BY lr.created_at DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `;
+
+    const dataRes = await query(dataText, params);
 
     return {
       leaveRequests: dataRes.rows,
       pagination: {
-        total: countRes.rows[0].total,
+        total,
         page,
         limit,
-        totalPages: Math.ceil(countRes.rows[0].total / limit)
+        totalPages: Math.ceil(total / limit)
       }
     };
   }
@@ -295,91 +344,82 @@ export class LeaveRepository {
     actorUserId: string,
     actorEmployeeId: string | null,
     actorRole: string,
-    leaveId: string,
-    reason: string = 'Cancelled by user'
+    requestId: string,
+    cancellationReason: string
   ) {
     return withTransaction(async (client) => {
-      const res = await client.query('SELECT * FROM leave_requests WHERE id = $1 AND organization_id = $2', [leaveId, organizationId]);
-      if (res.rows.length === 0) {
-        const err: any = new Error('Leave request not found.');
-        err.statusCode = 404;
-        throw err;
-      }
-      const leave = res.rows[0];
+      const reqRes = await client.query(`
+        SELECT lr.id, lr.employee_id, lr.leave_type_id, lr.start_date, lr.total_days, lr.status,
+               lt.name as leave_type_name, e.first_name, e.last_name
+        FROM leave_requests lr
+        INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
+        INNER JOIN employees e ON lr.employee_id = e.id
+        WHERE lr.id = $1 AND lr.organization_id = $2
+        FOR UPDATE
+      `, [requestId, organizationId]);
 
-      // RBAC check: EMPLOYEE can only cancel own leave
-      if (actorRole === 'EMPLOYEE' && leave.employee_id !== actorEmployeeId) {
-        const err: any = new Error('Unauthorized to cancel this leave request.');
-        err.statusCode = 403;
-        throw err;
+      if (reqRes.rows.length === 0) {
+        throw new Error('Leave request not found.');
       }
 
-      if (leave.status === 'CANCELLED') {
-        return leave;
+      const leave = reqRes.rows[0];
+      const isSelf = actorEmployeeId && actorEmployeeId === leave.employee_id;
+      const isPrivileged = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(actorRole);
+
+      if (!isSelf && !isPrivileged) {
+        throw new Error('You are not authorized to cancel this leave request.');
       }
 
       const todayStr = new Date().toISOString().split('T')[0];
-      const startDateStr = leave.start_date ? new Date(leave.start_date).toISOString().split('T')[0] : todayStr;
+      const startDateStr = new Date(leave.start_date).toISOString().split('T')[0];
 
-      if (leave.status === 'APPROVED') {
-        if (startDateStr <= todayStr) {
-          const err: any = new Error('Past or active leave cannot be directly revoked. Contact HR.');
-          err.statusCode = 400;
-          err.code = 'PAST_LEAVE_REVOCATION_BLOCKED';
-          throw err;
-        }
-      } else if (leave.status !== 'PENDING') {
-        const err: any = new Error(`Cannot cancel a leave request with status ${leave.status}.`);
-        err.statusCode = 400;
-        throw err;
+      if (isSelf && !isPrivileged && startDateStr <= todayStr) {
+        throw new Error('Self-service cancellation is not allowed for past or ongoing leave requests. Please contact HR Management. [PAST_LEAVE_REVOCATION_BLOCKED]');
+      }
+
+      if (leave.status === 'CANCELLED') {
+        throw new Error('This leave request is already cancelled.');
       }
 
       const year = new Date(leave.start_date).getFullYear();
 
-      // Update leave request status
-      await client.query(`
-        UPDATE leave_requests
-        SET status = 'CANCELLED', rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND organization_id = $2
-      `, [leaveId, organizationId, reason]);
-
-      // Restore balance
       if (leave.status === 'PENDING') {
         await client.query(`
           UPDATE leave_balances
-          SET pending = GREATEST(0, pending - $1),
-              available = available + $1,
-              updated_at = CURRENT_TIMESTAMP
+          SET 
+            pending = pending - $1,
+            available = available + $1,
+            updated_at = CURRENT_TIMESTAMP
           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
         `, [leave.total_days, leave.employee_id, leave.leave_type_id, year, organizationId]);
       } else if (leave.status === 'APPROVED') {
         await client.query(`
           UPDATE leave_balances
-          SET used = GREATEST(0, used - $1),
-              available = available + $1,
-              updated_at = CURRENT_TIMESTAMP
+          SET 
+            used = GREATEST(0, used - $1),
+            available = available + $1,
+            updated_at = CURRENT_TIMESTAMP
           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
         `, [leave.total_days, leave.employee_id, leave.leave_type_id, year, organizationId]);
       }
 
-      // Write audit log
+      await client.query(`
+        UPDATE leave_requests
+        SET status = 'CANCELLED', rejection_reason = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 AND organization_id = $3
+      `, [`Cancelled: ${cancellationReason}`, requestId, organizationId]);
+
+      const empName = `${leave.first_name} ${leave.last_name}`;
       await client.query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-        VALUES ($1, $2, 'LEAVE_CANCELLED_BY_EMPLOYEE', 'leaves', 'LeaveRequest', $3, $4)
-      `, [organizationId, actorUserId, leaveId, JSON.stringify({ previousStatus: leave.status, reason })]);
-
-      // Notify Manager / HR
-      const empRes = await client.query('SELECT first_name, last_name FROM employees WHERE id = $1', [leave.employee_id]);
-      const empName = empRes.rows[0] ? `${empRes.rows[0].first_name} ${empRes.rows[0].last_name}` : 'Employee';
-      await client.query(`
-        INSERT INTO notifications (organization_id, user_id, title, message)
-        SELECT $1, u.id, 'Leave Request Cancelled', $2
-        FROM users u
-        INNER JOIN user_roles ur ON u.id = ur.user_id
-        INNER JOIN roles r ON ur.role_id = r.id
-        WHERE u.organization_id = $1 AND r.name IN ('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER')
-        LIMIT 5
-      `, [organizationId, `Leave request for ${empName} (${leave.total_days} days starting ${startDateStr}) was cancelled.`]);
+        VALUES ($1, $2, 'LEAVE_CANCELLED', 'leaves', 'LeaveRequest', $3, $4)
+      `, [organizationId, actorUserId, requestId, JSON.stringify({
+        employeeId: leave.employee_id,
+        leaveTypeName: leave.leave_type_name,
+        totalDays: leave.total_days,
+        previousStatus: leave.status,
+        cancellationReason
+      })]);
 
       return { ...leave, status: 'CANCELLED' };
     });
@@ -400,16 +440,16 @@ export class LeaveRepository {
     return withTransaction(async (client) => {
       const currentYear = data.periodYear || new Date().getFullYear();
 
-      const typeRes = await client.query('SELECT annual_quota FROM leave_types WHERE id = $1 AND organization_id = $2', [data.leaveTypeId, organizationId]);
+      const typeRes = await client.query('SELECT id, code, annual_quota FROM leave_types WHERE id = $1 AND organization_id = $2', [data.leaveTypeId, organizationId]);
       if (typeRes.rows.length === 0) {
         throw new Error('Leave type not found.');
       }
-      const defaultQuota = parseFloat(typeRes.rows[0].annual_quota || '12');
-      let finalEntitlement = defaultQuota;
+      const orgQuota = parseFloat(typeRes.rows[0].annual_quota || '0');
+      let finalEntitlement = orgQuota;
       if (data.adjustmentType === 'INCREMENT') {
-        finalEntitlement = defaultQuota + data.adjustmentValue;
+        finalEntitlement = orgQuota + data.adjustmentValue;
       } else if (data.adjustmentType === 'DECREMENT') {
-        finalEntitlement = Math.max(0, defaultQuota - data.adjustmentValue);
+        finalEntitlement = Math.max(0, orgQuota - data.adjustmentValue);
       } else if (data.adjustmentType === 'OVERRIDE') {
         finalEntitlement = data.adjustmentValue;
       }
@@ -432,12 +472,29 @@ export class LeaveRepository {
         DO UPDATE SET quota = $5, available = GREATEST(0, $5 - leave_balances.used - leave_balances.pending), updated_at = CURRENT_TIMESTAMP
       `, [organizationId, data.employeeId, data.leaveTypeId, currentYear, finalEntitlement]);
 
+      let effectiveAdjustment = 0;
+      if (data.adjustmentType === 'INCREMENT') effectiveAdjustment = data.adjustmentValue;
+      else if (data.adjustmentType === 'DECREMENT') effectiveAdjustment = -data.adjustmentValue;
+      else if (data.adjustmentType === 'OVERRIDE') effectiveAdjustment = data.adjustmentValue - orgQuota;
+
       await client.query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
         VALUES ($1, $2, 'LEAVE_ENTITLEMENT_ADJUSTED', 'leaves', 'EmployeeLeaveAdjustment', $3, $4)
-      `, [organizationId, actorUserId, adjRes.rows[0].id, JSON.stringify({ employeeId: data.employeeId, finalEntitlement, reason: data.reason })]);
+      `, [organizationId, actorUserId, adjRes.rows[0].id, JSON.stringify({
+        employeeId: data.employeeId,
+        organizationEntitlement: orgQuota,
+        adjustmentType: data.adjustmentType,
+        adjustmentValue: data.adjustmentValue,
+        finalEntitlement,
+        reason: data.reason
+      })]);
 
-      return adjRes.rows[0];
+      return {
+        ...adjRes.rows[0],
+        organizationEntitlement: orgQuota,
+        employeeAdjustment: effectiveAdjustment,
+        finalEntitlement
+      };
     });
   }
 
@@ -446,6 +503,7 @@ export class LeaveRepository {
     const text = `
       SELECT 
         ela.id, ela.employee_id, ela.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
+        lt.annual_quota as organization_entitlement,
         ela.period_year, ela.adjustment_type, ela.adjustment_value, ela.final_entitlement,
         ela.reason, ela.created_at, u.email as created_by_email
       FROM employee_leave_adjustments ela
@@ -455,6 +513,29 @@ export class LeaveRepository {
       ORDER BY ela.created_at DESC
     `;
     const res = await query(text, [organizationId, employeeId, periodYear]);
-    return res.rows;
+    return res.rows.map(row => {
+      const orgQuota = parseFloat(row.organization_entitlement || '0');
+      let effectiveAdjustment = 0;
+      let finalEntitlement = orgQuota;
+
+      if (row.adjustment_type === 'INCREMENT') {
+        effectiveAdjustment = parseFloat(row.adjustment_value || '0');
+        finalEntitlement = orgQuota + effectiveAdjustment;
+      } else if (row.adjustment_type === 'DECREMENT') {
+        const adjVal = parseFloat(row.adjustment_value || '0');
+        effectiveAdjustment = -adjVal;
+        finalEntitlement = Math.max(0, orgQuota - adjVal);
+      } else if (row.adjustment_type === 'OVERRIDE') {
+        finalEntitlement = parseFloat(row.adjustment_value || '0');
+        effectiveAdjustment = finalEntitlement - orgQuota;
+      }
+
+      return {
+        ...row,
+        organizationEntitlement: orgQuota,
+        employeeAdjustment: effectiveAdjustment,
+        finalEntitlement: finalEntitlement
+      };
+    });
   }
 }

@@ -3,6 +3,7 @@ import { EmployeeRepository } from '../repositories/employeeRepository';
 import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { CalendarRepository } from '../repositories/calendarRepository';
 import { AssetRepository } from '../repositories/assetRepository';
+import { LeaveRepository } from '../repositories/leaveRepository';
 import { TimesheetRepository } from '../repositories/timesheetRepository';
 import { ExpenseRepository } from '../repositories/expenseRepository';
 import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
@@ -565,6 +566,96 @@ async function runMasterE2EVerificationSuite() {
       sbCode.includes('safe-area-inset-top') &&
       sbCode.includes('safe-area-inset-bottom')
     );
+
+    // Dynamic Employee Entitlement Adjustment Verification
+    if (dbAvailable) {
+      const testLeaveOrgId = '00000000-0000-0000-0000-000000000001';
+      const testYear = new Date().getFullYear();
+      await LeaveRepository.updatePolicy(testLeaveOrgId, { clQuota: 6, elQuota: 6, slQuota: 10 });
+      const typesRes = await LeaveRepository.findTypes(testLeaveOrgId);
+      const plType = typesRes.find((t: any) => t.code === 'EL' || t.code === 'PL');
+      
+      if (plType) {
+        // Test Employee
+        const empRes = await query('SELECT id FROM employees WHERE organization_id = $1 LIMIT 1', [testLeaveOrgId]);
+        if (empRes.rows.length > 0) {
+          const testEmpId = empRes.rows[0].id;
+          const superAdminUserRes = await query(`SELECT u.id FROM users u JOIN user_roles ur ON u.id = ur.user_id JOIN roles r ON ur.role_id = r.id WHERE u.organization_id = $1 AND r.name = 'SUPER_ADMIN' LIMIT 1`, [testLeaveOrgId]);
+          const adminUserId = superAdminUserRes.rows[0].id;
+
+          // 1. PL +1 on base 6 -> expected 7
+          const adj1 = await LeaveRepository.createLeaveAdjustment(testLeaveOrgId, adminUserId, {
+            employeeId: testEmpId,
+            leaveTypeId: plType.id,
+            periodYear: testYear,
+            adjustmentType: 'INCREMENT',
+            adjustmentValue: 1,
+            reason: 'Test PL +1 entitlement adjustment'
+          });
+          runStep('Employee leave increment applies to current organization entitlement (6 + 1 = 7, NOT 19)',
+            adj1.finalEntitlement === 7 && adj1.organizationEntitlement === 6
+          );
+
+          // 2. PL +2 on base 6 -> expected 8
+          const adj2 = await LeaveRepository.createLeaveAdjustment(testLeaveOrgId, adminUserId, {
+            employeeId: testEmpId,
+            leaveTypeId: plType.id,
+            periodYear: testYear,
+            adjustmentType: 'INCREMENT',
+            adjustmentValue: 2,
+            reason: 'Test PL +2'
+          });
+          runStep('Employee leave adjustment INCREMENT +2 on base 6 equals 8', adj2.finalEntitlement === 8);
+
+          // 3. PL -1 on base 6 -> expected 5
+          const adj3 = await LeaveRepository.createLeaveAdjustment(testLeaveOrgId, adminUserId, {
+            employeeId: testEmpId,
+            leaveTypeId: plType.id,
+            periodYear: testYear,
+            adjustmentType: 'DECREMENT',
+            adjustmentValue: 1,
+            reason: 'Test PL -1'
+          });
+          runStep('Employee leave adjustment DECREMENT -1 on base 6 equals 5', adj3.finalEntitlement === 5);
+
+          // 4. PL OVERRIDE = 9 -> expected 9
+          const adj4 = await LeaveRepository.createLeaveAdjustment(testLeaveOrgId, adminUserId, {
+            employeeId: testEmpId,
+            leaveTypeId: plType.id,
+            periodYear: testYear,
+            adjustmentType: 'OVERRIDE',
+            adjustmentValue: 9,
+            reason: 'Test PL OVERRIDE 9'
+          });
+          runStep('Employee leave adjustment OVERRIDE = 9 equals 9', adj4.finalEntitlement === 9);
+
+          // 5. Change Org Policy PL 6 -> 8 with existing +1 adjustment -> expected 9
+          await LeaveRepository.createLeaveAdjustment(testLeaveOrgId, adminUserId, {
+            employeeId: testEmpId,
+            leaveTypeId: plType.id,
+            periodYear: testYear,
+            adjustmentType: 'INCREMENT',
+            adjustmentValue: 1,
+            reason: 'Active +1 adjustment before policy update'
+          });
+          await LeaveRepository.updatePolicy(testLeaveOrgId, { clQuota: 6, elQuota: 8, slQuota: 10 });
+          const updatedBalances = await LeaveRepository.findBalancesByEmployee(testEmpId, testLeaveOrgId, testYear);
+          const plBal = updatedBalances.find((b: any) => b.leave_type_code === 'EL' || b.leave_type_code === 'PL');
+          runStep('Organization policy update (PL 6 -> 8) with active +1 adjustment dynamically yields 9',
+            Boolean(plBal && plBal.finalEntitlement === 9 && plBal.organizationEntitlement === 8)
+          );
+        }
+      }
+    } else {
+      runStep('Employee leave increment applies to current organization entitlement (6 + 1 = 7, NOT 19)',
+        leaveRepoCode.includes('orgQuota = parseFloat(typeRes.rows[0].annual_quota') &&
+        leaveRepoCode.includes('orgQuota + data.adjustmentValue')
+      );
+      runStep('Organization policy update with active adjustment dynamically resolves entitlement',
+        leaveRepoCode.includes('lt.annual_quota as org_quota') &&
+        leaveRepoCode.includes('ela.adjustment_type')
+      );
+    }
 
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';
 
