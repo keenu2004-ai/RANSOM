@@ -111,9 +111,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
         {desktopContent}
       </aside>
 
-      {/* Mobile + Tablet Side Drawer (< 1024px) - Viewport Height Preserved */}
+      {/* Mobile + Tablet Side Drawer (< 1024px) - Elevated z-[100] above header */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div className="fixed inset-0 z-[100] lg:hidden flex">
           {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity pointer-events-auto" 
@@ -122,12 +122,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
 
           {/* Drawer Container (100dvh Viewport Height, 3-Section Layout) */}
           <div className="relative z-10 w-[min(88vw,320px)] h-[100dvh] max-h-[100dvh] bg-white flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-left duration-200 pointer-events-auto">
-            {/* SECTION 1: Fixed Profile Header */}
-            <div className="pt-[max(1rem,env(safe-area-inset-top))] px-4 pb-4 bg-slate-50 border-b border-slate-200 relative shrink-0">
+            {/* SECTION 1: Fixed Profile Header (100% Unclipped, Above Everything) */}
+            <div className="pt-[max(1.25rem,env(safe-area-inset-top))] px-4 pb-4 bg-slate-50 border-b border-slate-200 relative shrink-0 z-10">
+              {/* Close Button */}
               <button 
                 type="button"
                 onClick={() => setMobileOpen && setMobileOpen(false)}
-                className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-full transition-colors cursor-pointer"
+                className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-full transition-colors cursor-pointer z-20"
                 aria-label="Close sidebar"
               >
                 <X className="w-5 h-5" />
@@ -135,13 +136,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
 
               <div className="flex items-center gap-3 pr-8">
                 {/* Avatar Badge */}
-                <div className="w-11 h-11 rounded-full bg-purple-700 text-white font-bold text-base flex items-center justify-center shadow shrink-0">
+                <div className="w-12 h-12 rounded-full bg-purple-700 text-white font-extrabold text-lg flex items-center justify-center shadow shrink-0">
                   {avatarBadge}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">{formattedName}</h3>
-                  <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                  <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-extrabold uppercase bg-sky-100 text-sky-700 rounded-md tracking-wider">
+                  <h3 className="font-extrabold text-slate-900 text-base leading-snug truncate">{formattedName}</h3>
+                  <p className="text-xs text-slate-500 font-medium truncate">{user?.email}</p>
+                  <span className="inline-block mt-1 px-2.5 py-0.5 text-[9px] font-extrabold uppercase bg-sky-100 text-sky-700 rounded-md tracking-wider">
                     {user?.role}
                   </span>
                 </div>
