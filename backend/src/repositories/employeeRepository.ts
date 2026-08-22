@@ -265,15 +265,49 @@ export class EmployeeRepository {
     return res.rows[0] || null;
   }
 
-  static async setStatus(id: string, organizationId: string, status: string) {
+  static async setStatus(id: string, organizationId: string, status: string, actorUserId?: string) {
+    if (status === 'INACTIVE') {
+      // Asset safety guard: Block deactivation if employee has active assigned assets
+      const assetCheck = await query(`
+        SELECT COUNT(*) as count FROM assets 
+        WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
+      `, [id, organizationId]);
+      const activeAssetsCount = parseInt(assetCheck.rows[0]?.count || '0', 10);
+      if (activeAssetsCount > 0) {
+        const err: any = new Error(`Employee has ${activeAssetsCount} assigned asset(s). Return/reassign assets before deactivation.`);
+        err.statusCode = 400;
+        err.code = 'ACTIVE_ASSETS_ASSIGNED';
+        throw err;
+      }
+    }
+
     const text = `
       UPDATE employees
       SET status = $3, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1 AND organization_id = $2
-      RETURNING id, employee_code, status, updated_at
+      RETURNING id, user_id, employee_code, first_name, last_name, status, updated_at
     `;
     const res = await query(text, [id, organizationId, status]);
-    return res.rows[0] || null;
+    const emp = res.rows[0];
+    if (!emp) return null;
+
+    // Deactivate or reactivate linked user account
+    if (emp.user_id) {
+      await query(`
+        UPDATE users
+        SET status = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND organization_id = $3
+      `, [emp.user_id, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', organizationId]);
+    }
+
+    // Write audit log
+    const auditAction = status === 'INACTIVE' ? 'EMPLOYEE_DEACTIVATED' : 'EMPLOYEE_RESTORED';
+    await query(`
+      INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+      VALUES ($1, $2, $3, 'employees', 'Employee', $4, $5)
+    `, [organizationId, actorUserId || '00000000-0000-0000-0000-000000000000', auditAction, id, JSON.stringify({ status, employeeCode: emp.employee_code })]);
+
+    return emp;
   }
 
   static async getOrgChart(organizationId: string) {

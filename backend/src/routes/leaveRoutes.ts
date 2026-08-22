@@ -17,7 +17,12 @@ router.post('/apply', requireEmployee, LeaveController.apply);
 router.get('/types', LeaveController.types);
 router.put('/policy', requireRole('SUPER_ADMIN', 'ADMIN'), LeaveController.updatePolicy);
 router.get('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.list);
-router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.approve);
-router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.reject);
+// Cancellation routes
+router.put('/:id/cancel', LeaveController.cancel);
+router.post('/:id/cancel', LeaveController.cancel);
+
+// Leave entitlement adjustments
+router.get('/adjustments/:employeeId', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.getAdjustments);
+router.post('/adjustments', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), LeaveController.createAdjustment);
 
 export default router;

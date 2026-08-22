@@ -289,4 +289,172 @@ export class LeaveRepository {
       }
     };
   }
+
+  static async cancelLeaveRequest(
+    organizationId: string,
+    actorUserId: string,
+    actorEmployeeId: string | null,
+    actorRole: string,
+    leaveId: string,
+    reason: string = 'Cancelled by user'
+  ) {
+    return withTransaction(async (client) => {
+      const res = await client.query('SELECT * FROM leave_requests WHERE id = $1 AND organization_id = $2', [leaveId, organizationId]);
+      if (res.rows.length === 0) {
+        const err: any = new Error('Leave request not found.');
+        err.statusCode = 404;
+        throw err;
+      }
+      const leave = res.rows[0];
+
+      // RBAC check: EMPLOYEE can only cancel own leave
+      if (actorRole === 'EMPLOYEE' && leave.employee_id !== actorEmployeeId) {
+        const err: any = new Error('Unauthorized to cancel this leave request.');
+        err.statusCode = 403;
+        throw err;
+      }
+
+      if (leave.status === 'CANCELLED') {
+        return leave;
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const startDateStr = leave.start_date ? new Date(leave.start_date).toISOString().split('T')[0] : todayStr;
+
+      if (leave.status === 'APPROVED') {
+        if (startDateStr <= todayStr) {
+          const err: any = new Error('Past or active leave cannot be directly revoked. Contact HR.');
+          err.statusCode = 400;
+          err.code = 'PAST_LEAVE_REVOCATION_BLOCKED';
+          throw err;
+        }
+      } else if (leave.status !== 'PENDING') {
+        const err: any = new Error(`Cannot cancel a leave request with status ${leave.status}.`);
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const year = new Date(leave.start_date).getFullYear();
+
+      // Update leave request status
+      await client.query(`
+        UPDATE leave_requests
+        SET status = 'CANCELLED', rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND organization_id = $2
+      `, [leaveId, organizationId, reason]);
+
+      // Restore balance
+      if (leave.status === 'PENDING') {
+        await client.query(`
+          UPDATE leave_balances
+          SET pending = GREATEST(0, pending - $1),
+              available = available + $1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
+        `, [leave.total_days, leave.employee_id, leave.leave_type_id, year, organizationId]);
+      } else if (leave.status === 'APPROVED') {
+        await client.query(`
+          UPDATE leave_balances
+          SET used = GREATEST(0, used - $1),
+              available = available + $1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
+        `, [leave.total_days, leave.employee_id, leave.leave_type_id, year, organizationId]);
+      }
+
+      // Write audit log
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, 'LEAVE_CANCELLED_BY_EMPLOYEE', 'leaves', 'LeaveRequest', $3, $4)
+      `, [organizationId, actorUserId, leaveId, JSON.stringify({ previousStatus: leave.status, reason })]);
+
+      // Notify Manager / HR
+      const empRes = await client.query('SELECT first_name, last_name FROM employees WHERE id = $1', [leave.employee_id]);
+      const empName = empRes.rows[0] ? `${empRes.rows[0].first_name} ${empRes.rows[0].last_name}` : 'Employee';
+      await client.query(`
+        INSERT INTO notifications (organization_id, user_id, title, message)
+        SELECT $1, u.id, 'Leave Request Cancelled', $2
+        FROM users u
+        INNER JOIN user_roles ur ON u.id = ur.user_id
+        INNER JOIN roles r ON ur.role_id = r.id
+        WHERE u.organization_id = $1 AND r.name IN ('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER')
+        LIMIT 5
+      `, [organizationId, `Leave request for ${empName} (${leave.total_days} days starting ${startDateStr}) was cancelled.`]);
+
+      return { ...leave, status: 'CANCELLED' };
+    });
+  }
+
+  static async createLeaveAdjustment(
+    organizationId: string,
+    actorUserId: string,
+    data: {
+      employeeId: string;
+      leaveTypeId: string;
+      periodYear: number;
+      adjustmentType: 'INCREMENT' | 'DECREMENT' | 'OVERRIDE';
+      adjustmentValue: number;
+      reason: string;
+    }
+  ) {
+    return withTransaction(async (client) => {
+      const currentYear = data.periodYear || new Date().getFullYear();
+
+      const typeRes = await client.query('SELECT annual_quota FROM leave_types WHERE id = $1 AND organization_id = $2', [data.leaveTypeId, organizationId]);
+      if (typeRes.rows.length === 0) {
+        throw new Error('Leave type not found.');
+      }
+      const defaultQuota = parseFloat(typeRes.rows[0].annual_quota || '12');
+      let finalEntitlement = defaultQuota;
+      if (data.adjustmentType === 'INCREMENT') {
+        finalEntitlement = defaultQuota + data.adjustmentValue;
+      } else if (data.adjustmentType === 'DECREMENT') {
+        finalEntitlement = Math.max(0, defaultQuota - data.adjustmentValue);
+      } else if (data.adjustmentType === 'OVERRIDE') {
+        finalEntitlement = data.adjustmentValue;
+      }
+
+      const adjRes = await client.query(`
+        INSERT INTO employee_leave_adjustments (
+          organization_id, employee_id, leave_type_id, period_year, adjustment_type,
+          adjustment_value, final_entitlement, reason, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+      `, [
+        organizationId, data.employeeId, data.leaveTypeId, currentYear,
+        data.adjustmentType, data.adjustmentValue, finalEntitlement, data.reason, actorUserId
+      ]);
+
+      await client.query(`
+        INSERT INTO leave_balances (organization_id, employee_id, leave_type_id, year, quota, used, pending, available)
+        VALUES ($1, $2, $3, $4, $5, 0, 0, $5)
+        ON CONFLICT (employee_id, leave_type_id, year)
+        DO UPDATE SET quota = $5, available = GREATEST(0, $5 - leave_balances.used - leave_balances.pending), updated_at = CURRENT_TIMESTAMP
+      `, [organizationId, data.employeeId, data.leaveTypeId, currentYear, finalEntitlement]);
+
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, 'LEAVE_ENTITLEMENT_ADJUSTED', 'leaves', 'EmployeeLeaveAdjustment', $3, $4)
+      `, [organizationId, actorUserId, adjRes.rows[0].id, JSON.stringify({ employeeId: data.employeeId, finalEntitlement, reason: data.reason })]);
+
+      return adjRes.rows[0];
+    });
+  }
+
+  static async findLeaveAdjustments(organizationId: string, employeeId: string, year?: number) {
+    const periodYear = year || new Date().getFullYear();
+    const text = `
+      SELECT 
+        ela.id, ela.employee_id, ela.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
+        ela.period_year, ela.adjustment_type, ela.adjustment_value, ela.final_entitlement,
+        ela.reason, ela.created_at, u.email as created_by_email
+      FROM employee_leave_adjustments ela
+      INNER JOIN leave_types lt ON ela.leave_type_id = lt.id
+      LEFT JOIN users u ON ela.created_by = u.id
+      WHERE ela.organization_id = $1 AND ela.employee_id = $2 AND ela.period_year = $3
+      ORDER BY ela.created_at DESC
+    `;
+    const res = await query(text, [organizationId, employeeId, periodYear]);
+    return res.rows;
+  }
 }

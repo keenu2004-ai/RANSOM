@@ -32,12 +32,12 @@ export class EmployeeService {
     return updated;
   }
 
-  static async deactivateEmployee(id: string, organizationId: string) {
-    return await EmployeeRepository.setStatus(id, organizationId, 'INACTIVE');
+  static async deactivateEmployee(id: string, organizationId: string, actorUserId?: string) {
+    return await EmployeeRepository.setStatus(id, organizationId, 'INACTIVE', actorUserId);
   }
 
-  static async restoreEmployee(id: string, organizationId: string) {
-    return await EmployeeRepository.setStatus(id, organizationId, 'ACTIVE');
+  static async restoreEmployee(id: string, organizationId: string, actorUserId?: string) {
+    return await EmployeeRepository.setStatus(id, organizationId, 'ACTIVE', actorUserId);
   }
 
   static async getOrgChart(organizationId: string) {

@@ -224,22 +224,27 @@ export const Employees: React.FC = () => {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this employee profile?')) return;
+  const handleDeactivate = async (emp: any) => {
+    const confirmMessage = `Deactivate / Delete Employee?\n\nEmployee: ${emp.first_name} ${emp.last_name} (${emp.employee_code || 'EMP'})\n\nThis will deactivate the employee account and remove the employee from active workforce lists. Historical attendance, leave, expense, asset, and task records will be preserved.\n\nProceed with deactivation?`;
+    if (!confirm(confirmMessage)) return;
     try {
-      await apiFetch(`/employees/${id}/deactivate`, { method: 'POST' });
+      await apiFetch(`/employees/${emp.id}/deactivate`, { method: 'POST' });
+      setSuccessMsg(`Employee ${emp.first_name} ${emp.last_name} deactivated successfully.`);
+      setTimeout(() => setSuccessMsg(null), 4000);
       fetchEmployees();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to deactivate employee.');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await apiFetch(`/employees/${id}/restore`, { method: 'POST' });
+      setSuccessMsg(`Employee profile restored successfully.`);
+      setTimeout(() => setSuccessMsg(null), 4000);
       fetchEmployees();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to restore employee.');
     }
   };
 
@@ -398,7 +403,7 @@ export const Employees: React.FC = () => {
                           </button>
                           {emp.status === 'ACTIVE' ? (
                             <button
-                              onClick={() => handleDeactivate(emp.id)}
+                              onClick={() => handleDeactivate(emp)}
                               className="px-2.5 py-1 text-[11px] font-medium bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg transition-all"
                             >
                               Deactivate

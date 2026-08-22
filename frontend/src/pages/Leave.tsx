@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { CalendarDays, Plus, Check, X, Clock, Settings, AlertCircle, ShieldCheck } from 'lucide-react';
+import { CalendarDays, Plus, Check, X, Clock, Settings, AlertCircle, ShieldCheck, Ban, UserCheck, Sliders } from 'lucide-react';
 
 export const Leave: React.FC = () => {
   const { user } = useAuth();
   const [balances, setBalances] = useState<any[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [monthlyUsage, setMonthlyUsage] = useState<any>({ clUsedThisMonth: 0, clMonthlyLimit: 2 });
   const [loading, setLoading] = useState(true);
 
@@ -15,6 +16,16 @@ export const Leave: React.FC = () => {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [policyData, setPolicyData] = useState({ clQuota: 12, elQuota: 18, slQuota: 12 });
   const [policySuccess, setPolicySuccess] = useState<string | null>(null);
+
+  // Leave Entitlement Adjustment Modal State for HR / Admin
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [adjustmentData, setAdjustmentData] = useState({
+    employeeId: '',
+    leaveTypeId: '',
+    adjustmentType: 'INCREMENT',
+    adjustmentValue: 1,
+    reason: ''
+  });
 
   // Apply Modal
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -27,7 +38,7 @@ export const Leave: React.FC = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchLeaveData = async () => {
+  const fetchLeaveData = useCallback(async () => {
     try {
       if (user?.employeeId) {
         const [balRes, usageRes] = await Promise.all([
@@ -47,19 +58,23 @@ export const Leave: React.FC = () => {
       setLeaveTypes(activeTypes);
 
       if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
-        const reqRes = await apiFetch('/leaves');
-        setLeaveRequests(reqRes.leaveRequests || []);
+        const [reqRes, empRes] = await Promise.all([
+          apiFetch('/leaves').catch(() => null),
+          apiFetch('/employees').catch(() => null)
+        ]);
+        setLeaveRequests(reqRes?.leaveRequests || []);
+        setEmployees(empRes?.employees || empRes || []);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchLeaveData();
-  }, []);
+  }, [fetchLeaveData]);
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +108,22 @@ export const Leave: React.FC = () => {
     }
   };
 
+  const handleAdjustmentSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/leaves/adjustments', {
+        method: 'POST',
+        body: JSON.stringify(adjustmentData)
+      });
+      setShowAdjustmentModal(false);
+      setPolicySuccess('Employee leave entitlement adjusted successfully.');
+      setTimeout(() => setPolicySuccess(null), 4000);
+      fetchLeaveData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to adjust leave entitlement.');
+    }
+  };
+
   const handleApprove = async (id: string) => {
     try {
       await apiFetch(`/leaves/${id}/approve`, { method: 'PUT' });
@@ -116,6 +147,16 @@ export const Leave: React.FC = () => {
     }
   };
 
+  const handleCancelLeave = async (id: string) => {
+    if (!confirm('Are you sure you want to cancel this leave request?')) return;
+    try {
+      await apiFetch(`/leaves/${id}/cancel`, { method: 'PUT' });
+      fetchLeaveData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to cancel leave request.');
+    }
+  };
+
   // 3 Canonical Active Leave Types
   const activeBalances = balances.filter(b => b.leave_type_code !== 'OL');
 
@@ -134,10 +175,24 @@ export const Leave: React.FC = () => {
             <CalendarDays className="w-6 h-6 text-cyan-400" />
             <span>Leave Management & Policy</span>
           </h1>
-          <p className="text-xs text-slate-400">Manage 3 active leave types (CL, EL, SL), monthly CL limits, and leave entitlements</p>
+          <p className="text-xs text-slate-400">Manage leave entitlements (CL, EL, SL), employee adjustments, and leave revocations</p>
         </div>
 
         <div className="flex items-center gap-2">
+          {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '') && (
+            <button
+              onClick={() => {
+                if (employees.length > 0) setAdjustmentData(a => ({ ...a, employeeId: employees[0].id }));
+                if (leaveTypes.length > 0) setAdjustmentData(a => ({ ...a, leaveTypeId: leaveTypes[0].id }));
+                setShowAdjustmentModal(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow transition-all"
+            >
+              <Sliders className="w-4 h-4 text-indigo-400" />
+              <span>Adjust Employee Leave</span>
+            </button>
+          )}
+
           {['SUPER_ADMIN', 'ADMIN'].includes(user?.role || '') && (
             <button
               onClick={() => setShowPolicyModal(true)}
@@ -163,10 +218,9 @@ export const Leave: React.FC = () => {
         </div>
       </div>
 
-      {/* Personal Leave Cards Grid + LEAVE TAKEN THIS MONTH Card */}
+      {/* Personal Leave Cards Grid */}
       {user?.employeeId && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Active Leave Type Cards */}
           {activeBalances.map(b => (
             <div key={b.id} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 relative overflow-hidden">
               <div className="flex items-center justify-between">
@@ -193,7 +247,7 @@ export const Leave: React.FC = () => {
             </div>
           ))}
 
-          {/* LEAVE TAKEN THIS MONTH (Replaces 4th Type) */}
+          {/* LEAVE TAKEN THIS MONTH Card */}
           <div className="p-5 bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/30 rounded-2xl space-y-2 relative shadow-lg">
             <div className="flex items-center justify-between">
               <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 uppercase tracking-widest">
@@ -226,7 +280,7 @@ export const Leave: React.FC = () => {
         </div>
       )}
 
-      {/* Administrative Leave Requests Table */}
+      {/* Workforce Leave Applications Table */}
       {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-300">
@@ -247,42 +301,58 @@ export const Leave: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {leaveRequests.length > 0 ? (
-                  leaveRequests.map(lr => (
-                    <tr key={lr.id} className="hover:bg-slate-800/40">
-                      <td className="px-6 py-3.5 font-semibold text-slate-200">{lr.employee_name} ({lr.employee_code})</td>
-                      <td className="px-6 py-3.5 font-medium text-cyan-400">{lr.leave_type_name}</td>
-                      <td className="px-6 py-3.5 font-mono text-[11px]">{lr.start_date} to {lr.end_date}</td>
-                      <td className="px-6 py-3.5 font-bold">{lr.total_days}</td>
-                      <td className="px-6 py-3.5 max-w-xs truncate">{lr.reason}</td>
-                      <td className="px-6 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                          lr.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                          lr.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                          'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                        }`}>
-                          {lr.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-right space-x-2">
-                        {lr.status === 'PENDING' && (
-                          <>
+                  leaveRequests.map(lr => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const isFutureApproved = lr.status === 'APPROVED' && lr.start_date > todayStr;
+                    const isCancelable = lr.status === 'PENDING' || isFutureApproved;
+
+                    return (
+                      <tr key={lr.id} className="hover:bg-slate-800/40">
+                        <td className="px-6 py-3.5 font-semibold text-slate-200">{lr.employee_name} ({lr.employee_code})</td>
+                        <td className="px-6 py-3.5 font-medium text-cyan-400">{lr.leave_type_name}</td>
+                        <td className="px-6 py-3.5 font-mono text-[11px]">{lr.start_date} to {lr.end_date}</td>
+                        <td className="px-6 py-3.5 font-bold">{lr.total_days}</td>
+                        <td className="px-6 py-3.5 max-w-xs truncate">{lr.reason}</td>
+                        <td className="px-6 py-3.5">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            lr.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                            lr.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
+                            lr.status === 'CANCELLED' ? 'bg-slate-500/10 text-slate-400 border-slate-500/30' :
+                            'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          }`}>
+                            {lr.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-right space-x-2">
+                          {lr.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(lr.id)}
+                                className="px-2.5 py-1 bg-emerald-950/50 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 rounded-lg"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleReject(lr.id)}
+                                className="px-2.5 py-1 bg-rose-950/50 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-lg"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {isCancelable && (
                             <button
-                              onClick={() => handleApprove(lr.id)}
-                              className="px-2.5 py-1 bg-emerald-950/50 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 rounded-lg"
+                              onClick={() => handleCancelLeave(lr.id)}
+                              className="px-2.5 py-1 bg-amber-950/50 hover:bg-amber-900 text-amber-300 border border-amber-800/60 rounded-lg flex items-center gap-1 inline-flex"
                             >
-                              Approve
+                              <Ban className="w-3 h-3" />
+                              <span>Revoke</span>
                             </button>
-                            <button
-                              onClick={() => handleReject(lr.id)}
-                              className="px-2.5 py-1 bg-rose-950/50 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-lg"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-slate-500">No leave applications found.</td>
@@ -294,12 +364,107 @@ export const Leave: React.FC = () => {
         </div>
       )}
 
+      {/* Adjust Entitlements Modal */}
+      {showAdjustmentModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="font-bold text-lg text-white">Adjust Employee Leave Entitlement</h3>
+            <p className="text-xs text-slate-400">Override or adjust annual leave entitlement for a specific employee (e.g. mid-year joiner or performance grant)</p>
+
+            <form onSubmit={handleAdjustmentSave} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Target Employee *</label>
+                <select
+                  value={adjustmentData.employeeId}
+                  onChange={e => setAdjustmentData({ ...adjustmentData, employeeId: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name} ({emp.employee_code || 'EMP'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Leave Type *</label>
+                <select
+                  value={adjustmentData.leaveTypeId}
+                  onChange={e => setAdjustmentData({ ...adjustmentData, leaveTypeId: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  {leaveTypes.map(lt => (
+                    <option key={lt.id} value={lt.id}>{lt.name} ({lt.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Adjustment Type *</label>
+                  <select
+                    value={adjustmentData.adjustmentType}
+                    onChange={e => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  >
+                    <option value="INCREMENT">Add (+ Days)</option>
+                    <option value="DECREMENT">Deduct (- Days)</option>
+                    <option value="OVERRIDE">Set Fixed Quota</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium font-mono">Value (Days) *</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={adjustmentData.adjustmentValue}
+                    onChange={e => setAdjustmentData({ ...adjustmentData, adjustmentValue: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Audit Reason / Business Justification *</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={adjustmentData.reason}
+                  onChange={e => setAdjustmentData({ ...adjustmentData, reason: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  placeholder="e.g. Mid-year joiner prorated entitlement adjustment"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdjustmentModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow"
+                >
+                  Save Entitlement Adjustment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Admin Policy Configuration Modal */}
       {showPolicyModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="font-bold text-lg text-white">Configure Leave Entitlement Policy</h3>
-            <p className="text-xs text-slate-400">Set organization-wide annual leave quotas for the 3 active leave types</p>
+            <h3 className="font-bold text-lg text-white">Configure Organization Leave Policy</h3>
+            <p className="text-xs text-slate-400">Set organization-wide annual leave quotas for active leave types</p>
 
             <form onSubmit={handlePolicySave} className="space-y-4 text-xs">
               <div>

@@ -180,4 +180,83 @@ export class LeaveController {
       return next(error);
     }
   }
+
+  // Employee / Self / Admin cancellation of leave request
+  static async cancel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { id } = req.params;
+      const { reason } = req.body || {};
+
+      const cancelled = await LeaveRepository.cancelLeaveRequest(
+        organizationId,
+        req.user!.userId,
+        req.user!.employeeId || null,
+        req.user!.role,
+        id,
+        reason || 'Cancelled by user'
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { leaveRequest: cancelled, message: 'Leave request cancelled successfully.' }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Create Leave Entitlement Adjustment
+  static async createAdjustment(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { employeeId, leaveTypeId, periodYear, adjustmentType, adjustmentValue, reason } = req.body;
+
+      if (!employeeId || !leaveTypeId || adjustmentValue === undefined || !reason) {
+        return res.status(400).json({ success: false, error: 'employeeId, leaveTypeId, adjustmentValue, and reason are required.', code: 'VALIDATION_ERROR' });
+      }
+
+      const adjustment = await LeaveRepository.createLeaveAdjustment(
+        organizationId,
+        req.user!.userId,
+        {
+          employeeId,
+          leaveTypeId,
+          periodYear: periodYear ? parseInt(periodYear, 10) : new Date().getFullYear(),
+          adjustmentType: adjustmentType || 'INCREMENT',
+          adjustmentValue: Number(adjustmentValue),
+          reason
+        }
+      );
+
+      return res.status(201).json({
+        success: true,
+        data: { adjustment, message: 'Leave entitlement adjusted successfully.' }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Get Employee Leave Adjustments
+  static async getAdjustments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { employeeId } = req.params;
+      const { year } = req.query;
+
+      const adjustments = await LeaveRepository.findLeaveAdjustments(
+        organizationId,
+        employeeId,
+        year ? parseInt(year as string, 10) : new Date().getFullYear()
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { adjustments }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }

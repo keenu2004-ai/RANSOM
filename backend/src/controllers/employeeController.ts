@@ -105,7 +105,7 @@ export class EmployeeController {
       const organizationId = req.user!.organizationId;
       const { id } = req.params;
 
-      const deactivated = await EmployeeService.deactivateEmployee(id, organizationId);
+      const deactivated = await EmployeeService.deactivateEmployee(id, organizationId, req.user!.userId);
       return res.status(200).json({
         success: true,
         data: { employee: deactivated }
@@ -120,7 +120,7 @@ export class EmployeeController {
       const organizationId = req.user!.organizationId;
       const { id } = req.params;
 
-      const restored = await EmployeeService.restoreEmployee(id, organizationId);
+      const restored = await EmployeeService.restoreEmployee(id, organizationId, req.user!.userId);
       return res.status(200).json({
         success: true,
         data: { employee: restored }

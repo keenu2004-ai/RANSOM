@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, KeyRound, UserCheck, Building2, AlertCircle } from 'lucide-react';
+import { KeyRound, Building2, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { user, login, error, clearError } = useAuth();
+  const { user, login, error } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('superadmin@theiakshi.com');
-  const [password, setPassword] = useState('ChangeMe@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (user) {
@@ -25,12 +25,6 @@ export const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setDemo = (demoEmail: string) => {
-    clearError();
-    setEmail(demoEmail);
-    setPassword('ChangeMe@123');
   };
 
   return (
@@ -98,53 +92,6 @@ export const Login: React.FC = () => {
             )}
           </button>
         </form>
-
-        {/* Quick Demo Login Preset Buttons */}
-        <div className="pt-6 border-t border-slate-800 space-y-3">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center">Quick Demo Account Switch</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setDemo('superadmin@theiakshi.com')}
-              className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
-            >
-              <div className="font-bold text-cyan-400">SUPER ADMIN</div>
-              <div className="text-[10px] text-slate-500 truncate">superadmin@theiakshi.com</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemo('admin@theiakshi.com')}
-              className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
-            >
-              <div className="font-bold text-cyan-400">ADMIN</div>
-              <div className="text-[10px] text-slate-500 truncate">admin@theiakshi.com</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemo('hr@theiakshi.com')}
-              className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
-            >
-              <div className="font-bold text-emerald-400">HR MANAGER</div>
-              <div className="text-[10px] text-slate-500 truncate">hr@theiakshi.com</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemo('manager@theiakshi.com')}
-              className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
-            >
-              <div className="font-bold text-indigo-400">MANAGER</div>
-              <div className="text-[10px] text-slate-500 truncate">manager@theiakshi.com</div>
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDemo('employee@theiakshi.com')}
-            className="w-full p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-slate-300 text-left truncate"
-          >
-            <div className="font-bold text-amber-400">EMPLOYEE (Self-Service)</div>
-            <div className="text-[10px] text-slate-500 truncate">employee@theiakshi.com (EMP-003)</div>
-          </button>
-        </div>
       </div>
     </div>
   );

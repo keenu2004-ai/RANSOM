@@ -267,10 +267,26 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     end_date DATE NOT NULL,
     total_days NUMERIC(4, 1) NOT NULL,
     reason TEXT NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')),
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'CANCELLATION_REQUESTED')),
     reviewed_by UUID REFERENCES employees(id) ON DELETE SET NULL,
     reviewed_at TIMESTAMPTZ,
     rejection_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS employee_leave_adjustments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    leave_type_id UUID NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
+    period_year INT NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
+    period_month INT,
+    adjustment_type VARCHAR(50) NOT NULL DEFAULT 'INCREMENT' CHECK (adjustment_type IN ('INCREMENT', 'DECREMENT', 'OVERRIDE')),
+    adjustment_value NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    final_entitlement NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    reason TEXT NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
