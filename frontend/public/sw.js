@@ -1,5 +1,5 @@
 // THEIAKSHI ENTERPRISE HRMS — PRODUCTION PWA SERVICE WORKER
-const CACHE_NAME = 'theiakshi-pwa-v1.0.1';
+const CACHE_NAME = 'theiakshi-pwa-v1.0.2';
 
 const PRECACHE_ASSETS = [
   '/',

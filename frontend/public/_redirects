@@ -1,1 +1,5 @@
-/* /index.html 200
+# Render Static Site SPA Rewrite Rules
+/assets/*    /assets/:splat    200
+/sw.js       /sw.js            200
+/manifest.json /manifest.json  200
+/*           /index.html       200
