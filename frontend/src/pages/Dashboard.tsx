@@ -62,73 +62,83 @@ export const Dashboard: React.FC = () => {
       {/* ─── MOBILE + TABLET LAYOUT (< 1024px) - TeamNest Inspired App Launcher ─── */}
       <div className="lg:hidden space-y-6">
         {/* Mobile Summary KPI Metric Cards (Entire Card Clickable Navigation) */}
-        {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER'].includes(user?.role || '') && (
-          <div className="grid grid-cols-2 gap-3">
-            {/* 1. Total Active Employees -> /employees */}
-            <button
-              type="button"
-              onClick={() => navigate('/employees')}
-              className="p-4 bg-white border border-slate-200/80 hover:border-cyan-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
-              title="Navigate to Employees"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[11px] font-bold text-slate-500 group-hover:text-cyan-600 truncate">Active Staff</span>
-                <div className="p-2 bg-cyan-50 text-cyan-600 border border-cyan-100 rounded-lg group-hover:scale-105 transition-transform">
-                  <Users className="w-4 h-4" />
-                </div>
+        <div className="grid grid-cols-2 gap-3">
+          {/* 1. Total Active Employees -> /employees */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] employees');
+              navigate('/employees');
+            }}
+            className="p-4 bg-white border border-slate-200/80 hover:border-cyan-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
+            title="Navigate to Employees Directory"
+          >
+            <div className="flex items-center justify-between w-full pointer-events-none">
+              <span className="text-[11px] font-bold text-slate-500 group-hover:text-cyan-600 truncate">Active Staff</span>
+              <div className="p-2 bg-cyan-50 text-cyan-600 border border-cyan-100 rounded-lg group-hover:scale-105 transition-transform">
+                <Users className="w-4 h-4" />
               </div>
-              <p className="text-xl font-extrabold text-slate-900 mt-2">{summary.totalEmployees ?? 0}</p>
-            </button>
+            </div>
+            <p className="text-xl font-extrabold text-slate-900 mt-2 pointer-events-none">{summary.totalEmployees ?? 0}</p>
+          </button>
 
-            {/* 2. Present Today -> /attendance */}
-            <button
-              type="button"
-              onClick={() => navigate('/attendance')}
-              className="p-4 bg-white border border-slate-200/80 hover:border-emerald-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
-              title="Navigate to Attendance"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[11px] font-bold text-slate-500 group-hover:text-emerald-600 truncate">Present Today</span>
-                <div className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg group-hover:scale-105 transition-transform">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
+          {/* 2. Present Today -> /attendance */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] attendance');
+              navigate('/attendance');
+            }}
+            className="p-4 bg-white border border-slate-200/80 hover:border-emerald-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
+            title="Navigate to Attendance Module"
+          >
+            <div className="flex items-center justify-between w-full pointer-events-none">
+              <span className="text-[11px] font-bold text-slate-500 group-hover:text-emerald-600 truncate">Present Today</span>
+              <div className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg group-hover:scale-105 transition-transform">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
-              <p className="text-xl font-extrabold text-emerald-600 mt-2">{summary.presentToday ?? 0}</p>
-            </button>
+            </div>
+            <p className="text-xl font-extrabold text-emerald-600 mt-2 pointer-events-none">{summary.presentToday ?? 0}</p>
+          </button>
 
-            {/* 3. Pending Leave Requests -> /leave */}
-            <button
-              type="button"
-              onClick={() => navigate('/leave')}
-              className="p-4 bg-white border border-slate-200/80 hover:border-amber-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
-              title="Navigate to Leave Management"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[11px] font-bold text-slate-500 group-hover:text-amber-600 truncate">Pending Leave</span>
-                <div className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg group-hover:scale-105 transition-transform">
-                  <CalendarDays className="w-4 h-4" />
-                </div>
+          {/* 3. Pending Leave Requests -> /leave */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] leave');
+              navigate('/leave');
+            }}
+            className="p-4 bg-white border border-slate-200/80 hover:border-amber-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
+            title="Navigate to Leave Management"
+          >
+            <div className="flex items-center justify-between w-full pointer-events-none">
+              <span className="text-[11px] font-bold text-slate-500 group-hover:text-amber-600 truncate">Pending Leave</span>
+              <div className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg group-hover:scale-105 transition-transform">
+                <CalendarDays className="w-4 h-4" />
               </div>
-              <p className="text-xl font-extrabold text-amber-600 mt-2">{summary.pendingLeaves ?? 0}</p>
-            </button>
+            </div>
+            <p className="text-xl font-extrabold text-amber-600 mt-2 pointer-events-none">{summary.pendingLeaves ?? 0}</p>
+          </button>
 
-            {/* 4. Pending Expense Claims -> /expenses */}
-            <button
-              type="button"
-              onClick={() => navigate('/expenses')}
-              className="p-4 bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
-              title="Navigate to Expense Claims"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[11px] font-bold text-slate-500 group-hover:text-indigo-600 truncate">Pending Expense</span>
-                <div className="p-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg group-hover:scale-105 transition-transform">
-                  <Receipt className="w-4 h-4" />
-                </div>
+          {/* 4. Pending Expense Claims -> /expenses */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] expenses');
+              navigate('/expenses');
+            }}
+            className="p-4 bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group pointer-events-auto relative z-10"
+            title="Navigate to Expense Claims"
+          >
+            <div className="flex items-center justify-between w-full pointer-events-none">
+              <span className="text-[11px] font-bold text-slate-500 group-hover:text-indigo-600 truncate">Pending Expense</span>
+              <div className="p-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg group-hover:scale-105 transition-transform">
+                <Receipt className="w-4 h-4" />
               </div>
-              <p className="text-xl font-extrabold text-indigo-600 mt-2">{summary.pendingExpenses ?? 0}</p>
-            </button>
-          </div>
-        )}
+            </div>
+            <p className="text-xl font-extrabold text-indigo-600 mt-2 pointer-events-none">{summary.pendingExpenses ?? 0}</p>
+          </button>
+        </div>
 
         {/* App Launcher Grid */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
@@ -138,13 +148,14 @@ export const Dashboard: React.FC = () => {
               return (
                 <button
                   key={tile.path}
+                  type="button"
                   onClick={() => navigate(tile.path)}
-                  className="flex flex-col items-center justify-center p-5 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl shadow-2xs hover:shadow-sm transition-all text-center space-y-2 active:scale-95 group"
+                  className="flex flex-col items-center justify-center p-5 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl shadow-2xs hover:shadow-sm transition-all text-center space-y-2 active:scale-95 group pointer-events-auto cursor-pointer"
                 >
-                  <div className={`p-3 rounded-xl border ${tile.color} group-hover:scale-105 transition-transform`}>
+                  <div className={`p-3 rounded-xl border ${tile.color} group-hover:scale-105 transition-transform pointer-events-none`}>
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-800 tracking-tight">{tile.label}</span>
+                  <span className="text-xs font-semibold text-slate-800 tracking-tight pointer-events-none">{tile.label}</span>
                 </button>
               );
             })}
@@ -167,9 +178,10 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <button
+            type="button"
             onClick={handlePunch}
             disabled={actionLoading}
-            className={`px-3 py-2 rounded-xl text-xs font-bold shadow transition-all ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold shadow transition-all cursor-pointer ${
               todaySummary?.activeSession
                 ? 'bg-amber-500 hover:bg-amber-600 text-slate-950'
                 : 'bg-emerald-500 hover:bg-emerald-600 text-white'
@@ -180,8 +192,8 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* TeamNest Celebrations Widget */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => navigate('/holidays')}>
-          <div className="flex items-center gap-3">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors pointer-events-auto" onClick={() => navigate('/holidays')}>
+          <div className="flex items-center gap-3 pointer-events-none">
             <div className="p-3 bg-sky-50 text-sky-600 border border-sky-100 rounded-xl">
               <Gift className="w-6 h-6" />
             </div>
@@ -190,7 +202,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-[11px] text-slate-500">View organization calendar & celebrations</p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-slate-300" />
+          <ChevronRight className="w-5 h-5 text-slate-300 pointer-events-none" />
         </div>
       </div>
 
@@ -212,18 +224,20 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center gap-3">
               {todaySummary?.activeSession ? (
                 <button
+                  type="button"
                   onClick={handlePunch}
                   disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Clock Out</span>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handlePunch}
                   disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Clock In Now</span>
@@ -238,73 +252,83 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Overview Summary Metrics Cards (Clickable Navigation for Entire Card Surface) */}
-        {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER'].includes(user?.role || '') && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Total Active Employees -> /employees */}
-            <button
-              type="button"
-              onClick={() => navigate('/employees')}
-              className="p-5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
-              title="Navigate to Employees Directory"
-            >
-              <div>
-                <p className="text-xs text-slate-400 font-medium group-hover:text-cyan-400 transition-colors">Total Active Employees</p>
-                <p className="text-2xl font-bold text-white mt-1">{summary.totalEmployees ?? 0}</p>
-              </div>
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl group-hover:scale-105 transition-transform">
-                <Users className="w-6 h-6" />
-              </div>
-            </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 1. Total Active Employees -> /employees */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] employees');
+              navigate('/employees');
+            }}
+            className="p-5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
+            title="Navigate to Employees Directory"
+          >
+            <div className="pointer-events-none">
+              <p className="text-xs text-slate-400 font-medium group-hover:text-cyan-400 transition-colors">Total Active Employees</p>
+              <p className="text-2xl font-bold text-white mt-1">{summary.totalEmployees ?? 0}</p>
+            </div>
+            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
+              <Users className="w-6 h-6" />
+            </div>
+          </button>
 
-            {/* 2. Present Today -> /attendance */}
-            <button
-              type="button"
-              onClick={() => navigate('/attendance')}
-              className="p-5 bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
-              title="Navigate to Attendance Module"
-            >
-              <div>
-                <p className="text-xs text-slate-400 font-medium group-hover:text-emerald-400 transition-colors">Present Today</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.presentToday ?? 0}</p>
-              </div>
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl group-hover:scale-105 transition-transform">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-            </button>
+          {/* 2. Present Today -> /attendance */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] attendance');
+              navigate('/attendance');
+            }}
+            className="p-5 bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
+            title="Navigate to Attendance Module"
+          >
+            <div className="pointer-events-none">
+              <p className="text-xs text-slate-400 font-medium group-hover:text-emerald-400 transition-colors">Present Today</p>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.presentToday ?? 0}</p>
+            </div>
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+          </button>
 
-            {/* 3. Pending Leave Requests -> /leave */}
-            <button
-              type="button"
-              onClick={() => navigate('/leave')}
-              className="p-5 bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
-              title="Navigate to Leave Management"
-            >
-              <div>
-                <p className="text-xs text-slate-400 font-medium group-hover:text-amber-400 transition-colors">Pending Leave Requests</p>
-                <p className="text-2xl font-bold text-amber-400 mt-1">{summary.pendingLeaves ?? 0}</p>
-              </div>
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl group-hover:scale-105 transition-transform">
-                <CalendarDays className="w-6 h-6" />
-              </div>
-            </button>
+          {/* 3. Pending Leave Requests -> /leave */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] leave');
+              navigate('/leave');
+            }}
+            className="p-5 bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
+            title="Navigate to Leave Management"
+          >
+            <div className="pointer-events-none">
+              <p className="text-xs text-slate-400 font-medium group-hover:text-amber-400 transition-colors">Pending Leave Requests</p>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{summary.pendingLeaves ?? 0}</p>
+            </div>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
+              <CalendarDays className="w-6 h-6" />
+            </div>
+          </button>
 
-            {/* 4. Pending Expense Claims -> /expenses */}
-            <button
-              type="button"
-              onClick={() => navigate('/expenses')}
-              className="p-5 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
-              title="Navigate to Expense Claims"
-            >
-              <div>
-                <p className="text-xs text-slate-400 font-medium group-hover:text-indigo-400 transition-colors">Pending Expense Claims</p>
-                <p className="text-2xl font-bold text-indigo-400 mt-1">{summary.pendingExpenses ?? 0}</p>
-              </div>
-              <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl group-hover:scale-105 transition-transform">
-                <Receipt className="w-6 h-6" />
-              </div>
-            </button>
-          </div>
-        )}
+          {/* 4. Pending Expense Claims -> /expenses */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log('[KPI CLICK] expenses');
+              navigate('/expenses');
+            }}
+            className="p-5 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm pointer-events-auto relative z-10"
+            title="Navigate to Expense Claims"
+          >
+            <div className="pointer-events-none">
+              <p className="text-xs text-slate-400 font-medium group-hover:text-indigo-400 transition-colors">Pending Expense Claims</p>
+              <p className="text-2xl font-bold text-indigo-400 mt-1">{summary.pendingExpenses ?? 0}</p>
+            </div>
+            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl group-hover:scale-105 transition-transform pointer-events-none">
+              <Receipt className="w-6 h-6" />
+            </div>
+          </button>
+        </div>
 
         {/* Grid Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
