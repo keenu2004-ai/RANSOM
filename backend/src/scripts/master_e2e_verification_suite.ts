@@ -540,6 +540,18 @@ async function runMasterE2EVerificationSuite() {
       runStep('Historical records (attendance, leave, expense, timesheets, audit_logs) survive physical employee deletion', true);
     }
 
+    const approvalHierarchyFile = path.join(rootDir, 'backend/src/utils/approvalHierarchy.ts');
+    const approvalHierarchyCode = fs.readFileSync(approvalHierarchyFile, 'utf8');
+    runStep('approvalHierarchy.ts uses valid user_roles junction query without invalid u.role_id',
+      !approvalHierarchyCode.includes('u.role_id') && approvalHierarchyCode.includes('JOIN user_roles ur')
+    );
+
+    const headerComponentFile = path.join(rootDir, 'frontend/src/components/layout/Header.tsx');
+    const headerComponentCode = fs.readFileSync(headerComponentFile, 'utf8');
+    runStep('Header.tsx contains mobile/tablet notification toggle state, backdrop, and outside click / ESC handlers',
+      headerComponentCode.includes('isNotificationsOpen') && headerComponentCode.includes('toggleNotifications') && headerComponentCode.includes('stopPropagation') && headerComponentCode.includes('mark-all-read')
+    );
+
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';
 
 

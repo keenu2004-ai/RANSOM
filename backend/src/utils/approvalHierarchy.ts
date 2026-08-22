@@ -36,7 +36,8 @@ export async function validateExpenseApprover(
       r.name as role_name
     FROM employees e
     LEFT JOIN users u ON e.user_id = u.id
-    LEFT JOIN roles r ON u.role_id = r.id
+    LEFT JOIN user_roles ur ON ur.user_id = u.id
+    LEFT JOIN roles r ON r.id = ur.role_id
     WHERE e.id = $1 AND e.organization_id = $2
   `, [submitterEmployeeId, organizationId]);
 
