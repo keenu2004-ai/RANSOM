@@ -192,9 +192,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         {/* Left: Hamburger Button */}
         <div className="flex items-center gap-3">
           <button
-            onClick={onMenuClick}
+            type="button"
+            onClick={() => {
+              setIsNotificationsOpen(false);
+              onMenuClick();
+            }}
             aria-label="Open navigation menu"
-            className="p-1.5 text-white hover:bg-sky-700/60 rounded-lg transition-all active:scale-95"
+            className="p-1.5 text-white hover:bg-sky-700/60 rounded-lg transition-all active:scale-95 cursor-pointer"
           >
             <Menu className="w-6 h-6" />
           </button>

@@ -1,8 +1,8 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, CalendarCheck, 
-  Receipt, FileText, Package, Bell, BarChart3, History, Settings, ShieldCheck, X, ChevronRight, LogOut, User as UserIcon
+  Receipt, FileText, Package, Bell, BarChart3, History, Settings, ShieldCheck, X, ChevronRight, LogOut 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -12,10 +12,21 @@ interface SidebarProps {
   setMobileOpen?: (open: boolean) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileOpen }) => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const role = user?.role;
+
+  // Prevent background body scrolling when mobile drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, perm: null },
@@ -38,9 +49,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   // User Display Info
   const emailUsername = user?.email ? user.email.split('@')[0] : 'User';
   const formattedName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1);
-  const avatarBadge = emailUsername.charAt(0).toUpperCase() + '{1}';
+  const avatarBadge = emailUsername.charAt(0).toUpperCase();
 
-  // Desktop Content
+  // Desktop Content (>= 1024px) - Preserved Unchanged
   const desktopContent = (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800 text-slate-300 w-64">
       {/* Brand Header */}
@@ -100,34 +111,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         {desktopContent}
       </aside>
 
-      {/* Mobile + Tablet Side Drawer (< 1024px) - TeamNest Reference Design */}
+      {/* Mobile + Tablet Side Drawer (< 1024px) - Viewport Height Preserved */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity" 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity pointer-events-auto" 
             onClick={() => setMobileOpen && setMobileOpen(false)} 
           />
 
-          {/* Drawer Container */}
-          <div className="relative z-10 w-[290px] sm:w-[320px] max-w-[85vw] bg-white h-full flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-left duration-200">
-            {/* Top Profile Header (TeamNest Style) */}
-            <div className="p-5 bg-slate-50 border-b border-slate-200 relative">
+          {/* Drawer Container (100dvh Viewport Height, 3-Section Layout) */}
+          <div className="relative z-10 w-[min(88vw,320px)] h-[100dvh] max-h-[100dvh] bg-white flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-left duration-200 pointer-events-auto">
+            {/* SECTION 1: Fixed Profile Header */}
+            <div className="pt-[max(1rem,env(safe-area-inset-top))] px-4 pb-4 bg-slate-50 border-b border-slate-200 relative shrink-0">
               <button 
+                type="button"
                 onClick={() => setMobileOpen && setMobileOpen(false)}
-                className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-full transition-colors cursor-pointer"
+                aria-label="Close sidebar"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="flex items-center gap-3">
-                {/* Purple Avatar Circle (TeamNest Style) */}
-                <div className="w-12 h-12 rounded-full bg-purple-700 text-white font-bold text-sm flex items-center justify-center shadow">
+              <div className="flex items-center gap-3 pr-8">
+                {/* Avatar Badge */}
+                <div className="w-11 h-11 rounded-full bg-purple-700 text-white font-bold text-base flex items-center justify-center shadow shrink-0">
                   {avatarBadge}
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-base leading-snug">{formattedName}</h3>
-                  <p className="text-xs text-slate-500 truncate max-w-[170px]">{user?.email}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">{formattedName}</h3>
+                  <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
                   <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-extrabold uppercase bg-sky-100 text-sky-700 rounded-md tracking-wider">
                     {user?.role}
                   </span>
@@ -135,8 +148,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
               </div>
             </div>
 
-            {/* Navigation List (TeamNest Style: Clean Row Cards with Caring Caret) */}
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+            {/* SECTION 2: Independent Scrollable Navigation List */}
+            <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100">
               {allowedNav.map(item => {
                 const Icon = item.icon;
                 return (
@@ -145,31 +158,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
                     to={item.path}
                     onClick={() => setMobileOpen && setMobileOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center justify-between px-5 py-3.5 text-sm transition-all ${
+                      `flex items-center justify-between px-4 py-3.5 text-xs sm:text-sm transition-all min-h-[48px] ${
                         isActive
-                          ? 'bg-sky-50 text-sky-600 font-semibold border-l-4 border-sky-600'
+                          ? 'bg-sky-50 text-sky-600 font-bold border-l-4 border-sky-600'
                           : 'text-slate-700 hover:bg-slate-50'
                       }`
                     }
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 text-slate-400" />
-                      <span>{item.label}</span>
+                    <div className="flex items-center gap-3 truncate">
+                      <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="truncate">{item.label}</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
                   </NavLink>
                 );
               })}
             </div>
 
-            {/* Sticky Bottom LOGOUT Button (TeamNest Blue Banner Style) */}
-            <div className="p-0 border-t border-slate-200">
+            {/* SECTION 3: Fixed Sticky Logout Footer */}
+            <div className="p-0 border-t border-slate-200 shrink-0 pb-[max(0px,env(safe-area-inset-bottom))] bg-sky-500">
               <button
+                type="button"
                 onClick={() => {
                   setMobileOpen && setMobileOpen(false);
                   logout();
                 }}
-                className="w-full py-3.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>LOGOUT</span>

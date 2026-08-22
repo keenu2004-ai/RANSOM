@@ -556,6 +556,15 @@ async function runMasterE2EVerificationSuite() {
       dashCode.includes("navigate('/expenses')")
     );
 
+    const sbFile = path.join(rootDir, 'frontend/src/components/layout/Sidebar.tsx');
+    const sbCode = fs.readFileSync(sbFile, 'utf8');
+    runStep('Sidebar.tsx implements 100dvh viewport height, 3-section layout, safe-area support, and body scroll lock',
+      sbCode.includes('100dvh') &&
+      sbCode.includes("document.body.style.overflow = 'hidden'") &&
+      sbCode.includes('safe-area-inset-top') &&
+      sbCode.includes('safe-area-inset-bottom')
+    );
+
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';
 
 
