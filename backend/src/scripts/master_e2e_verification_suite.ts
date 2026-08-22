@@ -708,6 +708,10 @@ async function runMasterE2EVerificationSuite() {
       tsPageCode.includes('CARRIED FORWARD') && tsPageCode.includes('handleRescheduleSubmit') && tsPageCode.includes('Download Excel')
     );
 
+    const swFile = path.join(rootDir, 'frontend/public/sw.js');
+    const swCode = fs.readFileSync(swFile, 'utf8');
+    runStep('Service Worker sw.js CACHE_NAME is updated to force production cache purge', swCode.includes('theiakshi-pwa-v1.0.4'));
+
     summary['15. Weekly Field Visit Planner'] = 'PASS';
 
 

@@ -95,20 +95,20 @@ export class TimesheetRepository {
       data.description || null,
       status,
       actorUserId,
-      data.customerName || null,
-      data.contactPerson || null,
-      data.contactDetails || null,
-      data.visitLocation || null,
-      data.visitType || null,
-      data.timeSlot || null,
-      data.productsToPresent || null,
-      data.visitObjective || null,
-      data.outcomeSummary || null,
-      data.nextAction || null,
-      data.followUpDate || null,
-      data.opportunityStage || null,
-      data.estimatedValue !== undefined ? Number(data.estimatedValue) : null,
-      data.priority || 'MEDIUM'
+      (data as any).customerName || (data as any).customer_name || null,
+      (data as any).contactPerson || (data as any).contact_person || null,
+      (data as any).contactDetails || (data as any).contact_details || null,
+      (data as any).visitLocation || (data as any).visit_location || null,
+      (data as any).visitType || (data as any).visit_type || null,
+      (data as any).timeSlot || (data as any).time_slot || null,
+      (data as any).productsToPresent || (data as any).products_to_present || null,
+      (data as any).visitObjective || (data as any).visit_objective || null,
+      (data as any).outcomeSummary || (data as any).outcome_summary || null,
+      (data as any).nextAction || (data as any).next_action || null,
+      (data as any).followUpDate || (data as any).follow_up_date || null,
+      (data as any).opportunityStage || (data as any).opportunity_stage || null,
+      ((data as any).estimatedValue ?? (data as any).estimated_value) !== undefined ? Number((data as any).estimatedValue ?? (data as any).estimated_value) : null,
+      (data as any).priority || 'MEDIUM'
     ]);
 
     const newTask = res.rows[0];
@@ -267,20 +267,20 @@ export class TimesheetRepository {
     const status = data.status !== undefined ? data.status : task.status;
     const date = data.date !== undefined ? data.date : task.date;
 
-    const customerName = data.customerName !== undefined ? data.customerName : task.customer_name;
-    const contactPerson = data.contactPerson !== undefined ? data.contactPerson : task.contact_person;
-    const contactDetails = data.contactDetails !== undefined ? data.contactDetails : task.contact_details;
-    const visitLocation = data.visitLocation !== undefined ? data.visitLocation : task.visit_location;
-    const visitType = data.visitType !== undefined ? data.visitType : task.visit_type;
-    const timeSlot = data.timeSlot !== undefined ? data.timeSlot : task.time_slot;
-    const productsToPresent = data.productsToPresent !== undefined ? data.productsToPresent : task.products_to_present;
-    const visitObjective = data.visitObjective !== undefined ? data.visitObjective : task.visit_objective;
-    const outcomeSummary = data.outcomeSummary !== undefined ? data.outcomeSummary : task.outcome_summary;
-    const nextAction = data.nextAction !== undefined ? data.nextAction : task.next_action;
-    const followUpDate = data.followUpDate !== undefined ? data.followUpDate : task.follow_up_date;
-    const opportunityStage = data.opportunityStage !== undefined ? data.opportunityStage : task.opportunity_stage;
-    const estimatedValue = data.estimatedValue !== undefined ? Number(data.estimatedValue) : task.estimated_value;
-    const priority = data.priority !== undefined ? data.priority : task.priority;
+    const customerName = (data as any).customerName ?? (data as any).customer_name ?? task.customer_name;
+    const contactPerson = (data as any).contactPerson ?? (data as any).contact_person ?? task.contact_person;
+    const contactDetails = (data as any).contactDetails ?? (data as any).contact_details ?? task.contact_details;
+    const visitLocation = (data as any).visitLocation ?? (data as any).visit_location ?? task.visit_location;
+    const visitType = (data as any).visitType ?? (data as any).visit_type ?? task.visit_type;
+    const timeSlot = (data as any).timeSlot ?? (data as any).time_slot ?? task.time_slot;
+    const productsToPresent = (data as any).productsToPresent ?? (data as any).products_to_present ?? task.products_to_present;
+    const visitObjective = (data as any).visitObjective ?? (data as any).visit_objective ?? task.visit_objective;
+    const outcomeSummary = (data as any).outcomeSummary ?? (data as any).outcome_summary ?? task.outcome_summary;
+    const nextAction = (data as any).nextAction ?? (data as any).next_action ?? task.next_action;
+    const followUpDate = (data as any).followUpDate ?? (data as any).follow_up_date ?? task.follow_up_date;
+    const opportunityStage = (data as any).opportunityStage ?? (data as any).opportunity_stage ?? task.opportunity_stage;
+    const estimatedValue = ((data as any).estimatedValue ?? (data as any).estimated_value) !== undefined ? Number((data as any).estimatedValue ?? (data as any).estimated_value) : task.estimated_value;
+    const priority = (data as any).priority ?? task.priority;
 
     let cancelledAt = task.cancelled_at;
     let cancelledBy = task.cancelled_by;
