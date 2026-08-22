@@ -5,9 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
 import { hasPermission } from '../utils/permissions';
 import { 
-  Users, CheckCircle2, Clock, CalendarDays, Receipt, 
-  Sparkles, ShieldCheck, ArrowUpRight, LogIn, LogOut, Package,
-  FileText, CalendarCheck, Bell, BarChart3, History, Gift, ChevronRight, Fingerprint
+  Users, CheckCircle2, CalendarDays, Receipt, 
+  Sparkles, ShieldCheck, LogIn, LogOut, Package,
+  FileText, CalendarCheck, Bell, BarChart3, History, Gift, ChevronRight, Fingerprint, Clock
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -38,7 +38,6 @@ export const Dashboard: React.FC = () => {
   }
 
   const summary = data?.summary || {};
-  const personal = data?.personal || null;
   const role = user?.role;
 
   // Mobile App Launcher Tile Items (TeamNest Style)
@@ -62,6 +61,75 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* ─── MOBILE + TABLET LAYOUT (< 1024px) - TeamNest Inspired App Launcher ─── */}
       <div className="lg:hidden space-y-6">
+        {/* Mobile Summary KPI Metric Cards (Entire Card Clickable Navigation) */}
+        {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER'].includes(user?.role || '') && (
+          <div className="grid grid-cols-2 gap-3">
+            {/* 1. Total Active Employees -> /employees */}
+            <button
+              type="button"
+              onClick={() => navigate('/employees')}
+              className="p-4 bg-white border border-slate-200/80 hover:border-cyan-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
+              title="Navigate to Employees"
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] font-bold text-slate-500 group-hover:text-cyan-600 truncate">Active Staff</span>
+                <div className="p-2 bg-cyan-50 text-cyan-600 border border-cyan-100 rounded-lg group-hover:scale-105 transition-transform">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">{summary.totalEmployees ?? 0}</p>
+            </button>
+
+            {/* 2. Present Today -> /attendance */}
+            <button
+              type="button"
+              onClick={() => navigate('/attendance')}
+              className="p-4 bg-white border border-slate-200/80 hover:border-emerald-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
+              title="Navigate to Attendance"
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] font-bold text-slate-500 group-hover:text-emerald-600 truncate">Present Today</span>
+                <div className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl font-extrabold text-emerald-600 mt-2">{summary.presentToday ?? 0}</p>
+            </button>
+
+            {/* 3. Pending Leave Requests -> /leave */}
+            <button
+              type="button"
+              onClick={() => navigate('/leave')}
+              className="p-4 bg-white border border-slate-200/80 hover:border-amber-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
+              title="Navigate to Leave Management"
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] font-bold text-slate-500 group-hover:text-amber-600 truncate">Pending Leave</span>
+                <div className="p-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg group-hover:scale-105 transition-transform">
+                  <CalendarDays className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl font-extrabold text-amber-600 mt-2">{summary.pendingLeaves ?? 0}</p>
+            </button>
+
+            {/* 4. Pending Expense Claims -> /expenses */}
+            <button
+              type="button"
+              onClick={() => navigate('/expenses')}
+              className="p-4 bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl flex flex-col justify-between cursor-pointer transition-all active:scale-95 text-left shadow-2xs group"
+              title="Navigate to Expense Claims"
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] font-bold text-slate-500 group-hover:text-indigo-600 truncate">Pending Expense</span>
+                <div className="p-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg group-hover:scale-105 transition-transform">
+                  <Receipt className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl font-extrabold text-indigo-600 mt-2">{summary.pendingExpenses ?? 0}</p>
+            </button>
+          </div>
+        )}
+
         {/* App Launcher Grid */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -111,7 +179,7 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* TeamNest Celebrations Widget (Birthdays / Work Anniversaries) */}
+        {/* TeamNest Celebrations Widget */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => navigate('/holidays')}>
           <div className="flex items-center gap-3">
             <div className="p-3 bg-sky-50 text-sky-600 border border-sky-100 rounded-xl">
@@ -126,7 +194,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── DESKTOP LAYOUT (>= 1024px) - Preserved 100% ─── */}
+      {/* ─── DESKTOP LAYOUT (>= 1024px) ─── */}
       <div className="hidden lg:block space-y-6">
         {/* Top Banner */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 p-6 rounded-2xl border border-slate-800 flex items-center justify-between gap-4">
@@ -169,48 +237,72 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Overview Summary Metrics Cards */}
-        {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '') && (
+        {/* Overview Summary Metrics Cards (Clickable Navigation for Entire Card Surface) */}
+        {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER'].includes(user?.role || '') && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+            {/* 1. Total Active Employees -> /employees */}
+            <button
+              type="button"
+              onClick={() => navigate('/employees')}
+              className="p-5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
+              title="Navigate to Employees Directory"
+            >
               <div>
-                <p className="text-xs text-slate-400 font-medium">Total Active Employees</p>
+                <p className="text-xs text-slate-400 font-medium group-hover:text-cyan-400 transition-colors">Total Active Employees</p>
                 <p className="text-2xl font-bold text-white mt-1">{summary.totalEmployees ?? 0}</p>
               </div>
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl">
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl group-hover:scale-105 transition-transform">
                 <Users className="w-6 h-6" />
               </div>
-            </div>
+            </button>
 
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+            {/* 2. Present Today -> /attendance */}
+            <button
+              type="button"
+              onClick={() => navigate('/attendance')}
+              className="p-5 bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
+              title="Navigate to Attendance Module"
+            >
               <div>
-                <p className="text-xs text-slate-400 font-medium">Present Today</p>
+                <p className="text-xs text-slate-400 font-medium group-hover:text-emerald-400 transition-colors">Present Today</p>
                 <p className="text-2xl font-bold text-emerald-400 mt-1">{summary.presentToday ?? 0}</p>
               </div>
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl group-hover:scale-105 transition-transform">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-            </div>
+            </button>
 
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+            {/* 3. Pending Leave Requests -> /leave */}
+            <button
+              type="button"
+              onClick={() => navigate('/leave')}
+              className="p-5 bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
+              title="Navigate to Leave Management"
+            >
               <div>
-                <p className="text-xs text-slate-400 font-medium">Pending Leave Requests</p>
+                <p className="text-xs text-slate-400 font-medium group-hover:text-amber-400 transition-colors">Pending Leave Requests</p>
                 <p className="text-2xl font-bold text-amber-400 mt-1">{summary.pendingLeaves ?? 0}</p>
               </div>
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl group-hover:scale-105 transition-transform">
                 <CalendarDays className="w-6 h-6" />
               </div>
-            </div>
+            </button>
 
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+            {/* 4. Pending Expense Claims -> /expenses */}
+            <button
+              type="button"
+              onClick={() => navigate('/expenses')}
+              className="p-5 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850/80 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] text-left w-full group shadow-sm"
+              title="Navigate to Expense Claims"
+            >
               <div>
-                <p className="text-xs text-slate-400 font-medium">Pending Expense Claims</p>
+                <p className="text-xs text-slate-400 font-medium group-hover:text-indigo-400 transition-colors">Pending Expense Claims</p>
                 <p className="text-2xl font-bold text-indigo-400 mt-1">{summary.pendingExpenses ?? 0}</p>
               </div>
-              <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl">
+              <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl group-hover:scale-105 transition-transform">
                 <Receipt className="w-6 h-6" />
               </div>
-            </div>
+            </button>
           </div>
         )}
 

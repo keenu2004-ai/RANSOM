@@ -546,10 +546,13 @@ async function runMasterE2EVerificationSuite() {
       !approvalHierarchyCode.includes('u.role_id') && approvalHierarchyCode.includes('JOIN user_roles ur')
     );
 
-    const headerComponentFile = path.join(rootDir, 'frontend/src/components/layout/Header.tsx');
-    const headerComponentCode = fs.readFileSync(headerComponentFile, 'utf8');
-    runStep('Header.tsx contains mobile/tablet notification toggle state, backdrop, and outside click / ESC handlers',
-      headerComponentCode.includes('isNotificationsOpen') && headerComponentCode.includes('toggleNotifications') && headerComponentCode.includes('stopPropagation') && headerComponentCode.includes('mark-all-read')
+    const dashFile = path.join(rootDir, 'frontend/src/pages/Dashboard.tsx');
+    const dashCode = fs.readFileSync(dashFile, 'utf8');
+    runStep('Dashboard.tsx contains clickable KPI cards routing to /employees, /attendance, /leave, and /expenses',
+      dashCode.includes("navigate('/employees')") &&
+      dashCode.includes("navigate('/attendance')") &&
+      dashCode.includes("navigate('/leave')") &&
+      dashCode.includes("navigate('/expenses')")
     );
 
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';

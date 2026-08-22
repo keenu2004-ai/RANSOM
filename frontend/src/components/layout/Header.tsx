@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifLoading, setNotifLoading] = useState(false);
 
-  const notifPanelRef = useRef<HTMLDivElement>(null);
+  const notifContainerRef = useRef<HTMLDivElement>(null);
 
   // PWA Install Prompt Listener
   useEffect(() => {
@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     };
   }, []);
 
-  // Close notification panel automatically when navigating
+  // Close notification panel automatically when navigating routes
   useEffect(() => {
     setIsNotificationsOpen(false);
   }, [location.pathname]);
@@ -54,6 +54,21 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isNotificationsOpen]);
+
+  // Handle outside click to close notification panel
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (isNotificationsOpen && notifContainerRef.current && !notifContainerRef.current.contains(e.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, [isNotificationsOpen]);
 
   // Fetch notifications whenever drawer opens or user changes
@@ -122,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   return (
     <>
-      {/* ─── DESKTOP HEADER (>= 1024px) ─── */}
+      {/* ─── DESKTOP HEADER (>= 1024px) - Preserved Unchanged ─── */}
       <header className="hidden lg:flex sticky top-0 z-30 items-center justify-between h-16 px-6 bg-slate-900/90 backdrop-blur border-b border-slate-800">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -163,7 +178,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       </header>
 
       {/* ─── MOBILE + TABLET HEADER (< 1024px) - TeamNest Style ─── */}
-      <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between h-14 px-4 bg-sky-600 text-white shadow-md">
+      <header className="lg:hidden sticky top-0 z-50 flex items-center justify-between h-14 px-4 bg-sky-600 text-white shadow-md">
         {/* Left: Hamburger Button */}
         <div className="flex items-center gap-3">
           <button
@@ -181,7 +196,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
 
         {/* Right: Notifications Bell Toggle & Quick Attendance Action */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" ref={notifContainerRef}>
           {/* Notification Bell (Tap 1: Open, Tap 2: Close) */}
           <button
             onClick={toggleNotifications}
@@ -218,101 +233,100 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <Fingerprint className="w-5 h-5" />
             )}
           </button>
+
+          {/* ─── MOBILE / TABLET NOTIFICATION PANEL & BACKDROP (< 1024px) ─── */}
+          {isNotificationsOpen && (
+            <div className="lg:hidden">
+              {/* Backdrop (Clicking backdrop closes panel) */}
+              <div
+                className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+                onClick={() => setIsNotificationsOpen(false)}
+              />
+
+              {/* Notification Panel Floating Dropdown */}
+              <div
+                className="fixed top-16 right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] max-w-sm bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in slide-in-from-top-2 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header Bar */}
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-750">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-cyan-400" />
+                    <span className="font-bold text-sm">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsNotificationsOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-lg transition-colors"
+                    aria-label="Close panel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* List Body */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[55vh]">
+                  {notifLoading ? (
+                    <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                      <span>Loading notifications...</span>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-slate-500">
+                      No notifications found
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n.link)}
+                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                          !n.is_read
+                            ? 'bg-slate-800/90 border-cyan-500/40 text-slate-100 shadow-sm hover:border-cyan-400'
+                            : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:bg-slate-800/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-slate-200 mb-0.5">{n.title}</p>
+                          {!n.is_read && (
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 mt-1" />
+                          )}
+                        </div>
+                        <p className="text-slate-300 leading-snug">{n.message}</p>
+                        <span className="text-[10px] text-slate-500 block mt-1.5 font-mono">
+                          {new Date(n.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Footer Bar */}
+                <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs">
+                  <button
+                    onClick={handleMarkAllRead}
+                    disabled={unreadCount === 0}
+                    className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 disabled:opacity-40 text-[11px] font-medium transition-colors"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Mark all as read</span>
+                  </button>
+                  <button
+                    onClick={() => handleNotificationClick('/notifications')}
+                    className="font-semibold text-sky-400 hover:text-sky-300 text-[11px] transition-colors"
+                  >
+                    View all notifications →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
-
-      {/* ─── MOBILE / TABLET NOTIFICATION PANEL & BACKDROP (< 1024px) ─── */}
-      {isNotificationsOpen && (
-        <div className="lg:hidden">
-          {/* Backdrop (Clicking backdrop closes panel) */}
-          <div
-            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsNotificationsOpen(false)}
-          />
-
-          {/* Notification Panel Floating Dropdown */}
-          <div
-            ref={notifPanelRef}
-            className="fixed top-16 right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] max-w-sm bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in slide-in-from-top-2 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header Bar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-750">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-cyan-400" />
-                <span className="font-bold text-sm">Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full">
-                    {unreadCount} new
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setIsNotificationsOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-lg transition-colors"
-                aria-label="Close panel"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* List Body */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[55vh]">
-              {notifLoading ? (
-                <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-                  <span>Loading notifications...</span>
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-500">
-                  No notifications found
-                </div>
-              ) : (
-                notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => handleNotificationClick(n.link)}
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                      !n.is_read
-                        ? 'bg-slate-800/90 border-cyan-500/40 text-slate-100 shadow-sm hover:border-cyan-400'
-                        : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-slate-200 mb-0.5">{n.title}</p>
-                      {!n.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 mt-1" />
-                      )}
-                    </div>
-                    <p className="text-slate-300 leading-snug">{n.message}</p>
-                    <span className="text-[10px] text-slate-500 block mt-1.5 font-mono">
-                      {new Date(n.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Footer Bar */}
-            <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs">
-              <button
-                onClick={handleMarkAllRead}
-                disabled={unreadCount === 0}
-                className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 disabled:opacity-40 text-[11px] font-medium transition-colors"
-              >
-                <CheckCheck className="w-3.5 h-3.5" />
-                <span>Mark all as read</span>
-              </button>
-              <button
-                onClick={() => handleNotificationClick('/notifications')}
-                className="font-semibold text-sky-400 hover:text-sky-300 text-[11px] transition-colors"
-              >
-                View all notifications →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
