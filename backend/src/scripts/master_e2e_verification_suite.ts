@@ -649,6 +649,8 @@ async function runMasterE2EVerificationSuite() {
     runStep('UserRepository updateRole uses direct row-locking without OUTER JOINs on FOR UPDATE', !hasOuterJoinForUpdate);
     const hasInvalidActorIdCol = /INSERT\s+INTO\s+audit_logs[\s\S]*?actor_id/i.test(userRepoCode);
     runStep('UserRepository updateRole audit_logs INSERT uses user_id instead of non-existent actor_id', !hasInvalidActorIdCol);
+    const hasInvalidNotifTypeCol = /INSERT\s+INTO\s+notifications[\s\S]*?\b(type|employee_id)\b/i.test(userRepoCode);
+    runStep('UserRepository updateRole notifications INSERT uses user_id and valid columns without type', !hasInvalidNotifTypeCol);
 
     summary['12. User Role Assignment'] = 'PASS';
 

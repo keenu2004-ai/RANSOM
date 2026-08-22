@@ -218,8 +218,8 @@ export class UserRepository {
 
       // 8. In-App Notification to Target User
       await client.query(`
-        INSERT INTO notifications (organization_id, user_id, title, message, type)
-        VALUES ($1, $2, 'System Role Updated', $3, 'SYSTEM')
+        INSERT INTO notifications (organization_id, user_id, title, message)
+        VALUES ($1, $2, 'System Role Updated', $3)
       `, [
         actorUser.organizationId,
         targetUserId,

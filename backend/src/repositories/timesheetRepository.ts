@@ -87,8 +87,8 @@ export class TimesheetRepository {
       const targetEmp = await query('SELECT user_id FROM employees WHERE id = $1', [finalAssignedEmpId]);
       if (targetEmp.rows.length > 0 && targetEmp.rows[0].user_id) {
         await query(`
-          INSERT INTO notifications (organization_id, user_id, title, message, type)
-          VALUES ($1, $2, 'New Task Assigned', $3, 'TASK_ASSIGNMENT')
+          INSERT INTO notifications (organization_id, user_id, title, message)
+          VALUES ($1, $2, 'New Task Assigned', $3)
         `, [organizationId, targetEmp.rows[0].user_id, `New task assigned: ${title} — ${data.date}`]).catch(() => null);
       }
     }
