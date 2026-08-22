@@ -310,6 +310,60 @@ export class EmployeeRepository {
     return emp;
   }
 
+  static async delete(id: string, organizationId: string, actorUserId?: string): Promise<boolean> {
+    // 1. Asset safety guard: Block physical deletion if employee has active assigned assets
+    const assetCheck = await query(`
+      SELECT COUNT(*) as count FROM assets 
+      WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
+    `, [id, organizationId]);
+    const activeAssetsCount = parseInt(assetCheck.rows[0]?.count || '0', 10);
+    if (activeAssetsCount > 0) {
+      const err: any = new Error(`Employee has ${activeAssetsCount} assigned asset(s). Return/reassign assets before deletion.`);
+      err.statusCode = 400;
+      err.code = 'ACTIVE_ASSETS_ASSIGNED';
+      throw err;
+    }
+
+    // 2. Fetch employee details to record snapshots and find linked user account
+    const empRes = await query(`SELECT user_id, employee_code, first_name, last_name FROM employees WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+    if (empRes.rows.length === 0) return false;
+
+    const emp = empRes.rows[0];
+    const fullName = `${emp.first_name} ${emp.last_name}`;
+
+    // 3. Populate snapshots on historical tables before removing employee row so historical records survive seamlessly with name/code snapshots
+    await query(`UPDATE attendance SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+    await query(`UPDATE leave_requests SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+    await query(`UPDATE expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+    await query(`UPDATE timesheets SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+    await query(`UPDATE trip_expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+    await query(`UPDATE employee_leave_adjustments SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+
+    if (emp.user_id) {
+      const userRes = await query(`SELECT email FROM users WHERE id = $1`, [emp.user_id]);
+      if (userRes.rows.length > 0) {
+        await query(`UPDATE audit_logs SET user_email_snapshot = $1, employee_name_snapshot = $2, employee_code_snapshot = $3 WHERE user_id = $4 AND user_email_snapshot IS NULL`, [userRes.rows[0].email, fullName, emp.employee_code, emp.user_id]);
+      }
+    }
+
+    // 4. Record audit log BEFORE physically removing user/employee
+    await query(`
+      INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values, user_email_snapshot, employee_name_snapshot, employee_code_snapshot)
+      VALUES ($1, $2, 'EMPLOYEE_DELETED', 'employees', 'Employee', $3, $4, NULL, $5, $6)
+    `, [organizationId, actorUserId || null, id, JSON.stringify({ employeeCode: emp.employee_code, fullName }), fullName, emp.employee_code]);
+
+    // 5. Unlink user_id on employee before deletion, and delete linked user account if exists
+    await query(`UPDATE employees SET user_id = NULL WHERE id = $1`, [id]);
+    if (emp.user_id) {
+      await query(`DELETE FROM user_roles WHERE user_id = $1`, [emp.user_id]);
+      await query(`DELETE FROM users WHERE id = $1 AND organization_id = $2`, [emp.user_id, organizationId]);
+    }
+
+    // 6. Physically delete employee row (Historical attendance, leave, expenses, timesheets, and audit logs will survive via ON DELETE SET NULL!)
+    await query(`DELETE FROM employees WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+    return true;
+  }
+
   static async getOrgChart(organizationId: string) {
     const text = `
       SELECT 

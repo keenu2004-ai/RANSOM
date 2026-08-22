@@ -130,6 +130,21 @@ export class EmployeeController {
     }
   }
 
+  static async delete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { id } = req.params;
+
+      await EmployeeService.deleteEmployee(id, organizationId, req.user!.userId);
+      return res.status(200).json({
+        success: true,
+        message: 'Employee deleted successfully. Historical records preserved.'
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   static async orgChart(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;

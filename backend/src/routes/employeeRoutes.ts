@@ -17,5 +17,6 @@ router.post('/:id/deactivate', requirePermission('EMPLOYEE_UPDATE'), EmployeeCon
 router.put('/:id/deactivate', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.deactivate);
 router.post('/:id/restore', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.restore);
 router.put('/:id/restore', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.restore);
+router.delete('/:id', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.delete);
 
 export default router;

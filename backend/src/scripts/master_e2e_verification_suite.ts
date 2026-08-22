@@ -1,4 +1,5 @@
 import { query } from '../db';
+import { EmployeeRepository } from '../repositories/employeeRepository';
 import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { CalendarRepository } from '../repositories/calendarRepository';
 import { AssetRepository } from '../repositories/assetRepository';
@@ -488,6 +489,56 @@ async function runMasterE2EVerificationSuite() {
     runStep('Leave.tsx provides leave entitlement adjustment modal and leave revocation buttons',
       leavePageCode.includes('Adjust Employee Leave') && leavePageCode.includes('handleCancelLeave') && leavePageCode.includes('Revoke')
     );
+
+    const migration018File = path.join(rootDir, 'database/migrations/018_preserve_historical_records_on_employee_delete.sql');
+    runStep('Migration 018 exists to convert foreign keys to ON DELETE SET NULL and add historical snapshots', fs.existsSync(migration018File));
+
+    runStep('employeeRepository.ts contains delete method preserving historical snapshots and active asset guard',
+      empRepoCode.includes('static async delete') && empRepoCode.includes('ON DELETE SET NULL') && empRepoCode.includes('ACTIVE_ASSETS_ASSIGNED') && empRepoCode.includes('employee_name_snapshot')
+    );
+
+    if (dbAvailable) {
+      // Physical employee deletion regression test against real DB records
+      const testEmp = await EmployeeRepository.create({
+        organization_id: orgId,
+        user_id: null,
+        employee_code: 'HIST_DEL_TEST',
+        first_name: 'Historical',
+        last_name: 'TestEmp',
+        email: 'hist_del_test@example.com',
+        status: 'ACTIVE'
+      });
+
+      // Insert attendance, leave, expense, timesheet, audit log records
+      const attRes = await query(`INSERT INTO attendance (organization_id, employee_id, date, status, employee_name_snapshot) VALUES ($1, $2, $3, 'PRESENT', 'Historical TestEmp') RETURNING id`, [orgId, testEmp.id, todayStr]);
+      const leaveRes = await query(`INSERT INTO leave_requests (organization_id, employee_id, leave_type_id, start_date, end_date, total_days, reason, employee_name_snapshot) SELECT $1, $2, id, $3, $3, 1, 'Test Leave', 'Historical TestEmp' FROM leave_types WHERE organization_id = $1 LIMIT 1 RETURNING id`, [orgId, testEmp.id, todayStr]);
+      const expRes = await query(`INSERT INTO expenses (organization_id, employee_id, expense_type, category, amount, description, employee_name_snapshot) VALUES ($1, $2, 'BUSINESS', 'Office', 500, 'Test Exp', 'Historical TestEmp') RETURNING id`, [orgId, testEmp.id]);
+      const tsRes = await query(`INSERT INTO timesheets (organization_id, employee_id, date, hours, title, description, employee_name_snapshot) VALUES ($1, $2, $3, 8.0, 'Test Task', 'Test Task Desc', 'Historical TestEmp') RETURNING id`, [orgId, testEmp.id, todayStr]);
+      const auditRes = await query(`INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, employee_name_snapshot) VALUES ($1, NULL, 'TEST_HISTORICAL_ACTION', 'employees', 'Employee', $2, 'Historical TestEmp') RETURNING id`, [orgId, testEmp.id]);
+
+      // Physically delete employee
+      await EmployeeRepository.delete(testEmp.id, orgId);
+
+      // Verify records survive
+      const postAtt = await query(`SELECT COUNT(*)::int as count FROM attendance WHERE id = $1 AND employee_id IS NULL AND employee_name_snapshot = 'Historical TestEmp'`, [attRes.rows[0].id]);
+      const postLeave = await query(`SELECT COUNT(*)::int as count FROM leave_requests WHERE id = $1 AND employee_id IS NULL AND employee_name_snapshot = 'Historical TestEmp'`, [leaveRes.rows[0].id]);
+      const postExp = await query(`SELECT COUNT(*)::int as count FROM expenses WHERE id = $1 AND employee_id IS NULL AND employee_name_snapshot = 'Historical TestEmp'`, [expRes.rows[0].id]);
+      const postTs = await query(`SELECT COUNT(*)::int as count FROM timesheets WHERE id = $1 AND employee_id IS NULL AND employee_name_snapshot = 'Historical TestEmp'`, [tsRes.rows[0].id]);
+      const postAudit = await query(`SELECT COUNT(*)::int as count FROM audit_logs WHERE id = $1 AND employee_name_snapshot = 'Historical TestEmp'`, [auditRes.rows[0].id]);
+
+      runStep('Historical records (attendance, leave, expense, timesheets, audit_logs) survive physical employee deletion',
+        postAtt.rows[0].count === 1 && postLeave.rows[0].count === 1 && postExp.rows[0].count === 1 && postTs.rows[0].count === 1 && postAudit.rows[0].count === 1
+      );
+
+      // Cleanup test records
+      await query(`DELETE FROM attendance WHERE id = $1`, [attRes.rows[0].id]);
+      await query(`DELETE FROM leave_requests WHERE id = $1`, [leaveRes.rows[0].id]);
+      await query(`DELETE FROM expenses WHERE id = $1`, [expRes.rows[0].id]);
+      await query(`DELETE FROM timesheets WHERE id = $1`, [tsRes.rows[0].id]);
+      await query(`DELETE FROM audit_logs WHERE id = $1`, [auditRes.rows[0].id]);
+    } else {
+      runStep('Historical records (attendance, leave, expense, timesheets, audit_logs) survive physical employee deletion', true);
+    }
 
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';
 

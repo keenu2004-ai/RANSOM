@@ -40,6 +40,10 @@ export class EmployeeService {
     return await EmployeeRepository.setStatus(id, organizationId, 'ACTIVE', actorUserId);
   }
 
+  static async deleteEmployee(id: string, organizationId: string, actorUserId?: string) {
+    return await EmployeeRepository.delete(id, organizationId, actorUserId);
+  }
+
   static async getOrgChart(organizationId: string) {
     return await EmployeeRepository.getOrgChart(organizationId);
   }
