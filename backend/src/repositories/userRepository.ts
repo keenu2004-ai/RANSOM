@@ -127,27 +127,45 @@ export class UserRepository {
     const canonicalRequestedRole = normalizeRole(requestedRole);
 
     return withTransaction(async (client) => {
-      // 1. Fetch Target User details
-      const targetRes = await client.query(`
-        SELECT u.id, u.organization_id, u.email, u.status, COALESCE(r.name, 'EMPLOYEE') as current_role
+      // 1. Lock Target User row DIRECTLY (without outer joins to prevent PostgreSQL 'FOR UPDATE cannot be applied to the nullable side of an outer join' error)
+      const targetUserRes = await client.query(`
+        SELECT id, organization_id, email, status
+        FROM users
+        WHERE id = $1
+        FOR UPDATE
+      `, [targetUserId]);
+
+      if (targetUserRes.rows.length === 0) {
+        throw new Error('Target user account not found.');
+      }
+
+      const targetUser = targetUserRes.rows[0];
+
+      // Verify Cross-Organization Isolation
+      if (targetUser.organization_id !== actorUser.organizationId) {
+        const err: any = new Error('Cross-organization operation strictly forbidden.');
+        err.statusCode = 403;
+        err.code = 'PERMISSION_DENIED';
+        throw err;
+      }
+
+      // 2. Fetch current target role in a separate query (without FOR UPDATE on outer joins)
+      const currentRoleRes = await client.query(`
+        SELECT COALESCE(r.name, 'EMPLOYEE') as current_role
         FROM users u
         LEFT JOIN user_roles ur ON ur.user_id = u.id
         LEFT JOIN roles r ON r.id = ur.role_id
         WHERE u.id = $1
-        FOR UPDATE
+        LIMIT 1
       `, [targetUserId]);
 
-      if (targetRes.rows.length === 0) {
-        throw new Error('Target user account not found.');
-      }
+      const currentRole = currentRoleRes.rows[0]?.current_role || 'EMPLOYEE';
 
-      const targetUser = targetRes.rows[0];
-
-      // 2. Validate Role Assignment Authority & Self Escalation Protection
+      // 3. Validate Role Assignment Authority & Self-Escalation Protection
       const validation = validateRoleAssignment(actorUser, {
         id: targetUser.id,
         organizationId: targetUser.organization_id,
-        role: targetUser.current_role
+        role: currentRole
       }, canonicalRequestedRole);
 
       if (!validation.allowed) {
@@ -157,8 +175,11 @@ export class UserRepository {
         throw err;
       }
 
-      // 3. Resolve Target Role ID in Organization
-      let roleRes = await client.query('SELECT id FROM roles WHERE organization_id = $1 AND name = $2', [actorUser.organizationId, canonicalRequestedRole]);
+      // 4. Resolve Target Role ID in Organization or System Roles
+      let roleRes = await client.query(
+        'SELECT id FROM roles WHERE (organization_id = $1 OR is_system_role = TRUE) AND name = $2 ORDER BY is_system_role DESC LIMIT 1',
+        [actorUser.organizationId, canonicalRequestedRole]
+      );
 
       // If system role missing in DB for this org, create it idempotently
       if (roleRes.rows.length === 0) {
@@ -172,11 +193,14 @@ export class UserRepository {
 
       const newRoleId = roleRes.rows[0].id;
 
-      // 4. Update user_roles table
+      // 5. Update user_roles table atomically
       await client.query('DELETE FROM user_roles WHERE user_id = $1', [targetUserId]);
       await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [targetUserId, newRoleId]);
 
-      // 5. Audit Logging for Role Change
+      // 6. Keep users table updated_at synchronized
+      await client.query('UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [targetUserId]);
+
+      // 7. Audit Logging for Role Change
       await client.query(`
         INSERT INTO audit_logs (organization_id, actor_id, entity_type, entity_id, action, details)
         VALUES ($1, $2, 'USER', $3, 'USER_ROLE_CHANGED', $4)
@@ -186,20 +210,20 @@ export class UserRepository {
         targetUserId,
         JSON.stringify({
           target_user_email: targetUser.email,
-          old_role: targetUser.current_role,
+          old_role: currentRole,
           new_role: canonicalRequestedRole,
           timestamp: new Date().toISOString()
         })
       ]);
 
-      // 6. In-App Notification to Target User
+      // 8. In-App Notification to Target User
       await client.query(`
         INSERT INTO notifications (organization_id, user_id, title, message, type)
         VALUES ($1, $2, 'System Role Updated', $3, 'SYSTEM')
       `, [
         actorUser.organizationId,
         targetUserId,
-        `Your system role has been updated to ${canonicalRequestedRole}.`
+        `Your system role has been updated to ${canonicalRequestedRole}. User must sign in again for the new token to take effect.`
       ]);
 
       return { success: true, newRole: canonicalRequestedRole };

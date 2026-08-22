@@ -173,7 +173,7 @@ export class EmployeeRepository {
 
       // Assign requested system role (default: EMPLOYEE)
       const requestedRole = (data.system_role && data.system_role.trim().toUpperCase()) || 'EMPLOYEE';
-      let roleRes = await client.query('SELECT id FROM roles WHERE organization_id = $1 AND name = $2', [data.organization_id, requestedRole]);
+      let roleRes = await client.query('SELECT id FROM roles WHERE (organization_id = $1 OR is_system_role = TRUE) AND name = $2 ORDER BY is_system_role DESC LIMIT 1', [data.organization_id, requestedRole]);
       if (roleRes.rows.length === 0) {
         roleRes = await client.query(`
           INSERT INTO roles (organization_id, name, description, is_system_role)

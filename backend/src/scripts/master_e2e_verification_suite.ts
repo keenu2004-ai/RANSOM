@@ -644,6 +644,10 @@ async function runMasterE2EVerificationSuite() {
     );
     runStep('Cross-organization user role assignment strictly forbidden', !crossCheck.allowed && crossCheck.reason!.includes('Cross-organization'));
 
+    const userRepoCode = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/userRepository.ts'), 'utf8');
+    const hasOuterJoinForUpdate = /LEFT\s+JOIN[\s\S]*?FOR\s+UPDATE/i.test(userRepoCode);
+    runStep('UserRepository updateRole uses direct row-locking without OUTER JOINs on FOR UPDATE', !hasOuterJoinForUpdate);
+
     summary['12. User Role Assignment'] = 'PASS';
 
     // ─── 13. MOBILE & TABLET APP SHELL SUITE ──────────────────────────────────
