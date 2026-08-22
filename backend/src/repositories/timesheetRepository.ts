@@ -163,6 +163,19 @@ export class TimesheetRepository {
       }
       params.push(actorEmployeeId, actorUserId);
       conditions.push(`(t.employee_id = $${params.length - 1} OR t.created_by = $${params.length})`);
+    } else if (actorRole === 'OPERATIONAL_MANAGER' || actorRole === 'MANAGER') {
+      if (actorEmployeeId) {
+        params.push(actorEmployeeId);
+        conditions.push(`(
+          t.employee_id = $${params.length} 
+          OR t.created_by = '${actorUserId}'
+          OR t.employee_id IN (SELECT id FROM employees WHERE manager_id = $${params.length})
+        )`);
+      }
+      if (filters.assignedEmployeeId) {
+        params.push(filters.assignedEmployeeId);
+        conditions.push(`t.employee_id = $${params.length}`);
+      }
     } else if (filters.assignedEmployeeId) {
       params.push(filters.assignedEmployeeId);
       conditions.push(`t.employee_id = $${params.length}`);
@@ -447,6 +460,11 @@ export class TimesheetRepository {
       if (!actorEmployeeId) return [];
       params.push(actorEmployeeId, actorUserId);
       conditions.push(`(t.employee_id = $3 OR t.created_by = $4)`);
+    } else if (actorRole === 'OPERATIONAL_MANAGER' || actorRole === 'MANAGER') {
+      if (actorEmployeeId) {
+        params.push(actorEmployeeId);
+        conditions.push(`(t.employee_id = $3 OR t.created_by = '${actorUserId}' OR t.employee_id IN (SELECT id FROM employees WHERE manager_id = $3))`);
+      }
     }
 
     const dataSql = `

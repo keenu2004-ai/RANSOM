@@ -724,6 +724,11 @@ async function runMasterE2EVerificationSuite() {
     runStep('timesheetRoutes.ts streams Content-Type application/vnd.openxmlformats-officedocument.spreadsheetml.sheet for true XLSX exports',
       tsRoutesCode.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') && tsRoutesCode.includes('generateWeeklyPlanXlsx')
     );
+    const reportsPageFile = path.join(rootDir, 'frontend/src/pages/Reports.tsx');
+    const reportsPageCode = fs.readFileSync(reportsPageFile, 'utf8');
+    runStep('Reports.tsx contains Weekly Plan & Field Visit Excel Export card with filter controls and apiDownload integration',
+      reportsPageCode.includes('Weekly Plan & Field Visit Excel Export') && reportsPageCode.includes('handleGenerateWeeklyPlanXlsx') && reportsPageCode.includes('apiDownload')
+    );
 
     summary['15. Weekly Field Visit Planner'] = 'PASS';
 
