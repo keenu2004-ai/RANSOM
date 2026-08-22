@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission, getAllowedAssignableRoles } from '../utils/permissions';
 import { 
   Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network, 
   ChevronLeft, ChevronRight, CheckCircle2, Edit3, X, Building2, Briefcase
@@ -9,6 +9,7 @@ import {
 
 export const Employees: React.FC = () => {
   const { user } = useAuth();
+  const allowedRolesForActor = getAllowedAssignableRoles(user?.role);
   const [activeTab, setActiveTab] = useState<'list' | 'orgChart'>('list');
   const [employees, setEmployees] = useState<any[]>([]);
   const [orgChart, setOrgChart] = useState<any[]>([]);
@@ -39,7 +40,8 @@ export const Employees: React.FC = () => {
     phone: '',
     employment_type: 'FULL_TIME',
     department_id: '',
-    designation_id: ''
+    designation_id: '',
+    system_role: 'EMPLOYEE'
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -165,7 +167,7 @@ export const Employees: React.FC = () => {
       setShowAddModal(false);
       setFormData({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '', phone: '',
-        employment_type: 'FULL_TIME', department_id: '', designation_id: ''
+        employment_type: 'FULL_TIME', department_id: '', designation_id: '', system_role: 'EMPLOYEE'
       });
       setSuccessMsg('Employee profile & user credentials created successfully.');
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -593,6 +595,20 @@ export const Employees: React.FC = () => {
                   <option value="CONTRACT">Contract</option>
                   <option value="INTERN">Internship</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">System Permission Role</label>
+                <select
+                  value={formData.system_role}
+                  onChange={e => setFormData({ ...formData, system_role: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  {allowedRolesForActor.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500 mt-0.5">Determines application access permissions (independent of designation)</p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

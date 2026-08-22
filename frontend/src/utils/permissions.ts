@@ -219,3 +219,22 @@ export function hasPermission(
 
   return scopeOrder[grantedScope] >= scopeOrder[requiredScope];
 }
+
+/**
+ * Returns list of roles that an actor role is authorized to assign to another account
+ */
+export function getAllowedAssignableRoles(actorRole?: string | null): string[] {
+  const canonicalRole = normalizeRole(actorRole);
+  switch (canonicalRole) {
+    case 'SUPER_ADMIN':
+      return ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE'];
+    case 'ADMIN':
+      return ['HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE'];
+    case 'HR_MANAGER':
+      return ['OPERATIONAL_MANAGER', 'EMPLOYEE'];
+    case 'OPERATIONAL_MANAGER':
+    case 'EMPLOYEE':
+    default:
+      return [];
+  }
+}

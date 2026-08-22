@@ -7,6 +7,8 @@ import { ExpenseRepository } from '../repositories/expenseRepository';
 import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import { validateExpenseApprover } from '../utils/approvalHierarchy';
 import { hasPermission } from '../config/permissions';
+import { UserRepository } from '../repositories/userRepository';
+import { validateRoleAssignment } from '../utils/roleAuthority';
 import fs from 'fs';
 import path from 'path';
 
@@ -598,6 +600,51 @@ async function runMasterE2EVerificationSuite() {
     runStep('ADMINISTRATOR alias correctly normalizes to ADMIN role permissions', adminNormalizedAlias);
 
     summary['11. Centralized RBAC System'] = 'PASS';
+
+    // ─── 12. USER ROLE ASSIGNMENT & ACCESS CONTROL ─────────────────────────────
+    console.log('\n[TEST 12] User Role Assignment & Access Control Suite...');
+
+    // 1. SUPER_ADMIN assigning HR_MANAGER -> Allowed
+    const saCheck = validateRoleAssignment(
+      { id: 'sa-user-1', role: 'SUPER_ADMIN', organizationId: orgId },
+      { id: 'emp-user-1', organizationId: orgId, role: 'EMPLOYEE' },
+      'HR_MANAGER'
+    );
+    runStep('SUPER_ADMIN authorized to assign HR_MANAGER role', saCheck.allowed);
+
+    // 2. ADMIN assigning OPERATIONAL_MANAGER -> Allowed
+    const adminCheck = validateRoleAssignment(
+      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
+      { id: 'emp-user-1', organizationId: orgId, role: 'EMPLOYEE' },
+      'OPERATIONAL_MANAGER'
+    );
+    runStep('ADMIN authorized to assign OPERATIONAL_MANAGER role', adminCheck.allowed);
+
+    // 3. ADMIN attempting to assign SUPER_ADMIN -> Forbidden
+    const adminSaCheck = validateRoleAssignment(
+      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
+      { id: 'emp-user-1', organizationId: orgId, role: 'EMPLOYEE' },
+      'SUPER_ADMIN'
+    );
+    runStep('ADMIN prohibited from assigning SUPER_ADMIN role', !adminSaCheck.allowed && adminSaCheck.reason!.includes('not authorized'));
+
+    // 4. Self-Role Escalation Check -> Forbidden
+    const selfCheck = validateRoleAssignment(
+      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
+      { id: 'admin-user-1', organizationId: orgId, role: 'ADMIN' },
+      'SUPER_ADMIN'
+    );
+    runStep('Self-role escalation by ADMIN to SUPER_ADMIN strictly forbidden', !selfCheck.allowed && selfCheck.reason!.includes('Self-role escalation'));
+
+    // 5. Cross-Tenant Organization Protection -> Forbidden
+    const crossCheck = validateRoleAssignment(
+      { id: 'admin-user-1', role: 'SUPER_ADMIN', organizationId: orgId },
+      { id: 'other-user-1', organizationId: 'other-org-99', role: 'EMPLOYEE' },
+      'HR_MANAGER'
+    );
+    runStep('Cross-organization user role assignment strictly forbidden', !crossCheck.allowed && crossCheck.reason!.includes('Cross-organization'));
+
+    summary['12. User Role Assignment'] = 'PASS';
 
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────

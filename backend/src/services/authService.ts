@@ -23,6 +23,13 @@ export class AuthService {
       throw err;
     }
 
+    if (!userWithRole.password_hash) {
+      const err: any = new Error('Invalid email or password.');
+      err.statusCode = 401;
+      err.code = 'INVALID_CREDENTIALS';
+      throw err;
+    }
+
     const isMatch = await bcrypt.compare(password, userWithRole.password_hash);
     if (!isMatch) {
       const err: any = new Error('Invalid email or password.');
@@ -37,7 +44,7 @@ export class AuthService {
       userId: userWithRole.id,
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
-      role: userWithRole.role_name,
+      role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
       employeeId: employeeId // Explicit string | null
     };
 
@@ -62,14 +69,14 @@ export class AuthService {
       userId: userWithRole.id,
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
-      role: userWithRole.role_name,
+      role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
       employeeId: employeeId // Explicit string | null
     };
   }
 
   static async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
     const userWithRole = await UserRepository.findById(userId);
-    if (!userWithRole) {
+    if (!userWithRole || !userWithRole.password_hash) {
       const err: any = new Error('User account not found.');
       err.statusCode = 404;
       err.code = 'NOT_FOUND';
