@@ -105,4 +105,41 @@ router.put('/:id/status', requirePermission('USER_UPDATE'), async (req: Authenti
   }
 });
 
+/**
+ * POST /api/users/:id/reset-password - Admin reset password for target user account
+ */
+const handleAdminResetPassword = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { newPassword } = req.body;
+    const result = await UserRepository.resetPasswordByAdmin(
+      {
+        id: req.user!.userId,
+        role: req.user!.role,
+        organizationId: req.user!.organizationId
+      },
+      req.params.id,
+      newPassword
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. User should sign in with the temporary password and change it immediately.',
+      data: {
+        temporaryPassword: result.temporaryPassword
+      }
+    });
+  } catch (error: any) {
+    if (error.statusCode === 403 || error.code === 'PERMISSION_DENIED') {
+      return res.status(403).json({ success: false, error: error.message || 'Permission denied for user password reset.' });
+    }
+    if (error.statusCode === 404) {
+      return res.status(404).json({ success: false, error: error.message || 'User account not found.' });
+    }
+    return next(error);
+  }
+};
+
+router.post('/:id/reset-password', requirePermission('USER_PASSWORD_RESET'), handleAdminResetPassword);
+router.put('/:id/reset-password', requirePermission('USER_PASSWORD_RESET'), handleAdminResetPassword);
+
 export default router;

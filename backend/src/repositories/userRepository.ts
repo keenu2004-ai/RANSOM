@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db';
 import { validateRoleAssignment, getAllowedAssignableRoles } from '../utils/roleAuthority';
 import { normalizeRole } from '../config/permissions';
@@ -255,5 +256,80 @@ export class UserRepository {
       WHERE id = $1
     `;
     await query(text, [userId, passwordHash]);
+  }
+
+  static async resetPasswordByAdmin(
+    actorUser: { id: string; role: string; organizationId: string },
+    targetUserId: string,
+    newPassword?: string
+  ): Promise<{ success: boolean; temporaryPassword: string }> {
+    return withTransaction(async (client) => {
+      // 1. Lock Target User row DIRECTLY
+      const targetUserRes = await client.query(`
+        SELECT id, organization_id, email, status
+        FROM users
+        WHERE id = $1
+        FOR UPDATE
+      `, [targetUserId]);
+
+      if (targetUserRes.rows.length === 0) {
+        const err: any = new Error('Target user account not found.');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const targetUser = targetUserRes.rows[0];
+
+      // Verify Cross-Organization Isolation
+      if (targetUser.organization_id !== actorUser.organizationId) {
+        const err: any = new Error('Cross-organization operation strictly forbidden.');
+        err.statusCode = 403;
+        err.code = 'PERMISSION_DENIED';
+        throw err;
+      }
+
+      // 2. Resolve temporary password (provided or generated)
+      const tempPassword = newPassword && newPassword.trim().length >= 6 
+        ? newPassword.trim() 
+        : `TempPass#${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // 3. Hash temporary password with bcrypt
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+      // 4. Update users table password_hash
+      await client.query(`
+        UPDATE users
+        SET password_hash = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [targetUserId, passwordHash]);
+
+      // 5. Write USER_PASSWORD_RESET Audit Log
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        actorUser.organizationId,
+        actorUser.id,
+        'USER_PASSWORD_RESET',
+        'users',
+        'User',
+        targetUserId,
+        JSON.stringify({ action: 'RESET_TRIGGERED' }),
+        JSON.stringify({ target_user_email: targetUser.email, timestamp: new Date().toISOString() })
+      ]);
+
+      // 6. Send In-App Notification to Target User
+      await client.query(`
+        INSERT INTO notifications (organization_id, user_id, title, message)
+        VALUES ($1, $2, 'Password Reset by Administrator', $3)
+      `, [
+        actorUser.organizationId,
+        targetUserId,
+        'Your password was reset by an administrator. Please sign in with your temporary password and change it immediately.'
+      ]);
+
+      return { success: true, temporaryPassword: tempPassword };
+    });
   }
 }

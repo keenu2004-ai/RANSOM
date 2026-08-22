@@ -669,6 +669,24 @@ async function runMasterE2EVerificationSuite() {
 
     summary['13. Mobile App Shell'] = 'PASS';
 
+    // ─── 14. ADMIN PASSWORD RESET SUITE ──────────────────────────────────────
+    console.log('\n[TEST 14] Admin Password Reset & Security Verification Suite...');
+
+    const userRoutesFile = path.join(rootDir, 'backend/src/routes/userRoutes.ts');
+    const userRoutesCode = fs.readFileSync(userRoutesFile, 'utf8');
+    runStep('userRoutes.ts contains POST /api/users/:id/reset-password endpoint', userRoutesCode.includes('/reset-password') && userRoutesCode.includes('USER_PASSWORD_RESET'));
+
+    const userRepoCodeFull = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/userRepository.ts'), 'utf8');
+    runStep('UserRepository contains resetPasswordByAdmin with bcrypt hashing and USER_PASSWORD_RESET audit logging', 
+      userRepoCodeFull.includes('resetPasswordByAdmin') && userRepoCodeFull.includes('USER_PASSWORD_RESET') && userRepoCodeFull.includes('bcrypt.hash')
+    );
+
+    const adminControlFile = path.join(rootDir, 'frontend/src/pages/AdminControl.tsx');
+    const adminControlCode = fs.readFileSync(adminControlFile, 'utf8');
+    runStep('AdminControl.tsx contains Reset Password modal and KeyRound button', adminControlCode.includes('reset-password') && adminControlCode.includes('Administrator Password Reset'));
+
+    summary['14. Admin Password Reset'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');

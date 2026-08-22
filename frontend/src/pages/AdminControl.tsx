@@ -2,7 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { getAllowedAssignableRoles, hasPermission } from '../utils/permissions';
-import { ShieldCheck, Users, KeyRound, Shield, Search, Edit3, X, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { 
+  ShieldCheck, Users, KeyRound, Shield, Search, Edit3, X, 
+  CheckCircle2, AlertTriangle, RefreshCw, Key, Lock
+} from 'lucide-react';
 
 export const AdminControl: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -21,8 +24,15 @@ export const AdminControl: React.FC = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Reset Password Modal
+  const [resettingUser, setResettingUser] = useState<any | null>(null);
+  const [tempPasswordInput, setTempPasswordInput] = useState<string>('');
+  const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+
   const allowedRolesForCurrentActor = getAllowedAssignableRoles(currentUser?.role);
   const canAssignRoles = hasPermission(currentUser?.role, 'USER_ROLE_ASSIGN');
+  const canResetPassword = hasPermission(currentUser?.role, 'USER_PASSWORD_RESET');
 
   const fetchAdminData = useCallback(async () => {
     setLoading(true);
@@ -55,6 +65,12 @@ export const AdminControl: React.FC = () => {
     setEditError(null);
   };
 
+  const handleOpenResetModal = (targetUser: any) => {
+    setResettingUser(targetUser);
+    setTempPasswordInput(`TempPass#${Math.floor(1000 + Math.random() * 9000)}`);
+    setResetErrorMsg(null);
+  };
+
   const handleSaveAccessChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -68,7 +84,6 @@ export const AdminControl: React.FC = () => {
     setEditError(null);
 
     try {
-      // 1. Role Change Endpoint
       if (selectedRole !== (editingUser.role || editingUser.role_name)) {
         await apiFetch(`/users/${editingUser.id}/role`, {
           method: 'PUT',
@@ -76,7 +91,6 @@ export const AdminControl: React.FC = () => {
         });
       }
 
-      // 2. Status Change Endpoint
       if (selectedStatus !== editingUser.status) {
         await apiFetch(`/users/${editingUser.id}/status`, {
           method: 'PUT',
@@ -86,12 +100,36 @@ export const AdminControl: React.FC = () => {
 
       setEditingUser(null);
       setSuccessMsg(`System access for ${editingUser.email} updated to role '${selectedRole}'.`);
-      setTimeout(() => setSuccessMsg(null), 4000);
+      setTimeout(() => setSuccessMsg(null), 5000);
       fetchAdminData();
     } catch (err: any) {
       setEditError(err.message || 'Failed to update user access role.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAdminResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resettingUser) return;
+
+    setResetting(true);
+    setResetErrorMsg(null);
+
+    try {
+      const res = await apiFetch(`/users/${resettingUser.id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ newPassword: tempPasswordInput })
+      });
+
+      const tempPass = res.data?.temporaryPassword || tempPasswordInput;
+      setSuccessMsg(`Password reset successfully for ${resettingUser.email}. Temporary password: ${tempPass}`);
+      setResettingUser(null);
+      setTimeout(() => setSuccessMsg(null), 8000);
+    } catch (err: any) {
+      setResetErrorMsg(err.message || 'Failed to reset user password.');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -110,43 +148,49 @@ export const AdminControl: React.FC = () => {
     <div className="space-y-6">
       {/* Success Notification Banner */}
       {successMsg && (
-        <div className="p-4 bg-emerald-950/60 border border-emerald-800 rounded-xl text-emerald-300 text-xs font-medium flex items-center justify-between shadow-lg">
+        <div className="p-4 bg-emerald-950/60 border border-emerald-800 rounded-xl text-emerald-300 text-xs font-medium flex items-center justify-between shadow-lg animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{successMsg}</span>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="font-mono">{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-emerald-900 rounded"><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/50 p-6 rounded-2xl border border-slate-800 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-cyan-400" />
-            <span>User Role & Account Access Control</span>
-          </h1>
-          <p className="text-xs text-slate-400">Manage login user identities, assign system permissions, and configure RBAC roles</p>
+            <h1 className="text-xl font-bold text-white tracking-wide">Administration & Security Control</h1>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Manage organization user accounts, system permission roles, and security credentials</p>
         </div>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-950/60 border border-slate-800 rounded-xl text-xs font-mono text-cyan-400">
+          <span>Authority: {currentUser?.role}</span>
+        </div>
+      </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 text-xs font-semibold">
+      {/* Tab Navigation */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'users' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'users' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+            }`}
           >
-            User Accounts ({usersList.length})
+            <Users className="w-4 h-4" />
+            <span>User Accounts Directory ({usersList.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('roles')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'roles' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'roles' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+            }`}
           >
-            System Roles
-          </button>
-          <button
-            onClick={() => setActiveTab('permissions')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'permissions' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-          >
-            Permission Matrix
+            <Shield className="w-4 h-4" />
+            <span>System Permission Matrix</span>
           </button>
         </div>
       </div>
@@ -236,15 +280,28 @@ export const AdminControl: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            {canAssignRoles && (
-                              <button
-                                onClick={() => handleOpenEditModal(u)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-semibold transition-all"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>{isSelf ? 'View Access' : 'Assign Role'}</span>
-                              </button>
-                            )}
+                            <div className="inline-flex items-center gap-2">
+                              {canAssignRoles && (
+                                <button
+                                  onClick={() => handleOpenEditModal(u)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-semibold transition-all"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>{isSelf ? 'View Access' : 'Assign Role'}</span>
+                                </button>
+                              )}
+
+                              {canResetPassword && (
+                                <button
+                                  onClick={() => handleOpenResetModal(u)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold transition-all"
+                                  title="Reset User Password"
+                                >
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                  <span>Reset Password</span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -258,80 +315,58 @@ export const AdminControl: React.FC = () => {
       )}
 
       {activeTab === 'roles' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-bold text-slate-200">Defined System Roles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {roles.map(r => (
-              <div key={r.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-cyan-400 text-sm">{r.name}</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">System Role</span>
-                </div>
-                <p className="text-xs text-slate-400">{r.description || `Role ${r.name} authority scope.`}</p>
-              </div>
-            ))}
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+          <h3 className="font-semibold text-sm text-white">Centralized System Role Permission Hierarchy</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-4 bg-slate-950 border border-purple-900/50 rounded-xl space-y-1">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-400 border border-purple-800">SUPER_ADMIN</span>
+              <p className="text-xs text-slate-300 pt-1">Full Organization & System Operational Control. Can assign all roles and reset passwords.</p>
+            </div>
+            <div className="p-4 bg-slate-950 border border-cyan-900/50 rounded-xl space-y-1">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">ADMIN</span>
+              <p className="text-xs text-slate-300 pt-1">Full Organization Operational Control. Can assign HR_MANAGER, OPERATIONAL_MANAGER, EMPLOYEE roles & reset passwords.</p>
+            </div>
+            <div className="p-4 bg-slate-950 border border-indigo-900/50 rounded-xl space-y-1">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-800">HR_MANAGER</span>
+              <p className="text-xs text-slate-300 pt-1">Workforce & HR Management Scope. Can assign OPERATIONAL_MANAGER & EMPLOYEE roles and reset passwords if permitted.</p>
+            </div>
           </div>
         </div>
       )}
 
-      {activeTab === 'permissions' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-bold text-slate-200">Registered RBAC Permissions Catalog ({permissions.length})</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {permissions.map(p => (
-              <div key={p.id} className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
-                <div className="font-mono text-cyan-400 text-[11px] font-semibold">{p.key}</div>
-                <div className="text-slate-300 font-medium">{p.module} • {p.action}</div>
-                <div className="text-slate-500 text-[10px]">{p.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Edit Role & Access Modal */}
+      {/* Edit Role Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-cyan-400" />
-                  <span>Assign System Role & Access</span>
-                </h3>
-                <p className="text-xs text-slate-400">{editingUser.email}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                <h3 className="font-bold text-slate-100 text-sm">Assign User System Role</h3>
               </div>
-              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {editError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-rose-300 text-xs flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div className="p-3 bg-rose-950/50 border border-rose-800 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
                 <span>{editError}</span>
               </div>
             )}
 
             <form onSubmit={handleSaveAccessChange} className="space-y-4">
-              {/* Linked Employee Info */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1">
-                <div className="text-slate-400 font-semibold">Linked Employee Profile:</div>
-                {editingUser.employee_name ? (
-                  <div className="text-slate-200 font-medium">{editingUser.employee_name} ({editingUser.employee_code})</div>
-                ) : (
-                  <div className="italic text-slate-500">Not linked (Management-only user account)</div>
-                )}
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
+                <p className="text-slate-400 font-medium">Target User: <span className="text-slate-100 font-bold">{editingUser.email}</span></p>
+                <p className="text-slate-400 font-medium">Linked Profile: <span className="text-cyan-400 font-mono">{editingUser.employee_name || 'Management Only'}</span></p>
               </div>
 
-              {/* Self Escalation Warning */}
               {editingUser.id === currentUser?.userId && (
-                <div className="p-3 bg-amber-950/60 border border-amber-800 rounded-xl text-amber-300 text-xs">
+                <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-xl text-amber-300 text-[11px]">
                   ⚠️ Note: You are viewing your own user account. Self-role modification is strictly forbidden by policy.
                 </div>
               )}
 
-              {/* System Role Selection */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Assign System Role</label>
                 <select
@@ -349,7 +384,6 @@ export const AdminControl: React.FC = () => {
                 </p>
               </div>
 
-              {/* Account Status */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Account Status</label>
                 <select
@@ -364,7 +398,6 @@ export const AdminControl: React.FC = () => {
                 </select>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
@@ -379,6 +412,78 @@ export const AdminControl: React.FC = () => {
                   className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 disabled:opacity-50"
                 >
                   {saving ? 'Saving Access...' : 'Save Role Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Password Reset Modal */}
+      {resettingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-slate-100 text-sm">Administrator Password Reset</h3>
+              </div>
+              <button onClick={() => setResettingUser(null)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {resetErrorMsg && (
+              <div className="p-3 bg-rose-950/50 border border-rose-800 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{resetErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAdminResetPasswordSubmit} className="space-y-4">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
+                <p className="text-slate-400 font-medium">Target Account: <span className="text-slate-100 font-bold">{resettingUser.email}</span></p>
+                <p className="text-slate-500 text-[11px]">The old password will be overwritten securely in PostgreSQL using bcrypt hashing.</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-300">Temporary Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setTempPasswordInput(`TempPass#${Math.floor(1000 + Math.random() * 9000)}`)}
+                    className="text-[10px] text-cyan-400 hover:underline font-mono"
+                  >
+                    Auto-Generate
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={tempPasswordInput}
+                  onChange={e => setTempPasswordInput(e.target.value)}
+                  placeholder="Enter or generate temporary password..."
+                  className="w-full bg-slate-950 border border-slate-800 text-amber-300 font-mono text-xs px-3 py-2.5 rounded-xl focus:border-amber-500 outline-none"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  User will sign in using this temporary password and should change it in Settings immediately.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setResettingUser(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetting || !tempPasswordInput}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                  {resetting ? 'Resetting Password...' : 'Confirm Reset Password'}
                 </button>
               </div>
             </form>
