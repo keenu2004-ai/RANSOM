@@ -20,11 +20,6 @@ CREATE TABLE IF NOT EXISTS employee_leave_adjustments (
 
 CREATE INDEX IF NOT EXISTS idx_emp_leave_adj ON employee_leave_adjustments(organization_id, employee_id, leave_type_id, period_year);
 
--- Ensure leave_requests status includes CANCELLED
-DO $$
-BEGIN
-    ALTER TABLE leave_requests DROP CONSTRAINT IF EXISTS leave_requests_status_check;
-    ALTER TABLE leave_requests ADD CONSTRAINT leave_requests_status_check CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'CANCELLATION_REQUESTED'));
-EXCEPTION
-    WHEN OTHERS THEN NULL;
-END $$;
+-- Ensure leave_requests status includes CANCELLED and CANCELLATION_REQUESTED
+ALTER TABLE leave_requests DROP CONSTRAINT IF EXISTS leave_requests_status_check;
+ALTER TABLE leave_requests ADD CONSTRAINT leave_requests_status_check CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'CANCELLATION_REQUESTED'));

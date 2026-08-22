@@ -101,6 +101,27 @@ function splitSqlStatements(sqlText) {
       continue;
     }
 
+    if (!inSingleQuote && !inDoubleQuote) {
+      if (char === '$') {
+        const remaining = sqlText.slice(i);
+        const match = remaining.match(/^(\$[a-zA-Z0-9_]*\$)/);
+        if (match) {
+          const tag = match[1];
+          if (!inDollarQuote) {
+            inDollarQuote = tag;
+            currentStmt += tag;
+            i += tag.length - 1;
+            continue;
+          } else if (inDollarQuote === tag) {
+            inDollarQuote = false;
+            currentStmt += tag;
+            i += tag.length - 1;
+            continue;
+          }
+        }
+      }
+    }
+
     if (!inSingleQuote && !inDoubleQuote && !inDollarQuote) {
       if (char === '-' && nextChar === '-') {
         inLineComment = true;
