@@ -1,5 +1,20 @@
 import ExcelJS from 'exceljs';
 
+export function safeFormatDate(val: any, fallback: string = '-'): string {
+  if (val === null || val === undefined || val === '') return fallback;
+  if (typeof val === 'string') {
+    return val.includes('T') ? val.split('T')[0] : val;
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return val.toISOString().split('T')[0];
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  }
+  return fallback;
+}
+
 export interface ExportUserContext {
   email: string;
   role: string;
@@ -127,7 +142,7 @@ export async function generateWeeklyPlanXlsx(
       t.assigned_employee_code || '-',
       startDateStr,
       dayName,
-      t.date ? t.date.split('T')[0] : '',
+      safeFormatDate(t.date, ''),
       t.customer_name || '-',
       t.contact_person || '-',
       t.contact_details || '-',
@@ -145,7 +160,7 @@ export async function generateWeeklyPlanXlsx(
       Number(t.estimated_value || 0),
       t.outcome_summary || '-',
       t.next_action || '-',
-      t.follow_up_date ? t.follow_up_date.split('T')[0] : '-',
+      safeFormatDate(t.follow_up_date, '-'),
       t.created_by_email || 'System',
       t.created_at ? new Date(t.created_at).toLocaleString() : '-',
       t.status === 'COMPLETED' ? (t.updated_at ? new Date(t.updated_at).toLocaleString() : '-') : '-',
@@ -348,13 +363,13 @@ export async function generateWeeklyPlanXlsx(
   pendingCarryForwardTasks.forEach(pt => {
     const pr = pendingSheet.addRow([
       pt.assigned_employee_name || 'Unassigned',
-      pt.date ? pt.date.split('T')[0] : '',
+      safeFormatDate(pt.date, ''),
       pt.customer_name || '-',
       pt.contact_person || '-',
       pt.visit_location || '-',
       pt.title || '-',
       pt.status || 'PLANNED',
-      pt.follow_up_date ? pt.follow_up_date.split('T')[0] : '-',
+      safeFormatDate(pt.follow_up_date, '-'),
       pt.reschedule_reason || pt.cancellation_reason || '-',
       pt.id,
       pt.rescheduled_to_task_id || '-'
@@ -411,8 +426,8 @@ export async function generateWeeklyPlanXlsx(
         stage: t.opportunity_stage || 'Lead',
         estimatedValue: 0,
         status: t.status,
-        lastVisit: t.date ? t.date.split('T')[0] : '-',
-        nextFollowUp: t.follow_up_date ? t.follow_up_date.split('T')[0] : '-',
+        lastVisit: safeFormatDate(t.date, '-'),
+        nextFollowUp: safeFormatDate(t.follow_up_date, '-'),
         nextAction: t.next_action || '-',
         priority: t.priority || 'MEDIUM',
         assignedEmployee: t.assigned_employee_name || 'Unassigned'
