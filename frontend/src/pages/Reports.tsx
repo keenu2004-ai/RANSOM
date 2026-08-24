@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { apiFetch, apiDownload, getApiUrl } from '../services/api-client';
+import React, { useEffect, useState, useCallback } from 'react';
+import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { 
   BarChart3, Download, Calendar, Filter, FileSpreadsheet,
-  CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Briefcase
+  CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Archive, FileCheck, Loader2
 } from 'lucide-react';
 
 export const Reports: React.FC = () => {
@@ -15,6 +15,16 @@ export const Reports: React.FC = () => {
 
   // State for Employees List (for filter dropdown)
   const [employees, setEmployees] = useState<any[]>([]);
+
+  // State for Archived Reports
+  const [archives, setArchives] = useState<any[]>([]);
+  const [archivingWeekly, setArchivingWeekly] = useState(false);
+  const [archivingMonthly, setArchivingMonthly] = useState(false);
+  const [downloadingArchiveId, setDownloadingArchiveId] = useState<string | null>(null);
+
+  // State for Monthly Report Selection
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
 
   // State for Weekly Plan Export Filters
   const [weekStart, setWeekStart] = useState<string>(() => {
@@ -72,6 +82,20 @@ export const Reports: React.FC = () => {
     }
   }, [isEmployee]);
 
+  // Fetch archived reports list
+  const fetchArchives = useCallback(async () => {
+    try {
+      const res = await apiFetch<{ archives: any[] }>('/reports/archives');
+      setArchives(res.archives || []);
+    } catch (err) {
+      console.warn('Failed to load report archives:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchArchives();
+  }, [fetchArchives]);
+
   // Fetch live Weekly Plan summary preview for selected filters
   const fetchSummaryPreview = useCallback(async () => {
     try {
@@ -79,36 +103,28 @@ export const Reports: React.FC = () => {
         params: {
           startDate: weekStart,
           endDate: weekEnd,
-          assignedEmployeeId: filterEmployeeId || undefined,
+          employeeId: filterEmployeeId || undefined,
           status: filterStatus || undefined,
-          visitType: filterVisitType || undefined,
           priority: filterPriority || undefined,
+          visitType: filterVisitType || undefined,
           opportunityStage: filterOpportunity || undefined
         }
       });
-      const tasks = res || [];
 
-      let planned = 0, inProgress = 0, completed = 0, cancelled = 0, pipelineValue = 0;
-      tasks.forEach(t => {
-        if (t.status === 'PLANNED') planned++;
-        if (t.status === 'IN_PROGRESS') inProgress++;
-        if (t.status === 'COMPLETED') completed++;
-        if (t.status === 'CANCELLED') cancelled++;
-        pipelineValue += Number(t.estimated_value || 0);
+      const tasksList = Array.isArray(res) ? res : (res as any).timesheets || [];
+      let p = 0, ip = 0, c = 0, can = 0, cf = 0, val = 0;
+      tasksList.forEach((t: any) => {
+        if (t.status === 'PLANNED') p++;
+        else if (t.status === 'IN_PROGRESS') ip++;
+        else if (t.status === 'COMPLETED') c++;
+        else if (t.status === 'CANCELLED') can++;
+        else if (t.status === 'RESCHEDULED') cf++;
+        val += Number(t.estimated_value || 0);
       });
 
-      // Fetch pending carry forward count
-      let carryForward = 0;
-      try {
-        const carryRes = await apiFetch<{ tasks: any[] }>('/timesheets/pending-carry-forward', {
-          params: { beforeDate: weekStart }
-        });
-        carryForward = carryRes?.tasks?.length || 0;
-      } catch (_) {}
-
-      setSummaryData({ planned, inProgress, completed, cancelled, carryForward, pipelineValue });
+      setSummaryData({ planned: p, inProgress: ip, completed: c, cancelled: can, carryForward: cf, pipelineValue: val });
     } catch (err) {
-      console.error('Error fetching export summary preview:', err);
+      console.warn('Failed to load summary preview:', err);
     }
   }, [weekStart, weekEnd, filterEmployeeId, filterStatus, filterPriority, filterVisitType, filterOpportunity]);
 
@@ -116,68 +132,112 @@ export const Reports: React.FC = () => {
     fetchSummaryPreview();
   }, [fetchSummaryPreview]);
 
-  // Existing Workforce CSV export
-  const handleExportWorkforceCsv = () => {
-    const token = localStorage.getItem('theiakshi_auth_token');
-    const url = `${getApiUrl('/reports/export-csv')}`;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.blob())
-      .then(blob => {
-        const a = document.createElement('a');
-        a.href = window.URL.createObjectURL(blob);
-        a.download = 'THEIAKSHI_Workforce_Report.csv';
-        a.click();
-      });
-  };
-
-  // Weekly Plan XLSX Export handler
+  // Trigger Weekly Plan XLSX Download
   const handleGenerateWeeklyPlanXlsx = async () => {
-    setDownloading(true);
     try {
-      await apiDownload(
-        '/timesheets/export',
-        {
-          params: {
-            startDate: weekStart,
-            endDate: weekEnd,
-            assignedEmployeeId: filterEmployeeId || undefined,
-            status: filterStatus || undefined,
-            priority: filterPriority || undefined,
-            visitType: filterVisitType || undefined,
-            opportunityStage: filterOpportunity || undefined
-          }
-        },
-        `THEIAKSHI_Weekly_Plan_${weekStart}_to_${weekEnd}.xlsx`
-      );
+      setDownloading(true);
+      const params = new URLSearchParams({
+        startDate: weekStart,
+        endDate: weekEnd
+      });
+      if (filterEmployeeId) params.append('employeeId', filterEmployeeId);
+      if (filterStatus) params.append('status', filterStatus);
+      if (filterPriority) params.append('priority', filterPriority);
+      if (filterVisitType) params.append('visitType', filterVisitType);
+      if (filterOpportunity) params.append('opportunityStage', filterOpportunity);
+
+      const downloadUrl = `/timesheets/export-xlsx?${params.toString()}`;
+      await apiDownload(downloadUrl);
     } catch (err: any) {
-      alert(err.message || 'Unable to download Weekly Plan export.');
+      alert(`Excel Export Failed: ${err.message || 'Error generating workbook'}`);
     } finally {
       setDownloading(false);
     }
   };
 
+  // Archive Weekly Plan
+  const handleArchiveWeeklyPlan = async () => {
+    try {
+      setArchivingWeekly(true);
+      await apiFetch('/reports/archives/weekly-plan', {
+        method: 'POST',
+        body: JSON.stringify({ startDate: weekStart, endDate: weekEnd })
+      });
+      await fetchArchives();
+      alert('Weekly Plan workbook successfully archived to storage!');
+    } catch (err: any) {
+      alert(`Failed to archive weekly plan: ${err.message || 'Error saving archive'}`);
+    } finally {
+      setArchivingWeekly(false);
+    }
+  };
+
+  // Archive Monthly Report
+  const handleArchiveMonthlyReport = async () => {
+    try {
+      setArchivingMonthly(true);
+      await apiFetch('/reports/archives/monthly-report', {
+        method: 'POST',
+        body: JSON.stringify({ year: selectedYear, month: selectedMonth })
+      });
+      await fetchArchives();
+      alert('Monthly Enterprise Report successfully generated and archived!');
+    } catch (err: any) {
+      alert(`Failed to archive monthly report: ${err.message || 'Error generating archive'}`);
+    } finally {
+      setArchivingMonthly(false);
+    }
+  };
+
+  // Download Archived Report
+  const handleDownloadArchive = async (archiveId: string, filename: string) => {
+    try {
+      setDownloadingArchiveId(archiveId);
+      const res = await apiFetch<{ downloadUrl: string }>(`/reports/archives/${archiveId}/download`);
+      if (res.downloadUrl) {
+        window.open(res.downloadUrl, '_blank');
+      }
+    } catch (err: any) {
+      alert(`Download failed: ${err.message || 'Error fetching download link'}`);
+    } finally {
+      setDownloadingArchiveId(null);
+    }
+  };
+
+  const monthsList = [
+    { value: 1, label: 'January' },
+    { value: 2, label: 'February' },
+    { value: 3, label: 'March' },
+    { value: 4, label: 'April' },
+    { value: 5, label: 'May' },
+    { value: 6, label: 'June' },
+    { value: 7, label: 'July' },
+    { value: 8, label: 'August' },
+    { value: 9, label: 'September' },
+    { value: 10, label: 'October' },
+    { value: 11, label: 'November' },
+    { value: 12, label: 'December' }
+  ];
+
   return (
-    <div className="space-y-8">
-      {/* Page Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-cyan-400" />
-            <span>Reports & Workforce Analytics</span>
+            <span>Reports & Archiving Repository</span>
           </h1>
-          <p className="text-xs text-slate-400">Generate executive multi-sheet Excel reports, workforce analytics, and department headcounts</p>
+          <p className="text-xs text-slate-400 mt-1">Enterprise reporting suite, multi-sheet XLSX exports, and private report archives</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleExportWorkforceCsv}
-            className="flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold text-xs rounded-xl transition-all shadow"
-          >
-            <Download className="w-4 h-4 text-slate-400" />
-            <span>Workforce CSV</span>
-          </button>
-        </div>
+        <button
+          onClick={() => apiDownload('/reports/export-csv')}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all cursor-pointer self-start sm:self-auto"
+        >
+          <Download className="w-4 h-4 text-cyan-400" />
+          <span>Export Workforce CSV</span>
+        </button>
       </div>
 
       {/* SECTION 1: WEEKLY WORK & FIELD VISIT EXPORT SYSTEM (CANONICAL XLSX) */}
@@ -196,15 +256,27 @@ export const Reports: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={downloading}
-            onClick={handleGenerateWeeklyPlanXlsx}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 min-w-[160px]"
-          >
-            <Download className="w-4 h-4" />
-            <span>{downloading ? 'Generating Excel...' : 'Generate Excel'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={handleGenerateWeeklyPlanXlsx}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 min-w-[140px] cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloading ? 'Generating...' : 'Download Excel'}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={archivingWeekly}
+              onClick={handleArchiveWeeklyPlan}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 font-bold text-xs rounded-xl transition-all disabled:opacity-50 min-w-[130px] cursor-pointer"
+            >
+              {archivingWeekly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              <span>Archive Export</span>
+            </button>
+          </div>
         </div>
 
         {/* Live Summary Metrics Bar */}
@@ -258,139 +330,192 @@ export const Reports: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters Grid Form */}
-        <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
-            <Filter className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Export Scope & Filter Controls</span>
+        {/* Filter Controls Grid */}
+        <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filter Parameters</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Week Start */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Week Range */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Week Start Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={weekStart}
-                  onChange={e => setWeekStart(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
-                />
-              </div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Start Date (Monday)</label>
+              <input
+                type="date"
+                value={weekStart}
+                onChange={e => setWeekStart(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
             </div>
 
-            {/* Week End */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Week End Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={weekEnd}
-                  onChange={e => setWeekEnd(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
-                />
-              </div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">End Date (Sunday)</label>
+              <input
+                type="date"
+                value={weekEnd}
+                onChange={e => setWeekEnd(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
             </div>
 
             {/* Employee Filter */}
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Employee</label>
-              {isEmployee ? (
-                <input
-                  type="text"
-                  readOnly
-                  value="My Weekly Plan (Self)"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400 cursor-not-allowed font-medium"
-                />
-              ) : (
+            {!isEmployee ? (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Employee</label>
                 <select
                   value={filterEmployeeId}
                   onChange={e => setFilterEmployeeId(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
                 >
-                  <option value="">All Authorized Employees</option>
-                  {employees.map((emp: any) => (
+                  <option value="">All Workforce</option>
+                  {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_code || 'EMP'})
+                      {emp.first_name} {emp.last_name} ({emp.employee_code})
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Scope</label>
+                <input
+                  type="text"
+                  readOnly
+                  value="Personal Workspace"
+                  className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400 cursor-not-allowed"
+                />
+              </div>
+            )}
 
             {/* Status Filter */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Task Status</label>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Execution Status</label>
               <select
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
               >
-                <option value="">All Task Statuses</option>
-                <option value="PLANNED">PLANNED</option>
-                <option value="IN_PROGRESS">IN PROGRESS</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
-            </div>
-
-            {/* Priority Filter */}
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Priority Level</label>
-              <select
-                value={filterPriority}
-                onChange={e => setFilterPriority(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                <option value="">All Priorities</option>
-                <option value="HIGH">HIGH Priority</option>
-                <option value="MEDIUM">MEDIUM Priority</option>
-                <option value="LOW">LOW Priority</option>
-              </select>
-            </div>
-
-            {/* Visit Type Filter */}
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Visit / Activity Type</label>
-              <select
-                value={filterVisitType}
-                onChange={e => setFilterVisitType(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                <option value="">All Visit Types</option>
-                <option value="New Prospect">New Prospect</option>
-                <option value="Follow-Up">Follow-Up</option>
-                <option value="Demo / Presentation">Demo / Presentation</option>
-                <option value="Technical Support">Technical Support</option>
-                <option value="AMC / Service">AMC / Service</option>
-                <option value="Order Closure">Order Closure</option>
-                <option value="Relationship Call">Relationship Call</option>
-              </select>
-            </div>
-
-            {/* Opportunity Stage Filter */}
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Opportunity Stage</label>
-              <select
-                value={filterOpportunity}
-                onChange={e => setFilterOpportunity(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                <option value="">All Opportunity Stages</option>
-                <option value="Lead">Lead</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Proposal Sent">Proposal Sent</option>
-                <option value="Negotiation">Negotiation</option>
-                <option value="Won">Won</option>
-                <option value="Lost">Lost</option>
-                <option value="On Hold">On Hold</option>
+                <option value="">All Statuses</option>
+                <option value="PLANNED">Planned</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="RESCHEDULED">Rescheduled</option>
               </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* SECTION 2: DEPARTMENTAL HEADCOUNT TABLE */}
+      {/* SECTION 2: MONTHLY REPORT GENERATION & ARCHIVING */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Monthly Enterprise HRMS Report & Archiving</h2>
+              <p className="text-xs text-slate-400">Generates immutable monthly snapshot containing Attendance, Leave, Expenses, Assets, and Field Visits</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(parseInt(e.target.value, 10))}
+              className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+            >
+              {monthsList.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
+              className="w-20 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+            />
+
+            <button
+              type="button"
+              disabled={archivingMonthly}
+              onClick={handleArchiveMonthlyReport}
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {archivingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              <span>Generate & Archive Month</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: ARCHIVED REPORTS REPOSITORY TABLE */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="font-semibold text-xs text-slate-300 flex items-center gap-2">
+            <FileCheck className="w-4 h-4 text-cyan-400" />
+            <span>Archived Reports & Document Repository ({archives.length})</span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase border-b border-slate-800">
+              <tr>
+                <th className="px-6 py-3">Report Name</th>
+                <th className="px-6 py-3">Type</th>
+                <th className="px-6 py-3">Period</th>
+                <th className="px-6 py-3">Generated By</th>
+                <th className="px-6 py-3">Generated At</th>
+                <th className="px-6 py-3">File Size</th>
+                <th className="px-6 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {archives.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 italic">
+                    No archived reports stored yet. Click "Archive Export" above to preserve a report snapshot.
+                  </td>
+                </tr>
+              ) : (
+                archives.map(arch => (
+                  <tr key={arch.id} className="hover:bg-slate-800/40">
+                    <td className="px-6 py-3.5 font-bold text-slate-200">{arch.report_name}</td>
+                    <td className="px-6 py-3.5 font-mono">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        arch.report_type === 'WEEKLY_PLAN' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                      }`}>
+                        {arch.report_type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 font-mono">{arch.period_year}-{String(arch.period_month || 1).padStart(2, '0')}</td>
+                    <td className="px-6 py-3.5 text-slate-300">{arch.generated_by_name || 'System'}</td>
+                    <td className="px-6 py-3.5 font-mono text-slate-400">{new Date(arch.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-3.5 font-mono text-slate-400">{(arch.file_size / 1024).toFixed(1)} KB</td>
+                    <td className="px-6 py-3.5 text-right">
+                      <button
+                        type="button"
+                        disabled={downloadingArchiveId === arch.id}
+                        onClick={() => handleDownloadArchive(arch.id, arch.report_name)}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SECTION 4: DEPARTMENTAL HEADCOUNT TABLE */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="font-semibold text-xs text-slate-300 flex items-center gap-2">
