@@ -1,4 +1,5 @@
-import { query } from '../db';
+import { query, withTransaction } from '../db';
+import { StorageService } from '../services/storageService';
 
 export interface CreateExpenseDTO {
   expenseType: 'BUSINESS' | 'LOCAL_TRAVEL';
@@ -280,5 +281,30 @@ export class ExpenseRepository {
     }
 
     return row || null;
+  }
+
+  static async deleteSuperAdmin(id: string, organizationId: string, userId: string) {
+    return withTransaction(async (client) => {
+      const expRes = await client.query('SELECT * FROM expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
+      if (expRes.rows.length === 0) return null;
+      const expense = expRes.rows[0];
+
+      const attRes = await client.query("SELECT * FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
+      for (const att of attRes.rows) {
+        if (att.object_path) {
+          await StorageService.deleteObject(att.object_path);
+        }
+      }
+
+      await client.query("DELETE FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
+      await client.query('DELETE FROM expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
+
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
+        VALUES ($1, $2, 'EXPENSE_DELETED', 'expenses', 'Expense', $3, $4)
+      `, [organizationId, userId, id, JSON.stringify(expense)]);
+
+      return expense;
+    });
   }
 }

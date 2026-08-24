@@ -622,4 +622,29 @@ router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MAN
   }
 });
 
+// SUPER_ADMIN ONLY Expense Deletion Endpoint
+router.delete('/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const deleted = await ExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Expense claim not found or access denied.',
+        code: 'EXPENSE_NOT_FOUND'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: { message: 'Expense claim permanently deleted.', expense: deleted }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 export default router;

@@ -69,6 +69,11 @@ export const Expenses: React.FC = () => {
   // Details View Modal
   const [selectedSingleExpense, setSelectedSingleExpense] = useState<any | null>(null);
 
+  // Super Admin Delete State
+  const [deleteConfirmExpense, setDeleteConfirmExpense] = useState<any | null>(null);
+  const [deleteInputText, setDeleteInputText] = useState('');
+  const [deletingExpense, setDeletingExpense] = useState(false);
+
   // Form State
   const [singleFormData, setSingleFormData] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -730,6 +735,23 @@ export const Expenses: React.FC = () => {
     }
   };
 
+  const handleDeleteSuperAdmin = async () => {
+    if (!deleteConfirmExpense || deleteInputText !== 'DELETE') return;
+    try {
+      setDeletingExpense(true);
+      await apiFetch(`/expenses/${deleteConfirmExpense.id}`, { method: 'DELETE' });
+      setSuccessMsg('Expense claim permanently deleted.');
+      setDeleteConfirmExpense(null);
+      setDeleteInputText('');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(`Failed to delete expense: ${err.message || 'Error executing deletion'}`);
+    } finally {
+      setDeletingExpense(false);
+    }
+  };
+
   const displayedSingleExpenses = (activeRoleTab === 'WORKFORCE' ? allExpenses : myExpenses).filter(ex => {
     if (typeFilter && ex.expense_type !== typeFilter) return false;
     if (statusFilter && ex.status !== statusFilter) return false;
@@ -1199,6 +1221,15 @@ export const Expenses: React.FC = () => {
                           <button onClick={() => setSelectedSingleExpense(ex)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Details">
                             <Eye className="w-4 h-4" />
                           </button>
+                          {user?.role === 'SUPER_ADMIN' && (
+                            <button
+                              onClick={() => { setDeleteConfirmExpense(ex); setDeleteInputText(''); }}
+                              className="p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded transition-colors inline-block"
+                              title="Delete Expense Permanently (Super Admin Only)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                           {activeRoleTab === 'WORKFORCE' && user?.employeeId !== ex.employee_id && (ex.status === 'SUBMITTED' || ex.status === 'PENDING') && (
                             <>
                               <button onClick={() => handleApproveSingle(ex.id)} className="px-2 py-0.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
@@ -1930,7 +1961,78 @@ export const Expenses: React.FC = () => {
                   </button>
                 </>
               )}
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Close</button>
+              {user?.role === 'SUPER_ADMIN' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const exp = selectedSingleExpense;
+                    setSelectedSingleExpense(null);
+                    setDeleteConfirmExpense(exp);
+                    setDeleteInputText('');
+                  }}
+                  className="px-3 py-2 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Expense</span>
+                </button>
+              )}
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPER ADMIN DELETE CONFIRMATION MODAL */}
+      {deleteConfirmExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-white">Delete Expense Permanently?</h3>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 font-mono">
+              <p><span className="text-slate-500">Expense Type:</span> {deleteConfirmExpense.expense_type}</p>
+              <p><span className="text-slate-500">Employee:</span> {deleteConfirmExpense.employee_name_snapshot || deleteConfirmExpense.employee_code_snapshot || deleteConfirmExpense.employee_id}</p>
+              <p><span className="text-slate-500">Merchant / Category:</span> {deleteConfirmExpense.merchant || deleteConfirmExpense.category}</p>
+              <p><span className="text-slate-500">Amount:</span> ₹{Number(deleteConfirmExpense.amount || 0).toLocaleString('en-IN')}</p>
+              <p><span className="text-slate-500">Date:</span> {deleteConfirmExpense.transaction_date}</p>
+              <p><span className="text-slate-500">Status:</span> {deleteConfirmExpense.status}</p>
+            </div>
+
+            <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+              <strong>Warning:</strong> This action permanently deletes the expense claim and associated application attachment metadata. This action cannot be undone.
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                Type <span className="font-mono text-rose-400 font-bold">DELETE</span> to confirm permanent deletion:
+              </label>
+              <input
+                type="text"
+                value={deleteInputText}
+                onChange={e => setDeleteInputText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmExpense(null); setDeleteInputText(''); }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteInputText !== 'DELETE' || deletingExpense}
+                onClick={handleDeleteSuperAdmin}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {deletingExpense ? 'Deleting...' : 'Delete Permanently'}
+              </button>
             </div>
           </div>
         </div>
