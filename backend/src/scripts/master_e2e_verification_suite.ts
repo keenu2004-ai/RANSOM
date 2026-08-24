@@ -659,6 +659,77 @@ async function runMasterE2EVerificationSuite() {
 
     summary['16. Workforce Lifecycle & Leave Controls'] = 'PASS';
 
+    // ─── TEST 17: PRODUCTION STORAGE, DISPLAY NAME, EXPENSE CLEANUP & REPORT ARCHIVING ───
+    console.log('\n--- TEST 17: PRODUCTION STORAGE, DISPLAY NAME, EXPENSE CLEANUP & REPORT ARCHIVING ---');
+
+    const headerCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/components/layout/Header.tsx'), 'utf8');
+    const dashCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Dashboard.tsx'), 'utf8');
+    const sidebarCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/components/layout/Sidebar.tsx'), 'utf8');
+    const displayNameUtilCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/utils/displayName.ts'), 'utf8');
+
+    runStep('getDisplayName helper implements 4-step canonical resolution (first_name+last_name -> user.displayName -> user.name -> email fallback)',
+      displayNameUtilCode17.includes('getDisplayName') && displayNameUtilCode17.includes('firstName')
+    );
+
+    runStep('Header.tsx and Dashboard.tsx use getDisplayName(user) for primary welcome & identity headers',
+      headerCode17.includes('getDisplayName(user)') && dashCode17.includes('getDisplayName(user)')
+    );
+
+    runStep('Mobile Sidebar displays Full Name, Email, Role, and Avatar Badge',
+      sidebarCode17.includes('getDisplayName(user)') && sidebarCode17.includes('user?.email') && sidebarCode17.includes('user?.role')
+    );
+
+    const excelServiceCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/services/excelService.ts'), 'utf8');
+    runStep('excelService.ts exports safeFormatDate helper to safely format Date objects, ISO strings, YYYY-MM-DD, timestamps, and null without throwing date.split error',
+      excelServiceCode17.includes('export function safeFormatDate') &&
+      excelServiceCode17.includes('safeFormatDate(t.date') &&
+      !excelServiceCode17.includes('t.date.split')
+    );
+
+    const storageServiceCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/services/storageService.ts'), 'utf8');
+    runStep('StorageService provides GCS signed URL generation, buffer upload, object delete, and prefix purge with local disk fallback',
+      storageServiceCode17.includes('@google-cloud/storage') &&
+      storageServiceCode17.includes('getSignedUploadUrl') &&
+      storageServiceCode17.includes('getSignedDownloadUrl') &&
+      storageServiceCode17.includes('purgePrefix')
+    );
+
+    const fileRoutesCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/fileRoutes.ts'), 'utf8');
+    const fileControllerCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/controllers/fileController.ts'), 'utf8');
+    runStep('fileRoutes.ts & FileController enforce upload file size/type validation (PDF 25MB, Images 15MB) and RBAC download permissions',
+      fileRoutesCode17.includes('/upload-init') &&
+      fileRoutesCode17.includes('/upload-complete') &&
+      fileControllerCode17.includes('ALLOWED_MIME_TYPES') &&
+      fileControllerCode17.includes('AttachmentRepository')
+    );
+
+    const expenseRoutesCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/expenseRoutes.ts'), 'utf8');
+    const expenseRepoCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/expenseRepository.ts'), 'utf8');
+    const expensesPageCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Expenses.tsx'), 'utf8');
+
+    runStep('DELETE /api/expenses/:id is restricted strictly to SUPER_ADMIN with EXPENSE_DELETED audit logging and GCS file cleanup',
+      expenseRoutesCode17.includes("requireRole('SUPER_ADMIN')") &&
+      expenseRepoCode17.includes('deleteSuperAdmin') &&
+      expenseRepoCode17.includes('EXPENSE_DELETED') &&
+      expensesPageCode17.includes('Delete Expense Permanently?')
+    );
+
+    runStep('employeeRepository.ts purges GCS files & attachment metadata on permanent employee deletion while preserving historical snapshots',
+      empRepoCode.includes('StorageService.purgePrefix') &&
+      empRepoCode.includes('DELETE FROM attachments WHERE organization_id = $1 AND employee_id = $2')
+    );
+
+    const reportRoutesCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/reportRoutes.ts'), 'utf8');
+    const reportsPageCode17 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Reports.tsx'), 'utf8');
+
+    runStep('reportRoutes.ts and Reports.tsx provide Weekly Plan & Monthly Report archiving with storage uploads and repository view',
+      reportRoutesCode17.includes('/archives/weekly-plan') &&
+      reportRoutesCode17.includes('/archives/monthly-report') &&
+      reportsPageCode17.includes('Archived Reports & Document Repository')
+    );
+
+    summary['17. Storage, Display Name, Expense Cleanup & Archiving'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');

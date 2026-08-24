@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../db';
+import { StorageService } from '../services/storageService';
 
 export interface EmployeeFilter {
   search?: string;
@@ -351,6 +352,26 @@ export class EmployeeRepository {
       INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values, user_email_snapshot, employee_name_snapshot, employee_code_snapshot)
       VALUES ($1, $2, 'EMPLOYEE_DELETED', 'employees', 'Employee', $3, $4, NULL, $5, $6)
     `, [organizationId, actorUserId || null, id, JSON.stringify({ employeeCode: emp.employee_code, fullName }), fullName, emp.employee_code]);
+
+    // 4b. Purge GCS files and attachment metadata for employee
+    try {
+      const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [organizationId]);
+      const orgCode = orgRes.rows[0]?.code || 'default';
+
+      const attRes = await query('SELECT * FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
+      for (const att of attRes.rows) {
+        if (att.object_path) {
+          await StorageService.deleteObject(att.object_path);
+        }
+      }
+      await query('DELETE FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
+
+      // Purge GCS employee prefix
+      const empPrefix = `organizations/${orgCode}/employees/${emp.employee_code}/`;
+      await StorageService.purgePrefix(empPrefix);
+    } catch (gcsErr) {
+      console.warn('GCS employee file purge warning:', gcsErr);
+    }
 
     // 5. Unlink user_id on employee before deletion, and delete linked user account if exists
     await query(`UPDATE employees SET user_id = NULL WHERE id = $1`, [id]);
