@@ -10,6 +10,8 @@ import {
   FileText, CalendarCheck, Bell, BarChart3, History, Gift, ChevronRight, Fingerprint, Clock
 } from 'lucide-react';
 
+import { getDisplayName } from '../utils/displayName';
+
 interface DesktopKpiCardProps {
   title: string;
   value: number | string;
@@ -257,7 +259,7 @@ export const Dashboard: React.FC = () => {
         <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 p-6 rounded-2xl border border-slate-800 flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white">Welcome, {user?.email}</h1>
+              <h1 className="text-2xl font-bold text-white">Welcome, {getDisplayName(user)}</h1>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                 {user?.role}
               </span>

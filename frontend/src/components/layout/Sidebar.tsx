@@ -7,6 +7,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
+import { getDisplayName } from '../../utils/displayName';
+
 interface SidebarProps {
   mobileOpen?: boolean;
   setMobileOpen?: (open: boolean) => void;
@@ -47,9 +49,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
   const allowedNav = navItems.filter(item => !item.perm || hasPermission(role, item.perm));
 
   // User Display Info
-  const emailUsername = user?.email ? user.email.split('@')[0] : 'User';
-  const formattedName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1);
-  const avatarBadge = emailUsername.charAt(0).toUpperCase();
+  const formattedName = getDisplayName(user);
+  const avatarBadge = formattedName.charAt(0).toUpperCase();
 
   // Desktop Content (>= 1024px) - Preserved Unchanged
   const desktopContent = (

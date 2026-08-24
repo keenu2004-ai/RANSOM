@@ -6,6 +6,10 @@ export interface AuthUser {
   email: string;
   role: string;
   employeeId: string | null;
+  name?: string;
+  displayName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 export interface AuthenticatedRequest extends Request {

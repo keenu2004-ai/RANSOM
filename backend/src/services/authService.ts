@@ -39,13 +39,22 @@ export class AuthService {
     }
 
     const employeeId = await UserRepository.findEmployeeIdByUserId(userWithRole.id, userWithRole.organization_id);
+    const resolvedName = (userWithRole.first_name || userWithRole.last_name)
+      ? `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()
+      : (userWithRole.display_name && userWithRole.display_name.trim() !== '')
+        ? userWithRole.display_name.trim()
+        : userWithRole.email.split('@')[0];
 
     const authUser: AuthUser = {
       userId: userWithRole.id,
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
       role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
-      employeeId: employeeId // Explicit string | null
+      employeeId: employeeId,
+      name: resolvedName,
+      displayName: resolvedName,
+      firstName: userWithRole.first_name || null,
+      lastName: userWithRole.last_name || null
     };
 
     const token = jwt.sign(authUser, config.jwtSecret, { expiresIn: '24h' });
@@ -64,13 +73,22 @@ export class AuthService {
     }
 
     const employeeId = await UserRepository.findEmployeeIdByUserId(userWithRole.id, userWithRole.organization_id);
+    const resolvedName = (userWithRole.first_name || userWithRole.last_name)
+      ? `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()
+      : (userWithRole.display_name && userWithRole.display_name.trim() !== '')
+        ? userWithRole.display_name.trim()
+        : userWithRole.email.split('@')[0];
 
     return {
       userId: userWithRole.id,
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
       role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
-      employeeId: employeeId // Explicit string | null
+      employeeId: employeeId,
+      name: resolvedName,
+      displayName: resolvedName,
+      firstName: userWithRole.first_name || null,
+      lastName: userWithRole.last_name || null
     };
   }
 

@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
 import { apiFetch } from '../../services/api-client';
 
+import { getDisplayName } from '../../utils/displayName';
+
 interface HeaderProps {
   onMenuClick: () => void;
 }
@@ -172,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs font-semibold text-slate-200 truncate">{user?.email}</p>
+              <p className="text-xs font-semibold text-slate-200 truncate">{getDisplayName(user)}</p>
               <p className="text-[10px] text-cyan-400 font-mono">{user?.role}</p>
             </div>
             <button

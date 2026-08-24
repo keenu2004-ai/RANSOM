@@ -7,6 +7,10 @@ export interface User {
   email: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'HR_MANAGER' | 'MANAGER' | 'EMPLOYEE';
   employeeId: string | null;
+  name?: string;
+  displayName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 interface AuthContextType {

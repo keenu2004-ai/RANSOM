@@ -21,6 +21,9 @@ export interface UserWithRole {
   status: string;
   role: string;
   role_name?: string;
+  display_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   employee_id?: string | null;
   employee_code?: string | null;
   employee_name?: string | null;
@@ -36,11 +39,18 @@ export class UserRepository {
         u.email, 
         u.password_hash, 
         u.status,
+        u.display_name,
         COALESCE(r.name, 'EMPLOYEE') as role,
-        r.name as role_name
+        r.name as role_name,
+        e.id as employee_id,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name
       FROM users u
       LEFT JOIN user_roles ur ON ur.user_id = u.id
       LEFT JOIN roles r ON r.id = ur.role_id
+      LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
       WHERE LOWER(u.email) = LOWER($1)
       LIMIT 1
     `;
@@ -56,11 +66,18 @@ export class UserRepository {
         u.email, 
         u.password_hash, 
         u.status,
+        u.display_name,
         COALESCE(r.name, 'EMPLOYEE') as role,
-        r.name as role_name
+        r.name as role_name,
+        e.id as employee_id,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name
       FROM users u
       LEFT JOIN user_roles ur ON ur.user_id = u.id
       LEFT JOIN roles r ON r.id = ur.role_id
+      LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
       WHERE u.id = $1
       LIMIT 1
     `;
