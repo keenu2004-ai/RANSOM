@@ -85,6 +85,7 @@ import adminRoutes from './routes/adminRoutes';
 import assetRoutes from './routes/assetRoutes';
 import calendarRoutes from './routes/calendarRoutes';
 import userRoutes from './routes/userRoutes';
+import fileRoutes from './routes/fileRoutes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -102,6 +103,7 @@ app.use('/api/audit-logs', auditRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/files', fileRoutes);
 
 // Health Check Endpoint (Verifies real PostgreSQL database ping)
 app.get('/api/health', async (req, res, next) => {

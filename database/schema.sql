@@ -609,3 +609,41 @@ CREATE INDEX IF NOT EXISTS idx_trip_other_trip_id ON trip_other_expenses(trip_ex
 CREATE INDEX IF NOT EXISTS idx_assets_assigned_emp ON assets(assigned_employee_id);
 CREATE INDEX IF NOT EXISTS idx_asset_history_asset ON asset_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_asset_maint_asset ON asset_maintenance(asset_id);
+
+-- ------------------------------------------------------------
+-- 15. ATTACHMENTS & REPORT ARCHIVES (GCS METADATA)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id UUID,
+    employee_id UUID REFERENCES employees(id) ON DELETE SET NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    object_path TEXT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    checksum VARCHAR(64),
+    uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS report_archives (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    report_name VARCHAR(255) NOT NULL,
+    report_type VARCHAR(50) NOT NULL,
+    period_year INT NOT NULL,
+    period_month INT,
+    object_path TEXT NOT NULL,
+    file_size BIGINT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL DEFAULT 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    generated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    generated_by_name VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachments_org_entity ON attachments(organization_id, entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_report_archives_org_type ON report_archives(organization_id, report_type, period_year);
+
