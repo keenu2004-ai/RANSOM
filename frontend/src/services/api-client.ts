@@ -13,7 +13,15 @@ export function getApiUrl(endpoint: string): string {
     baseUrl = baseUrl.substring(0, baseUrl.length - 4);
   }
   
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  // Strip duplicate leading /api/ or /api so we NEVER construct /api/api
+  if (cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.substring(4);
+  } else if (cleanEndpoint === '/api') {
+    cleanEndpoint = '';
+  }
+  
   return `${baseUrl}/api${cleanEndpoint}`;
 }
 
@@ -186,6 +194,18 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
   }
 }
 
+export function buildAttachmentViewPath(attachmentId: string): string {
+  if (!attachmentId) return '#';
+  const cleanId = attachmentId.trim().replace(/^\/api\/files\//, '').replace(/\/view$/, '').replace(/^\/files\//, '');
+  return `/api/files/${cleanId}/view`;
+}
+
+export function buildAttachmentDownloadPath(attachmentId: string): string {
+  if (!attachmentId) return '#';
+  const cleanId = attachmentId.trim().replace(/^\/api\/files\//, '').replace(/\/download$/, '').replace(/^\/files\//, '');
+  return `/api/files/${cleanId}/download`;
+}
+
 export function getSecureFileUrl(url: string | null | undefined): string {
   if (!url) return '#';
   const trimmed = url.trim();
@@ -200,13 +220,16 @@ export function getSecureFileUrl(url: string | null | undefined): string {
   const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed);
   let targetPath = trimmed;
   if (isUuid) {
-    targetPath = `/files/${trimmed}/view`;
+    targetPath = buildAttachmentViewPath(trimmed);
   }
 
   let fullUrl = targetPath;
   if (!targetPath.startsWith('http://') && !targetPath.startsWith('https://')) {
     fullUrl = getApiUrl(targetPath);
   }
+
+  // Ensure no duplicate /api/api in fullUrl under any circumstance
+  fullUrl = fullUrl.replace(/\/api\/api\//g, '/api/');
 
   const separator = fullUrl.includes('?') ? '&' : '?';
   return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;

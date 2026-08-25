@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch, getSecureFileUrl } from '../services/api-client';
+import { apiFetch, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import {
@@ -198,9 +198,7 @@ export const Expenses: React.FC = () => {
       const objectPath = `organizations/expenses/${folder.toLowerCase()}/${uniqueId}_${safeFilename}`;
 
       const token = localStorage.getItem('theiakshi_auth_token') || '';
-      let baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').trim().replace(/\/+$/, '');
-      if (baseUrl.endsWith('/api')) baseUrl = baseUrl.substring(0, baseUrl.length - 4);
-      const uploadUrl = `${baseUrl}/api/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`;
+      const uploadUrl = getApiUrl(`/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`);
 
       const uploadRes = await fetch(uploadUrl, {
         method: 'POST',

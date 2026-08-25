@@ -987,15 +987,26 @@ async function runMasterE2EVerificationSuite() {
     const tripRepoCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/tripExpenseRepository.ts'), 'utf8');
     const migCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/scripts/migrate_legacy_attachments.ts'), 'utf8');
 
-    runStep('getSecureFileUrl in api-client.ts hardens against blob: and data: URLs without constructing /api/blob:',
+    runStep('getApiUrl strips duplicate leading /api to guarantee EXACTLY ONE /api prefix in endpoints',
+      apiClientCode21.includes("cleanEndpoint.startsWith('/api/')") &&
+      apiClientCode21.includes("cleanEndpoint.substring(4)")
+    );
+
+    runStep('api-client.ts exports buildAttachmentViewPath & buildAttachmentDownloadPath for canonical URL construction',
+      apiClientCode21.includes('export function buildAttachmentViewPath') &&
+      apiClientCode21.includes('export function buildAttachmentDownloadPath')
+    );
+
+    runStep('getSecureFileUrl in api-client.ts hardens against blob:, data:, and duplicate /api/api prefixes',
       apiClientCode21.includes("trimmed.startsWith('blob:')") &&
       apiClientCode21.includes("trimmed.startsWith('data:')") &&
+      apiClientCode21.includes("fullUrl.replace(/\\/api\\/api\\//g, '/api/')") &&
       apiClientCode21.includes("return '#';")
     );
 
     runStep('Expenses.tsx uses resolveAttachmentUrl to upload raw File objects directly to Google Drive returning /api/files/:id/view',
       expPageCode21.includes('resolveAttachmentUrl') &&
-      expPageCode21.includes('/api/files/upload-direct') &&
+      expPageCode21.includes('getApiUrl') &&
       expPageCode21.includes('/api/files/${completeRes.attachment.id}/view')
     );
 
