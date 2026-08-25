@@ -190,15 +190,22 @@ export const Reports: React.FC = () => {
   };
 
   // Download Archived Report
-  const handleDownloadArchive = async (archiveId: string, filename: string) => {
+  const handleDownloadArchive = async (arch: any) => {
+    if (arch.storage_status === 'BROKEN' || (!arch.storage_file_id && !arch.object_path)) {
+      alert('Archived file is unavailable in storage. Please regenerate this report.');
+      return;
+    }
     try {
-      setDownloadingArchiveId(archiveId);
-      const res = await apiFetch<{ downloadUrl: string }>(`/reports/archives/${archiveId}/download`);
-      if (res.downloadUrl) {
-        window.open(res.downloadUrl, '_blank');
-      }
+      setDownloadingArchiveId(arch.id);
+      const safeName = (arch.report_name || 'Report').replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const defaultFilename = `${safeName}.xlsx`;
+      await apiDownload(`/reports/archives/${arch.id}/download`, {}, defaultFilename);
     } catch (err: any) {
-      alert(`Download failed: ${err.message || 'Error fetching download link'}`);
+      if (err.message && (err.message.includes('unavailable') || err.message.includes('not found'))) {
+        alert('Archived file is unavailable in storage. Please regenerate this report.');
+      } else {
+        alert(err.message || 'Unable to download this archived report.');
+      }
     } finally {
       setDownloadingArchiveId(null);
     }
@@ -500,11 +507,11 @@ export const Reports: React.FC = () => {
                       <button
                         type="button"
                         disabled={downloadingArchiveId === arch.id}
-                        onClick={() => handleDownloadArchive(arch.id, arch.report_name)}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        onClick={() => handleDownloadArchive(arch)}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-cyan-400 border border-slate-700 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>Download</span>
+                        <span>{downloadingArchiveId === arch.id ? 'Downloading...' : 'Download'}</span>
                       </button>
                     </td>
                   </tr>

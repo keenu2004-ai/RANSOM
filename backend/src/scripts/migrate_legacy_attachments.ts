@@ -230,6 +230,26 @@ export async function migrateLegacyAttachments() {
     await query(`UPDATE trip_other_expenses SET receipt_url = NULL WHERE receipt_url LIKE 'blob:%' OR receipt_url LIKE '%/blob:%'`);
     await query(`UPDATE attachments SET object_path = 'INVALID_BLOB_PURGED', storage_status = 'BROKEN' WHERE object_path LIKE 'blob:%' OR object_path LIKE '%/blob:%'`);
 
+    // 7. Audit and reconcile report_archives table
+    try {
+      const reportArchRes = await query(`
+        SELECT id, organization_id, report_type, period_year, period_month, object_path, storage_file_id, storage_status
+        FROM report_archives
+      `);
+
+      for (const arch of reportArchRes.rows) {
+        if (arch.storage_file_id) {
+          const exists = await StorageService.verifyObjectExists(arch.storage_file_id, arch.object_path);
+          const status = exists ? 'AVAILABLE' : 'BROKEN';
+          await query('UPDATE report_archives SET storage_status = $1 WHERE id = $2', [status, arch.id]);
+        } else {
+          await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1", [arch.id]);
+        }
+      }
+    } catch (archErr: any) {
+      console.warn('[MIGRATION] report_archives audit notice:', archErr.message);
+    }
+
     console.log(`--- MIGRATION COMPLETE: ${totalMigrated} Migrated, ${totalFailed} Failed ---`);
     return { migratedCount: totalMigrated, failedCount: totalFailed };
   } catch (error: any) {

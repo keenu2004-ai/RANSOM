@@ -730,6 +730,18 @@ async function runMasterE2EVerificationSuite() {
       reportsPageCode17.includes('Archived Reports & Document Repository')
     );
 
+    runStep('GET /api/reports/archives/:id/download streams Google Drive binary with spreadsheetml.sheet Content-Type & attachment Content-Disposition',
+      reportRoutesCode17.includes("router.get('/archives/:id/download'") &&
+      reportRoutesCode17.includes('StorageService.downloadStream') &&
+      reportRoutesCode17.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
+      reportRoutesCode17.includes('Content-Disposition')
+    );
+
+    runStep('Reports.tsx uses apiDownload for archive downloads without assuming a downloadUrl property',
+      reportsPageCode17.includes("apiDownload(`/reports/archives/${arch.id}/download`") &&
+      !reportsPageCode17.includes('res.downloadUrl')
+    );
+
     summary['17. Storage, Display Name, Expense Cleanup & Archiving'] = 'PASS';
 
     // ─── TEST 18: WEEKLY PLAN DATE-ONLY TIMEZONE PRESERVATION ───

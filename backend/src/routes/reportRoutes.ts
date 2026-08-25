@@ -223,17 +223,35 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
     }
 
     const archive = archiveRes.rows[0];
+
+    if (archive.storage_status === 'BROKEN' || !archive.storage_file_id) {
+      return res.status(404).json({
+        success: false,
+        error: 'Archived file is unavailable in storage. Please regenerate this report.',
+        code: 'FILE_UNAVAILABLE'
+      });
+    }
+
     const exists = await StorageService.verifyObjectExists(archive.storage_file_id, archive.object_path);
     if (!exists) {
-      return res.status(404).json({ success: false, error: 'Report binary file unavailable in storage.', code: 'FILE_UNAVAILABLE' });
+      await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1", [archive.id]);
+      return res.status(404).json({
+        success: false,
+        error: 'Archived file is unavailable in storage. Please regenerate this report.',
+        code: 'FILE_UNAVAILABLE'
+      });
     }
 
     const stream = await StorageService.downloadStream(archive.storage_file_id, archive.object_path);
-    const filename = `${archive.report_type.toLowerCase()}_${archive.period_year}_${archive.period_month || 1}.xlsx`;
+
+    const safeReportName = (archive.report_name || 'Report').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const filename = `${safeReportName}.xlsx`;
 
     res.setHeader('Content-Type', archive.mime_type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-    if (archive.file_size) res.setHeader('Content-Length', archive.file_size);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    if (archive.file_size) {
+      res.setHeader('Content-Length', archive.file_size);
+    }
 
     stream.pipe(res);
   } catch (error) {
