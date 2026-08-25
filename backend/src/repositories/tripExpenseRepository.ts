@@ -116,7 +116,10 @@ export class TripExpenseRepository {
       let receiptUrl = data.receiptUrl || null;
       let attachmentName = data.attachmentName || null;
 
-      if (receiptUrl && receiptUrl.startsWith('data:')) {
+      if (receiptUrl && (receiptUrl.startsWith('blob:') || receiptUrl.includes('/blob:'))) {
+        console.warn('[STORAGE] Rejected invalid blob: URL in TripExpenseRepository.addTravelExpense:', receiptUrl);
+        receiptUrl = null;
+      } else if (receiptUrl && receiptUrl.startsWith('data:')) {
         try {
           const driveRes = await processDataUrlToDrive(
             organizationId,
@@ -211,7 +214,10 @@ export class TripExpenseRepository {
       let receiptUrl = data.receiptUrl || null;
       let attachmentName = data.attachmentName || null;
 
-      if (receiptUrl && receiptUrl.startsWith('data:')) {
+      if (receiptUrl && (receiptUrl.startsWith('blob:') || receiptUrl.includes('/blob:'))) {
+        console.warn('[STORAGE] Rejected invalid blob: URL in TripExpenseRepository.addAccommodationExpense:', receiptUrl);
+        receiptUrl = null;
+      } else if (receiptUrl && receiptUrl.startsWith('data:')) {
         try {
           const driveRes = await processDataUrlToDrive(
             organizationId,
@@ -298,7 +304,10 @@ export class TripExpenseRepository {
       let receiptUrl = data.receiptUrl || null;
       let attachmentName = data.attachmentName || null;
 
-      if (receiptUrl && receiptUrl.startsWith('data:')) {
+      if (receiptUrl && (receiptUrl.startsWith('blob:') || receiptUrl.includes('/blob:'))) {
+        console.warn('[STORAGE] Rejected invalid blob: URL in TripExpenseRepository.addOtherExpense:', receiptUrl);
+        receiptUrl = null;
+      } else if (receiptUrl && receiptUrl.startsWith('data:')) {
         try {
           const driveRes = await processDataUrlToDrive(
             organizationId,

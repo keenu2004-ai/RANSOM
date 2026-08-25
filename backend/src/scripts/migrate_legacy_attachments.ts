@@ -223,6 +223,13 @@ export async function migrateLegacyAttachments() {
       }
     }
 
+    // 6. Purge any invalid blob: URLs from PostgreSQL tables
+    await query(`UPDATE expenses SET receipt_url = NULL WHERE receipt_url LIKE 'blob:%' OR receipt_url LIKE '%/blob:%'`);
+    await query(`UPDATE trip_travel_expenses SET receipt_url = NULL WHERE receipt_url LIKE 'blob:%' OR receipt_url LIKE '%/blob:%'`);
+    await query(`UPDATE trip_accommodation_expenses SET receipt_url = NULL WHERE receipt_url LIKE 'blob:%' OR receipt_url LIKE '%/blob:%'`);
+    await query(`UPDATE trip_other_expenses SET receipt_url = NULL WHERE receipt_url LIKE 'blob:%' OR receipt_url LIKE '%/blob:%'`);
+    await query(`UPDATE attachments SET object_path = 'INVALID_BLOB_PURGED', storage_status = 'BROKEN' WHERE object_path LIKE 'blob:%' OR object_path LIKE '%/blob:%'`);
+
     console.log(`--- MIGRATION COMPLETE: ${totalMigrated} Migrated, ${totalFailed} Failed ---`);
     return { migratedCount: totalMigrated, failedCount: totalFailed };
   } catch (error: any) {

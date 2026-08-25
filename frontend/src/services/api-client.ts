@@ -188,15 +188,26 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
 
 export function getSecureFileUrl(url: string | null | undefined): string {
   if (!url) return '#';
-  if (url.startsWith('data:')) return url;
+  const trimmed = url.trim();
   
-  const token = localStorage.getItem('theiakshi_auth_token') || '';
-  let fullUrl = url;
-  
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    fullUrl = getApiUrl(url);
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:') || trimmed.includes('/blob:')) {
+    console.warn('[STORAGE] getSecureFileUrl rejected invalid blob/data URL:', trimmed);
+    return '#';
   }
-  
+
+  const token = localStorage.getItem('theiakshi_auth_token') || '';
+
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed);
+  let targetPath = trimmed;
+  if (isUuid) {
+    targetPath = `/files/${trimmed}/view`;
+  }
+
+  let fullUrl = targetPath;
+  if (!targetPath.startsWith('http://') && !targetPath.startsWith('https://')) {
+    fullUrl = getApiUrl(targetPath);
+  }
+
   const separator = fullUrl.includes('?') ? '&' : '?';
   return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
 }

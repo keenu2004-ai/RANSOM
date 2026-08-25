@@ -33,7 +33,10 @@ export class ExpenseRepository {
     let receiptUrl = data.receiptUrl || null;
     let attachmentName = data.attachmentName || null;
 
-    if (receiptUrl && receiptUrl.startsWith('data:')) {
+    if (receiptUrl && (receiptUrl.startsWith('blob:') || receiptUrl.includes('/blob:'))) {
+      console.warn('[STORAGE] Rejected invalid blob: URL in ExpenseRepository.create:', receiptUrl);
+      receiptUrl = null;
+    } else if (receiptUrl && receiptUrl.startsWith('data:')) {
       try {
         const driveRes = await processDataUrlToDrive(
           organizationId,

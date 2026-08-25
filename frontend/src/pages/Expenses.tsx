@@ -190,11 +190,80 @@ export const Expenses: React.FC = () => {
     });
   };
 
+  // Helper to upload rawFile to Google Drive or resolve clean receipt URL
+  const resolveAttachmentUrl = async (folder: string): Promise<{ receiptUrl: string | null; attachmentName: string | null }> => {
+    if (rawFile) {
+      const safeFilename = rawFile.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const uniqueId = Math.random().toString(36).substring(2, 10);
+      const objectPath = `organizations/expenses/${folder.toLowerCase()}/${uniqueId}_${safeFilename}`;
+
+      const token = localStorage.getItem('theiakshi_auth_token') || '';
+      let baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').trim().replace(/\/+$/, '');
+      if (baseUrl.endsWith('/api')) baseUrl = baseUrl.substring(0, baseUrl.length - 4);
+      const uploadUrl = `${baseUrl}/api/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`;
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': rawFile.type,
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: rawFile
+      });
+
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to upload attachment file to server.');
+      }
+
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.objectPath) {
+        throw new Error(uploadData.error || 'Failed to upload attachment file to Google Drive.');
+      }
+
+      const completeRes = await apiFetch<{ attachment: { id: string } }>('/files/upload-complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'EXPENSE',
+          entityId: null,
+          originalFilename: rawFile.name,
+          objectPath: uploadData.objectPath,
+          mimeType: rawFile.type,
+          fileSize: rawFile.size,
+          storageFileId: uploadData.storageFileId || null,
+          storageFolderId: uploadData.storageFolderId || null
+        })
+      });
+
+      if (completeRes && completeRes.attachment?.id) {
+        if (attachment?.url && attachment.url.startsWith('blob:')) {
+          URL.revokeObjectURL(attachment.url);
+        }
+        return {
+          receiptUrl: `/api/files/${completeRes.attachment.id}/view`,
+          attachmentName: rawFile.name
+        };
+      }
+    }
+
+    if (attachment && attachment.url) {
+      if (!attachment.url.startsWith('blob:') && !attachment.url.startsWith('data:')) {
+        return {
+          receiptUrl: attachment.url,
+          attachmentName: attachment.name || 'Receipt Document'
+        };
+      }
+    }
+
+    return { receiptUrl: null, attachmentName: null };
+  };
+
   // Open Business / Local Travel Single Claim Modal
   const handleOpenSingleModal = (type: 'BUSINESS' | 'LOCAL_TRAVEL') => {
     setSingleClaimType(type);
     setFormError(null);
     setAttachment(null);
+    setRawFile(null);
     setSingleFormData({
       transactionDate: new Date().toISOString().split('T')[0],
       description: '',
@@ -241,6 +310,8 @@ export const Expenses: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const { receiptUrl, attachmentName } = await resolveAttachmentUrl(singleClaimType);
+
       const payload: any = {
         expenseType: singleClaimType,
         transactionDate: singleFormData.transactionDate,
@@ -250,8 +321,8 @@ export const Expenses: React.FC = () => {
         amount: numericAmount,
         bucket: singleFormData.bucket,
         description: singleFormData.description.trim(),
-        attachmentName: attachment?.name,
-        receiptUrl: attachment?.url,
+        attachmentName: attachmentName || undefined,
+        receiptUrl: receiptUrl || undefined,
         status
       };
 
@@ -266,6 +337,8 @@ export const Expenses: React.FC = () => {
         body: JSON.stringify(payload)
       });
 
+      setRawFile(null);
+      setAttachment(null);
       setShowSingleModal(false);
       setSuccessMsg(status === 'DRAFT' ? 'Expense claim saved as draft.' : 'Expense claim submitted successfully.');
       fetchData();
@@ -382,6 +455,7 @@ export const Expenses: React.FC = () => {
     setEditingChild(null);
     setFormError(null);
     setAttachment(null);
+    setRawFile(null);
     setTravelFormData({
       startDate: activeTrip?.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       endDate: activeTrip?.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -400,6 +474,7 @@ export const Expenses: React.FC = () => {
   const handleOpenEditTravel = (item: any) => {
     setEditingChild(item);
     setFormError(null);
+    setRawFile(null);
     setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
     setTravelFormData({
       startDate: item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : '',
@@ -438,12 +513,14 @@ export const Expenses: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const { receiptUrl, attachmentName } = await resolveAttachmentUrl('trip_travel');
+
       const payload = {
         ...travelFormData,
         amount,
         distanceKm: dist,
-        attachmentName: attachment?.name,
-        receiptUrl: attachment?.url
+        attachmentName: attachmentName || undefined,
+        receiptUrl: receiptUrl || undefined
       };
 
       if (editingChild) {
@@ -458,6 +535,8 @@ export const Expenses: React.FC = () => {
         });
       }
 
+      setRawFile(null);
+      setAttachment(null);
       setShowTravelModal(false);
       await loadTripDetails(activeTrip.id);
       fetchData();
@@ -484,6 +563,7 @@ export const Expenses: React.FC = () => {
     setEditingChild(null);
     setFormError(null);
     setAttachment(null);
+    setRawFile(null);
     setAccomFormData({
       startDate: activeTrip?.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       endDate: activeTrip?.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -497,6 +577,7 @@ export const Expenses: React.FC = () => {
   const handleOpenEditAccom = (item: any) => {
     setEditingChild(item);
     setFormError(null);
+    setRawFile(null);
     setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
     setAccomFormData({
       startDate: item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : '',
@@ -528,11 +609,13 @@ export const Expenses: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const { receiptUrl, attachmentName } = await resolveAttachmentUrl('trip_accommodation');
+
       const payload = {
         ...accomFormData,
         amount,
-        attachmentName: attachment?.name,
-        receiptUrl: attachment?.url
+        attachmentName: attachmentName || undefined,
+        receiptUrl: receiptUrl || undefined
       };
 
       if (editingChild) {
@@ -547,6 +630,8 @@ export const Expenses: React.FC = () => {
         });
       }
 
+      setRawFile(null);
+      setAttachment(null);
       setShowAccomModal(false);
       await loadTripDetails(activeTrip.id);
       fetchData();
@@ -573,6 +658,7 @@ export const Expenses: React.FC = () => {
     setEditingChild(null);
     setFormError(null);
     setAttachment(null);
+    setRawFile(null);
     setOtherFormData({
       transactionDate: activeTrip?.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       category: 'Food',
@@ -587,6 +673,7 @@ export const Expenses: React.FC = () => {
   const handleOpenEditOther = (item: any) => {
     setEditingChild(item);
     setFormError(null);
+    setRawFile(null);
     setAttachment(item.receipt_url ? { name: item.attachment_name || 'Attached File', url: item.receipt_url } : null);
     setOtherFormData({
       transactionDate: item.transaction_date ? new Date(item.transaction_date).toISOString().split('T')[0] : '',
@@ -615,11 +702,13 @@ export const Expenses: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const { receiptUrl, attachmentName } = await resolveAttachmentUrl('trip_other');
+
       const payload = {
         ...otherFormData,
         amount,
-        attachmentName: attachment?.name,
-        receiptUrl: attachment?.url
+        attachmentName: attachmentName || undefined,
+        receiptUrl: receiptUrl || undefined
       };
 
       if (editingChild) {
@@ -634,6 +723,8 @@ export const Expenses: React.FC = () => {
         });
       }
 
+      setRawFile(null);
+      setAttachment(null);
       setShowOtherModal(false);
       await loadTripDetails(activeTrip.id);
       fetchData();

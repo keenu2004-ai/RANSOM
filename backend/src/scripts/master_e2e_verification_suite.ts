@@ -981,6 +981,30 @@ async function runMasterE2EVerificationSuite() {
       fileCtrlCode21.includes('StorageService.verifyConnectivityTest')
     );
 
+    const apiClientCode21 = fs.readFileSync(path.join(rootDir, 'frontend/src/services/api-client.ts'), 'utf8');
+    const expPageCode21 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Expenses.tsx'), 'utf8');
+    const expRepoCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/expenseRepository.ts'), 'utf8');
+    const tripRepoCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/tripExpenseRepository.ts'), 'utf8');
+    const migCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/scripts/migrate_legacy_attachments.ts'), 'utf8');
+
+    runStep('getSecureFileUrl in api-client.ts hardens against blob: and data: URLs without constructing /api/blob:',
+      apiClientCode21.includes("trimmed.startsWith('blob:')") &&
+      apiClientCode21.includes("trimmed.startsWith('data:')") &&
+      apiClientCode21.includes("return '#';")
+    );
+
+    runStep('Expenses.tsx uses resolveAttachmentUrl to upload raw File objects directly to Google Drive returning /api/files/:id/view',
+      expPageCode21.includes('resolveAttachmentUrl') &&
+      expPageCode21.includes('/api/files/upload-direct') &&
+      expPageCode21.includes('/api/files/${completeRes.attachment.id}/view')
+    );
+
+    runStep('Backend repositories and startup migration purge and reject any blob: URLs from PostgreSQL',
+      expRepoCode21.includes("receiptUrl.startsWith('blob:')") &&
+      tripRepoCode21.includes("receiptUrl.startsWith('blob:')") &&
+      migCode21.includes("receipt_url LIKE 'blob:%'")
+    );
+
     summary['21. Google Drive Storage'] = 'PASS';
 
     // ─── TEST 22: PERSISTENT ORGANIZATION LEAVE POLICY & ADJUSTMENTS ───
