@@ -523,12 +523,10 @@ export class TripExpenseRepository {
       const attRes = await client.query(attQuery, [organizationId, id, allChildIds.length > 0 ? allChildIds : ['00000000-0000-0000-0000-000000000000']]);
 
       for (const att of attRes.rows) {
-        if (att.object_path) {
-          try {
-            await StorageService.deleteObject(att.object_path);
-          } catch (stgErr) {
-            console.warn('StorageService deleteObject failed for attachment:', att.object_path, stgErr);
-          }
+        try {
+          await StorageService.deleteObject(att.storage_file_id, att.object_path);
+        } catch (stgErr) {
+          console.warn('StorageService deleteObject failed for attachment:', att.object_path, stgErr);
         }
       }
 

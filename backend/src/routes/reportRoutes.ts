@@ -85,7 +85,7 @@ router.post('/archives/weekly-plan', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MAN
     const timestamp = Date.now();
 
     const objectPath = `organizations/${orgCode}/weekly-plans/${year}/${month}/weekly_plan_${year}_${month}_${timestamp}.xlsx`;
-    await StorageService.uploadBuffer(objectPath, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const uploadRes = await StorageService.uploadBuffer(objectPath, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     const uRes = await query('SELECT display_name, email FROM users WHERE id = $1', [req.user!.userId]);
     const userName = uRes.rows[0]?.display_name || req.user!.email;
@@ -93,8 +93,9 @@ router.post('/archives/weekly-plan', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MAN
     const archiveRes = await query(`
       INSERT INTO report_archives (
         organization_id, report_name, report_type, period_year, period_month,
-        object_path, file_size, generated_by, generated_by_name
-      ) VALUES ($1, $2, 'WEEKLY_PLAN', $3, $4, $5, $6, $7, $8)
+        object_path, file_size, generated_by, generated_by_name,
+        storage_provider, storage_file_id, storage_folder_id
+      ) VALUES ($1, $2, 'WEEKLY_PLAN', $3, $4, $5, $6, $7, $8, 'GOOGLE_DRIVE', $9, $10)
       RETURNING *
     `, [
       organizationId,
@@ -104,7 +105,9 @@ router.post('/archives/weekly-plan', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MAN
       objectPath,
       buffer.length,
       req.user!.userId,
-      userName
+      userName,
+      uploadRes.storageFileId || null,
+      uploadRes.storageFolderId || null
     ]);
 
     return res.status(201).json({
@@ -145,7 +148,7 @@ router.post('/archives/monthly-report', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_
     const timestamp = Date.now();
 
     const objectPath = `organizations/${orgCode}/reports/${currentYear}/${currentMonth}/monthly_report_${currentYear}_${currentMonth}_${timestamp}.xlsx`;
-    await StorageService.uploadBuffer(objectPath, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const uploadRes = await StorageService.uploadBuffer(objectPath, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     const uRes = await query('SELECT display_name, email FROM users WHERE id = $1', [req.user!.userId]);
     const userName = uRes.rows[0]?.display_name || req.user!.email;
@@ -155,8 +158,9 @@ router.post('/archives/monthly-report', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_
     const archiveRes = await query(`
       INSERT INTO report_archives (
         organization_id, report_name, report_type, period_year, period_month,
-        object_path, file_size, generated_by, generated_by_name
-      ) VALUES ($1, $2, 'MONTHLY_REPORT', $3, $4, $5, $6, $7, $8)
+        object_path, file_size, generated_by, generated_by_name,
+        storage_provider, storage_file_id, storage_folder_id
+      ) VALUES ($1, $2, 'MONTHLY_REPORT', $3, $4, $5, $6, $7, $8, 'GOOGLE_DRIVE', $9, $10)
       RETURNING *
     `, [
       organizationId,
@@ -166,7 +170,9 @@ router.post('/archives/monthly-report', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_
       objectPath,
       buffer.length,
       req.user!.userId,
-      userName
+      userName,
+      uploadRes.storageFileId || null,
+      uploadRes.storageFolderId || null
     ]);
 
     return res.status(201).json({
@@ -185,7 +191,7 @@ router.get('/archives', async (req: AuthenticatedRequest, res: Response, next: N
     const { reportType } = req.query;
 
     let sql = `
-      SELECT id, report_name, report_type, period_year, period_month, object_path, file_size, mime_type, generated_by, generated_by_name, created_at
+      SELECT id, report_name, report_type, period_year, period_month, object_path, file_size, mime_type, generated_by, generated_by_name, storage_provider, storage_file_id, created_at
       FROM report_archives
       WHERE organization_id = $1
     `;
@@ -217,12 +223,19 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
     }
 
     const archive = archiveRes.rows[0];
-    const downloadUrl = await StorageService.getSignedDownloadUrl(archive.object_path, `${archive.report_type.toLowerCase()}_${archive.period_year}_${archive.period_month}.xlsx`);
+    const exists = await StorageService.verifyObjectExists(archive.storage_file_id, archive.object_path);
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Report binary file unavailable in storage.', code: 'FILE_UNAVAILABLE' });
+    }
 
-    return res.status(200).json({
-      success: true,
-      data: { downloadUrl, archive }
-    });
+    const stream = await StorageService.downloadStream(archive.storage_file_id, archive.object_path);
+    const filename = `${archive.report_type.toLowerCase()}_${archive.period_year}_${archive.period_month || 1}.xlsx`;
+
+    res.setHeader('Content-Type', archive.mime_type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    if (archive.file_size) res.setHeader('Content-Length', archive.file_size);
+
+    stream.pipe(res);
   } catch (error) {
     return next(error);
   }

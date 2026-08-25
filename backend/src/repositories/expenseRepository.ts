@@ -291,9 +291,7 @@ export class ExpenseRepository {
 
       const attRes = await client.query("SELECT * FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
       for (const att of attRes.rows) {
-        if (att.object_path) {
-          await StorageService.deleteObject(att.object_path);
-        }
+        await StorageService.deleteObject(att.storage_file_id, att.object_path);
       }
 
       await client.query("DELETE FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);

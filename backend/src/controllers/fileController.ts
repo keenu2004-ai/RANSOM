@@ -58,7 +58,7 @@ export class FileController {
         });
       }
 
-      // Fetch org code for structured GCS object path
+      // Fetch org code for structured object path
       const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [organizationId]);
       const orgCode = orgRes.rows[0]?.code || 'default';
 
@@ -67,15 +67,14 @@ export class FileController {
       const folder = (entityType || 'expenses').toLowerCase();
       const objectPath = `organizations/${orgCode}/${folder}/${entityId || 'general'}/${uniqueId}_${safeFilename}`;
 
-      const signedUpload = await StorageService.getSignedUploadUrl(objectPath, mimeType);
+      const uploadUrl = `/api/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`;
 
       return res.status(200).json({
         success: true,
         data: {
-          uploadUrl: signedUpload.uploadUrl,
+          uploadUrl,
           objectPath,
-          headers: signedUpload.headers || {},
-          isGcs: StorageService.isGcsConfigured()
+          isDrive: StorageService.isDriveConfigured()
         }
       });
     } catch (error) {
@@ -86,7 +85,7 @@ export class FileController {
   static async uploadComplete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { entityType, entityId, originalFilename, objectPath, mimeType, fileSize } = req.body;
+      const { entityType, entityId, originalFilename, objectPath, mimeType, fileSize, storageFileId, storageFolderId } = req.body;
 
       if (!entityType || !objectPath || !originalFilename || !mimeType || !fileSize) {
         return res.status(400).json({
@@ -97,11 +96,11 @@ export class FileController {
       }
 
       // Verify binary object exists in storage before saving metadata
-      const fileExists = await StorageService.verifyObjectExists(objectPath);
-      if (!fileExists && StorageService.isGcsConfigured()) {
+      const fileExists = await StorageService.verifyObjectExists(storageFileId, objectPath);
+      if (!fileExists && StorageService.isDriveConfigured()) {
         return res.status(400).json({
           success: false,
-          error: 'GCS binary upload was not verified or completed. Attachment metadata was not created.',
+          error: 'Google Drive binary upload was not verified or completed. Attachment metadata was not created.',
           code: 'UPLOAD_NOT_VERIFIED'
         });
       }
@@ -115,7 +114,11 @@ export class FileController {
         objectPath,
         mimeType,
         fileSize: Number(fileSize),
-        uploadedBy: req.user!.userId
+        uploadedBy: req.user!.userId,
+        storageProvider: 'GOOGLE_DRIVE',
+        storageFileId: storageFileId || null,
+        storageFolderId: storageFolderId || null,
+        storageStatus: 'AVAILABLE'
       });
 
       return res.status(201).json({
@@ -127,6 +130,58 @@ export class FileController {
     }
   }
 
+  // Secure View Stream: Streams file inline for PDF/Image viewer
+  static async view(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { id } = req.params;
+
+      const attachment = await AttachmentRepository.findById(id, organizationId);
+      if (!attachment) {
+        return res.status(404).json({
+          success: false,
+          error: 'Attachment not found or access denied.',
+          code: 'NOT_FOUND'
+        });
+      }
+
+      // Authorization Check
+      const isOwner = req.user!.employeeId && req.user!.employeeId === attachment.employee_id;
+      const isUploader = req.user!.userId === attachment.uploaded_by;
+      const isAuthorizedManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER'].includes(req.user!.role);
+
+      if (!isOwner && !isUploader && !isAuthorizedManager) {
+        return res.status(403).json({
+          success: false,
+          error: 'You are not authorized to view this receipt.',
+          code: 'FORBIDDEN'
+        });
+      }
+
+      // Verify physical file availability
+      const exists = await StorageService.verifyObjectExists(attachment.storage_file_id, attachment.object_path);
+      if (!exists) {
+        return res.status(404).json({
+          success: false,
+          error: 'Attachment unavailable or missing from storage.',
+          code: 'FILE_UNAVAILABLE',
+          status: 'BROKEN'
+        });
+      }
+
+      const stream = await StorageService.downloadStream(attachment.storage_file_id, attachment.object_path);
+
+      res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(attachment.original_filename)}"`);
+      if (attachment.file_size) res.setHeader('Content-Length', attachment.file_size);
+
+      stream.pipe(res);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Secure Download Stream: Downloads file as attachment
   static async download(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
@@ -149,14 +204,14 @@ export class FileController {
       if (!isOwner && !isUploader && !isAuthorizedManager) {
         return res.status(403).json({
           success: false,
-          error: 'You are not authorized to view or download this receipt.',
+          error: 'You are not authorized to download this receipt.',
           code: 'FORBIDDEN'
         });
       }
 
       // Verify physical object availability
-      const exists = await StorageService.verifyObjectExists(attachment.object_path);
-      if (!exists && StorageService.isGcsConfigured()) {
+      const exists = await StorageService.verifyObjectExists(attachment.storage_file_id, attachment.object_path);
+      if (!exists) {
         return res.status(404).json({
           success: false,
           error: 'Attachment unavailable or missing from storage.',
@@ -165,22 +220,19 @@ export class FileController {
         });
       }
 
-      const downloadUrl = await StorageService.getSignedDownloadUrl(attachment.object_path, attachment.original_filename);
+      const stream = await StorageService.downloadStream(attachment.storage_file_id, attachment.object_path);
 
-      return res.status(200).json({
-        success: true,
-        data: {
-          downloadUrl,
-          attachment,
-          status: 'AVAILABLE'
-        }
-      });
+      res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(attachment.original_filename)}"`);
+      if (attachment.file_size) res.setHeader('Content-Length', attachment.file_size);
+
+      stream.pipe(res);
     } catch (error) {
       return next(error);
     }
   }
 
-  // Direct upload handler for local disk fallback mode
+  // Direct upload handler: Uploads buffer to Google Drive
   static async uploadDirect(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const objectPath = req.query.objectPath as string;
@@ -194,11 +246,42 @@ export class FileController {
         try {
           const buffer = Buffer.concat(chunks);
           const mimeType = (req.headers['content-type'] as string) || 'application/octet-stream';
-          await StorageService.uploadBuffer(objectPath, buffer, mimeType);
-          return res.status(200).json({ success: true, message: 'File saved to local storage.', objectPath });
-        } catch (err) {
+          const uploadRes = await StorageService.uploadBuffer(objectPath, buffer, mimeType);
+
+          return res.status(200).json({
+            success: true,
+            message: 'File saved to Google Drive storage.',
+            objectPath: uploadRes.objectPath,
+            storageFileId: uploadRes.storageFileId,
+            storageFolderId: uploadRes.storageFolderId
+          });
+        } catch (err: any) {
           return next(err);
         }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Storage Health Check API (PART 15)
+  static async health(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await StorageService.verifyConnectivityTest();
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          provider: 'GOOGLE_DRIVE',
+          status: 'UNAVAILABLE',
+          error: result.message
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        provider: 'GOOGLE_DRIVE',
+        status: 'HEALTHY',
+        message: result.message
       });
     } catch (error) {
       return next(error);

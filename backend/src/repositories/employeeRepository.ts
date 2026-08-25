@@ -352,9 +352,7 @@ export class EmployeeRepository {
 
       const attRes = await query('SELECT * FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
       for (const att of attRes.rows) {
-        if (att.object_path) {
-          await StorageService.deleteObject(att.object_path);
-        }
+        await StorageService.deleteObject(att.storage_file_id, att.object_path);
       }
       await query('DELETE FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
 

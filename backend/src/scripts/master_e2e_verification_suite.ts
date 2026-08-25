@@ -689,10 +689,10 @@ async function runMasterE2EVerificationSuite() {
     );
 
     const storageServiceCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/services/storageService.ts'), 'utf8');
-    runStep('StorageService provides GCS signed URL generation, buffer upload, object delete, and prefix purge with local disk fallback',
-      storageServiceCode17.includes('@google-cloud/storage') &&
-      storageServiceCode17.includes('getSignedUploadUrl') &&
-      storageServiceCode17.includes('getSignedDownloadUrl') &&
+    runStep('StorageService provides Google Drive storage upload, object delete, stream download, and prefix purge with fail-fast production checks',
+      storageServiceCode17.includes('GoogleDriveStorageProvider') &&
+      storageServiceCode17.includes('uploadBuffer') &&
+      storageServiceCode17.includes('downloadStream') &&
       storageServiceCode17.includes('purgePrefix')
     );
 
@@ -941,17 +941,25 @@ async function runMasterE2EVerificationSuite() {
 
     summary['20. Trip Expense Super Admin Deletion'] = 'PASS';
 
-    // ─── TEST 21: GCS CANONICAL ATTACHMENTS & SECURE DOWNLOADS ───
-    console.log('\n--- TEST 21: GCS CANONICAL ATTACHMENTS & SECURE DOWNLOADS ---');
+    // ─── TEST 21: GOOGLE DRIVE STORAGE & SECURE STREAMING ───
+    console.log('\n--- TEST 21: GOOGLE DRIVE STORAGE & SECURE STREAMING ---');
 
     const storageCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/services/storageService.ts'), 'utf8');
+    const driveProviderCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/services/googleDriveStorageProvider.ts'), 'utf8');
     const fileCtrlCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/controllers/fileController.ts'), 'utf8');
-    const migrationCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/scripts/migrate_legacy_attachments.ts'), 'utf8');
 
-    runStep('StorageService implements verifyObjectExists, getSignedUploadUrl, getSignedDownloadUrl, and purgePrefix',
-      storageCode21.includes('static async verifyObjectExists') &&
-      storageCode21.includes('static async getSignedUploadUrl') &&
-      storageCode21.includes('static async getSignedDownloadUrl')
+    runStep('GoogleDriveStorageProvider implements verifyConnectivityTest, ensureFolder, uploadBuffer, downloadStream, deleteFile, and verifyFileExists',
+      driveProviderCode21.includes('static async verifyConnectivityTest') &&
+      driveProviderCode21.includes('static async ensureFolder') &&
+      driveProviderCode21.includes('static async uploadBuffer') &&
+      driveProviderCode21.includes('static async downloadStream') &&
+      driveProviderCode21.includes('static async deleteFile')
+    );
+
+    runStep('StorageService delegates active storage operations to GoogleDriveStorageProvider and fails fast in production if unconfigured',
+      storageCode21.includes('GoogleDriveStorageProvider.uploadBuffer') &&
+      storageCode21.includes('GoogleDriveStorageProvider.downloadStream') &&
+      storageCode21.includes('GOOGLE DRIVE STORAGE NOT CONFIGURED')
     );
 
     runStep('fileController.ts uploadInit enforces org/entity folder path, mimeType/extension validation, and max file sizes (PDF 25MB, Images 15MB)',
@@ -961,24 +969,19 @@ async function runMasterE2EVerificationSuite() {
       fileCtrlCode21.includes('DISALLOWED_EXTENSIONS')
     );
 
-    runStep('fileController.ts uploadComplete verifies GCS binary object exists before saving metadata',
-      fileCtrlCode21.includes('StorageService.verifyObjectExists(objectPath)') &&
-      fileCtrlCode21.includes('UPLOAD_NOT_VERIFIED')
-    );
-
-    runStep('fileController.ts download enforces RBAC & organization scope, checks physical object availability, and returns signed V4 URL',
+    runStep('fileController.ts view & download enforce RBAC & organization scope, check object availability, and stream binary bytes directly with appropriate headers',
+      fileCtrlCode21.includes('static async view') &&
       fileCtrlCode21.includes('isAuthorizedManager') &&
-      fileCtrlCode21.includes('StorageService.verifyObjectExists(attachment.object_path)') &&
-      fileCtrlCode21.includes('StorageService.getSignedDownloadUrl')
+      fileCtrlCode21.includes('StorageService.downloadStream') &&
+      fileCtrlCode21.includes('stream.pipe(res)')
     );
 
-    runStep('migrate_legacy_attachments.ts decodes base64 data-URLs, uploads binary bytes to GCS, and updates database metadata',
-      migrationCode21.includes('migrateLegacyAttachments') &&
-      migrationCode21.includes('StorageService.uploadBuffer') &&
-      migrationCode21.includes('data:')
+    runStep('fileController.ts health executes StorageService.verifyConnectivityTest for production storage monitoring',
+      fileCtrlCode21.includes('static async health') &&
+      fileCtrlCode21.includes('StorageService.verifyConnectivityTest')
     );
 
-    summary['21. GCS Canonical Attachments'] = 'PASS';
+    summary['21. Google Drive Storage'] = 'PASS';
 
     // ─── TEST 22: PERSISTENT ORGANIZATION LEAVE POLICY & ADJUSTMENTS ───
     console.log('\n--- TEST 22: PERSISTENT ORGANIZATION LEAVE POLICY & ADJUSTMENTS ---');

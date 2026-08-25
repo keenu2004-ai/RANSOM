@@ -12,6 +12,10 @@ export interface AttachmentRecord {
   file_size: number;
   checksum: string | null;
   uploaded_by: string | null;
+  storage_provider?: string | null;
+  storage_file_id?: string | null;
+  storage_folder_id?: string | null;
+  storage_status?: string | null;
   created_at: Date;
   deleted_at: Date | null;
 }
@@ -28,12 +32,17 @@ export class AttachmentRepository {
     fileSize: number;
     checksum?: string | null;
     uploadedBy?: string | null;
+    storageProvider?: string | null;
+    storageFileId?: string | null;
+    storageFolderId?: string | null;
+    storageStatus?: string | null;
   }): Promise<AttachmentRecord> {
     const text = `
       INSERT INTO attachments (
         organization_id, entity_type, entity_id, employee_id,
-        original_filename, object_path, mime_type, file_size, checksum, uploaded_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        original_filename, object_path, mime_type, file_size, checksum, uploaded_by,
+        storage_provider, storage_file_id, storage_folder_id, storage_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `;
     const res = await query<AttachmentRecord>(text, [
@@ -46,7 +55,11 @@ export class AttachmentRepository {
       data.mimeType,
       data.fileSize,
       data.checksum || null,
-      data.uploadedBy || null
+      data.uploadedBy || null,
+      data.storageProvider || 'GOOGLE_DRIVE',
+      data.storageFileId || null,
+      data.storageFolderId || null,
+      data.storageStatus || 'AVAILABLE'
     ]);
     return res.rows[0];
   }
