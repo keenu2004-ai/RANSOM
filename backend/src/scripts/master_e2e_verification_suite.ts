@@ -987,10 +987,11 @@ async function runMasterE2EVerificationSuite() {
     const leaveRoutesCode22 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/leaveRoutes.ts'), 'utf8');
     const leavePageCode22 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Leave.tsx'), 'utf8');
 
-    runStep('LeaveRepository.updatePolicy updates leave_types (CL, PL/EL, SL, OL=0), re-synchronizes balances, and logs LEAVE_POLICY_UPDATED audit event',
-      leaveRepoCode22.includes("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $2 AND code = 'OL'") &&
+    runStep('LeaveRepository.updatePolicy updates leave_types (CL, PL/EL, SL, OL=0) with explicit PostgreSQL parameter casts ($1::uuid, $1::numeric, $2::uuid, $4::jsonb, $5::jsonb), re-synchronizes balances, and logs LEAVE_POLICY_UPDATED audit event',
+      leaveRepoCode22.includes("annual_quota = $1::numeric") &&
+      leaveRepoCode22.includes("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $1::uuid AND code = 'OL'") &&
       leaveRepoCode22.includes("LEAVE_POLICY_UPDATED") &&
-      leaveRepoCode22.includes("INSERT INTO audit_logs")
+      leaveRepoCode22.includes("$4::jsonb, $5::jsonb")
     );
 
     runStep('leaveRoutes.ts guards PUT /api/leaves/policy with requireRole(SUPER_ADMIN, ADMIN, HR_MANAGER)',

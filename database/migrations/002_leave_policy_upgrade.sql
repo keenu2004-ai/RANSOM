@@ -8,10 +8,10 @@ ALTER TABLE leave_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFA
 -- Retire 4th leave type (OL - Optional Leave) safely without deleting historical data
 UPDATE leave_types SET is_active = FALSE WHERE code = 'OL';
 
--- Ensure 3 active leave types (CL: 12, EL: 18, SL: 12)
-UPDATE leave_types SET annual_quota = 12, is_active = TRUE WHERE code = 'CL';
-UPDATE leave_types SET annual_quota = 18, is_active = TRUE WHERE code = 'EL';
-UPDATE leave_types SET annual_quota = 12, is_active = TRUE WHERE code = 'SL';
+-- Ensure 3 active leave types (CL: 6, EL: 10, SL: 6)
+UPDATE leave_types SET annual_quota = 6, is_active = TRUE WHERE code = 'CL';
+UPDATE leave_types SET annual_quota = 10, is_active = TRUE WHERE code IN ('EL', 'PL');
+UPDATE leave_types SET annual_quota = 6, is_active = TRUE WHERE code = 'SL';
 
 -- Indexes for performance on leave requests and balances
 CREATE INDEX IF NOT EXISTS idx_leave_requests_emp_dates ON leave_requests (employee_id, status, start_date, end_date);

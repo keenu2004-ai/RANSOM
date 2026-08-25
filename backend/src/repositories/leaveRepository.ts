@@ -89,30 +89,31 @@ export class LeaveRepository {
     return parseFloat(res.rows[0]?.cl_used || '0');
   }
 
-  static async updatePolicy(organizationId: string, quotas: { clQuota: number; elQuota: number; slQuota: number }, actorUserId?: string) {
+  static async updatePolicy(organizationId: string, quotas: { clQuota: number; elQuota: number; slQuota: number; olQuota?: number }, actorUserId?: string) {
     return withTransaction(async (client) => {
       const currentYear = new Date().getFullYear();
 
-      // Get old quotas for audit snapshot
-      const oldTypesRes = await client.query('SELECT code, annual_quota FROM leave_types WHERE organization_id = $1', [organizationId]);
+      // 1. Get old quotas for audit snapshot
+      const oldTypesRes = await client.query('SELECT code, annual_quota FROM leave_types WHERE organization_id = $1::uuid', [organizationId]);
       const oldValues: Record<string, number> = {};
       oldTypesRes.rows.forEach(r => { oldValues[r.code] = parseFloat(r.annual_quota || '0'); });
 
-      // Update leave_types - handle both 'EL' and 'PL' codes for Earned/Privilege leave, and set OL quota = 0
-      await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.clQuota, organizationId, 'CL']);
-      await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code IN (\'EL\', \'PL\')', [quotas.elQuota, organizationId]);
-      await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.slQuota, organizationId, 'SL']);
-      await client.query("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $2 AND code = 'OL'", [organizationId]);
+      // 2. Update leave_types - handle CL, EL/PL, SL, and set OL quota = 0
+      await client.query('UPDATE leave_types SET annual_quota = $1::numeric WHERE organization_id = $2::uuid AND code = $3::text', [quotas.clQuota, organizationId, 'CL']);
+      await client.query("UPDATE leave_types SET annual_quota = $1::numeric WHERE organization_id = $2::uuid AND code IN ('EL', 'PL')", [quotas.elQuota, organizationId]);
+      await client.query('UPDATE leave_types SET annual_quota = $1::numeric WHERE organization_id = $2::uuid AND code = $3::text', [quotas.slQuota, organizationId, 'SL']);
+      await client.query("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $1::uuid AND code = 'OL'", [organizationId]);
 
+      // 3. Insert immutable audit log entry
       const newValues = { CL: quotas.clQuota, PL: quotas.elQuota, SL: quotas.slQuota, OL: 0 };
       if (actorUserId) {
         await client.query(`
           INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values)
-          VALUES ($1, $2, 'LEAVE_POLICY_UPDATED', 'leaves', 'LeavePolicy', $1, $3, $4)
-        `, [organizationId, actorUserId, JSON.stringify(oldValues), JSON.stringify(newValues)]);
+          VALUES ($1::uuid, $2::uuid, 'LEAVE_POLICY_UPDATED', 'leaves', 'LeavePolicy', $3::text, $4::jsonb, $5::jsonb)
+        `, [organizationId, actorUserId, organizationId, JSON.stringify(oldValues), JSON.stringify(newValues)]);
       }
 
-      // Synchronize all leave_balances for active year according to current policy + active employee adjustments
+      // 4. Synchronize all leave_balances for active year according to current policy + active employee adjustments
       const balancesRes = await client.query(`
         SELECT lb.id, lb.employee_id, lb.leave_type_id, lt.annual_quota as org_quota,
                ela.adjustment_type, ela.adjustment_value
@@ -121,10 +122,10 @@ export class LeaveRepository {
         LEFT JOIN LATERAL (
           SELECT adjustment_type, adjustment_value
           FROM employee_leave_adjustments
-          WHERE organization_id = $1 AND employee_id = lb.employee_id AND leave_type_id = lb.leave_type_id AND period_year = $2
+          WHERE organization_id = $1::uuid AND employee_id = lb.employee_id AND leave_type_id = lb.leave_type_id AND period_year = $2::integer
           ORDER BY created_at DESC LIMIT 1
         ) ela ON TRUE
-        WHERE lb.organization_id = $1 AND lb.year = $2
+        WHERE lb.organization_id = $1::uuid AND lb.year = $2::integer
       `, [organizationId, currentYear]);
 
       for (const row of balancesRes.rows) {
@@ -141,12 +142,19 @@ export class LeaveRepository {
 
         await client.query(`
           UPDATE leave_balances
-          SET quota = $1, available = GREATEST(0, $1 - used - pending), updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
+          SET quota = $1::numeric, available = GREATEST(0, $1::numeric - used - pending), updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2::uuid
         `, [finalEntitlement, row.id]);
       }
 
-      return { message: 'Leave policy updated successfully.' };
+      return {
+        CL: quotas.clQuota,
+        PL: quotas.elQuota,
+        EL: quotas.elQuota,
+        SL: quotas.slQuota,
+        OL: 0,
+        message: 'Leave policy updated and synchronized successfully.'
+      };
     });
   }
 

@@ -165,13 +165,27 @@ export class LeaveController {
   static async updatePolicy(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { clQuota, elQuota, slQuota } = req.body;
+      const body = req.body || {};
 
-      if (typeof clQuota !== 'number' || typeof elQuota !== 'number' || typeof slQuota !== 'number') {
-        return res.status(400).json({ success: false, error: 'clQuota, elQuota, and slQuota must be numbers.', code: 'VALIDATION_ERROR' });
+      const cl = Number(body.clQuota ?? body.cl);
+      const el = Number(body.elQuota ?? body.plQuota ?? body.el ?? body.pl);
+      const sl = Number(body.slQuota ?? body.sl);
+      const ol = Number(body.olQuota ?? body.ol ?? 0);
+
+      if (isNaN(cl) || isNaN(el) || isNaN(sl) || cl < 0 || el < 0 || sl < 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'clQuota, elQuota, and slQuota must be valid non-negative numbers.',
+          code: 'VALIDATION_ERROR'
+        });
       }
 
-      const result = await LeaveRepository.updatePolicy(organizationId, { clQuota, elQuota, slQuota }, req.user!.userId);
+      const result = await LeaveRepository.updatePolicy(
+        organizationId,
+        { clQuota: Math.floor(cl), elQuota: Math.floor(el), slQuota: Math.floor(sl), olQuota: Math.floor(ol) },
+        req.user!.userId
+      );
+
       return res.status(200).json({
         success: true,
         data: result
