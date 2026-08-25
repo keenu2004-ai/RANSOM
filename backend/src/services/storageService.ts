@@ -200,4 +200,23 @@ export class StorageService {
     }
     return details;
   }
+
+  /**
+   * Verify if an object exists in GCS or Local Disk
+   */
+  static async verifyObjectExists(objectPath: string): Promise<boolean> {
+    try {
+      if (gcsBucket) {
+        const file = gcsBucket.file(objectPath);
+        const [exists] = await file.exists();
+        return exists;
+      } else {
+        const localFilePath = path.join(LOCAL_STORAGE_DIR, objectPath.replace(/\//g, '_'));
+        return fs.existsSync(localFilePath);
+      }
+    } catch (err) {
+      console.warn(`[STORAGE] verifyObjectExists check failed for ${objectPath}:`, err);
+      return false;
+    }
+  }
 }

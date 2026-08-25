@@ -96,6 +96,16 @@ export class FileController {
         });
       }
 
+      // Verify binary object exists in storage before saving metadata
+      const fileExists = await StorageService.verifyObjectExists(objectPath);
+      if (!fileExists && StorageService.isGcsConfigured()) {
+        return res.status(400).json({
+          success: false,
+          error: 'GCS binary upload was not verified or completed. Attachment metadata was not created.',
+          code: 'UPLOAD_NOT_VERIFIED'
+        });
+      }
+
       const attachment = await AttachmentRepository.create({
         organizationId,
         entityType,
@@ -144,13 +154,25 @@ export class FileController {
         });
       }
 
+      // Verify physical object availability
+      const exists = await StorageService.verifyObjectExists(attachment.object_path);
+      if (!exists && StorageService.isGcsConfigured()) {
+        return res.status(404).json({
+          success: false,
+          error: 'Attachment unavailable or missing from storage.',
+          code: 'FILE_UNAVAILABLE',
+          status: 'BROKEN'
+        });
+      }
+
       const downloadUrl = await StorageService.getSignedDownloadUrl(attachment.object_path, attachment.original_filename);
 
       return res.status(200).json({
         success: true,
         data: {
           downloadUrl,
-          attachment
+          attachment,
+          status: 'AVAILABLE'
         }
       });
     } catch (error) {
