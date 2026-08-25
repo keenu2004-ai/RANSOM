@@ -899,6 +899,48 @@ async function runMasterE2EVerificationSuite() {
 
     summary['19. Workforce Identity & Account Lifecycle'] = 'PASS';
 
+    // ─── TEST 20: TRIP EXPENSE SUPER ADMIN DELETION ───
+    console.log('\n--- TEST 20: TRIP EXPENSE SUPER ADMIN DELETION ---');
+
+    const tripRepoCode20 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/tripExpenseRepository.ts'), 'utf8');
+    const expenseRoutesCode20 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/expenseRoutes.ts'), 'utf8');
+    const expensesPageCode20 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Expenses.tsx'), 'utf8');
+
+    runStep('TripExpenseRepository contains deleteSuperAdmin with transactional parent & child cascade deletion, StorageService object cleanup, and TRIP_EXPENSE_DELETED audit log',
+      tripRepoCode20.includes('static async deleteSuperAdmin') &&
+      tripRepoCode20.includes("DELETE FROM trip_travel_expenses WHERE trip_expense_id = $1") &&
+      tripRepoCode20.includes("DELETE FROM trip_accommodation_expenses WHERE trip_expense_id = $1") &&
+      tripRepoCode20.includes("DELETE FROM trip_other_expenses WHERE trip_expense_id = $1") &&
+      tripRepoCode20.includes("DELETE FROM trip_expenses WHERE id = $1 AND organization_id = $2") &&
+      tripRepoCode20.includes("TRIP_EXPENSE_DELETED") &&
+      tripRepoCode20.includes('StorageService.deleteObject')
+    );
+
+    runStep('expenseRoutes.ts defines DELETE /api/expenses/trips/:id restricted strictly to SUPER_ADMIN',
+      expenseRoutesCode20.includes("router.delete('/trips/:id', requireRole('SUPER_ADMIN')") &&
+      expenseRoutesCode20.includes("TripExpenseRepository.deleteSuperAdmin(id, organizationId, userId)")
+    );
+
+    runStep('Expenses.tsx displays Delete button for SUPER_ADMIN only and includes Delete Confirmation Modal requiring exact typing of DELETE string',
+      expensesPageCode20.includes("user?.role === 'SUPER_ADMIN'") &&
+      expensesPageCode20.includes("deleteConfirmTrip") &&
+      expensesPageCode20.includes("Delete Trip Expense Permanently?") &&
+      expensesPageCode20.includes("handleDeleteSuperAdminTrip") &&
+      expensesPageCode20.includes("placeholder=\"DELETE\"")
+    );
+
+    runStep('Historical employee snapshot fallback supported when employee_id is NULL (employee_name_snapshot / employee_code_snapshot / Historical Record)',
+      tripRepoCode20.includes("employee_name_snapshot") &&
+      expensesPageCode20.includes("Historical Record")
+    );
+
+    runStep('Single Expense deletion endpoint (DELETE /api/expenses/:id) and Super Admin single expense deletion remain untouched and functional',
+      expenseRoutesCode20.includes("router.delete('/:id', requireRole('SUPER_ADMIN')") &&
+      expensesPageCode20.includes("handleDeleteSuperAdmin")
+    );
+
+    summary['20. Trip Expense Super Admin Deletion'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');

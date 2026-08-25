@@ -283,16 +283,26 @@ router.put('/trips/:id', requireEmployee, async (req: AuthenticatedRequest, res:
   }
 });
 
-// 6. Delete Trip Draft
-router.delete('/trips/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// SUPER_ADMIN ONLY Trip Expense Permanent Deletion Endpoint
+router.delete('/trips/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
-    const employeeId = req.user!.employeeId!;
-    const deleted = await TripExpenseRepository.deleteTripDraft(req.params.id, organizationId, employeeId);
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const deleted = await TripExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
     if (!deleted) {
-      return res.status(400).json({ success: false, error: 'Trip Expense not found or not in DRAFT status.', code: 'INVALID_TRIP_DELETE' });
+      return res.status(404).json({
+        success: false,
+        error: 'Trip Expense claim not found or access denied.',
+        code: 'TRIP_NOT_FOUND'
+      });
     }
-    return res.status(200).json({ success: true, data: { message: 'Trip Expense draft deleted successfully.' } });
+
+    return res.status(200).json({
+      success: true,
+      data: { message: 'Trip Expense claim permanently deleted.', trip: deleted }
+    });
   } catch (error) {
     return next(error);
   }

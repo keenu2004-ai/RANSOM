@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../db';
+import { StorageService } from '../services/storageService';
 
 export interface CreateTripDTO {
   purpose: string;
@@ -477,5 +478,125 @@ export class TripExpenseRepository {
     }
 
     return row || null;
+  }
+
+  // SUPER_ADMIN Permanent Delete for Trip Claim & All Child Records
+  static async deleteSuperAdmin(id: string, organizationId: string, userId: string) {
+    return withTransaction(async (client) => {
+      // 1. Fetch parent trip row with lock
+      const tripRes = await client.query(`
+        SELECT 
+          te.*,
+          CONCAT(emp.first_name, ' ', emp.last_name) as employee_name,
+          emp.employee_code,
+          (SELECT COUNT(*)::int FROM trip_travel_expenses WHERE trip_expense_id = te.id) as travel_count,
+          (SELECT COUNT(*)::int FROM trip_accommodation_expenses WHERE trip_expense_id = te.id) as accom_count,
+          (SELECT COUNT(*)::int FROM trip_other_expenses WHERE trip_expense_id = te.id) as other_count
+        FROM trip_expenses te
+        LEFT JOIN employees emp ON te.employee_id = emp.id
+        WHERE te.id = $1 AND te.organization_id = $2
+        FOR UPDATE OF te
+      `, [id, organizationId]);
+
+      if (tripRes.rows.length === 0) return null;
+      const trip = tripRes.rows[0];
+
+      // 2. Fetch all child rows
+      const travelRes = await client.query('SELECT * FROM trip_travel_expenses WHERE trip_expense_id = $1', [id]);
+      const accomRes = await client.query('SELECT * FROM trip_accommodation_expenses WHERE trip_expense_id = $1', [id]);
+      const otherRes = await client.query('SELECT * FROM trip_other_expenses WHERE trip_expense_id = $1', [id]);
+
+      const travelChildIds = travelRes.rows.map(r => r.id);
+      const accomChildIds = accomRes.rows.map(r => r.id);
+      const otherChildIds = otherRes.rows.map(r => r.id);
+      const allChildIds = [...travelChildIds, ...accomChildIds, ...otherChildIds];
+
+      // 3. Find attachments in attachments table
+      const attQuery = `
+        SELECT * FROM attachments 
+        WHERE organization_id = $1 
+        AND (
+          (entity_type = 'TRIP_EXPENSE' AND entity_id = $2)
+          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3::uuid[]))
+        )
+      `;
+      const attRes = await client.query(attQuery, [organizationId, id, allChildIds.length > 0 ? allChildIds : ['00000000-0000-0000-0000-000000000000']]);
+
+      for (const att of attRes.rows) {
+        if (att.object_path) {
+          try {
+            await StorageService.deleteObject(att.object_path);
+          } catch (stgErr) {
+            console.warn('StorageService deleteObject failed for attachment:', att.object_path, stgErr);
+          }
+        }
+      }
+
+      // Also clean up inline receipt_url files if stored on child expense rows
+      const inlineReceipts = [
+        ...travelRes.rows.map(r => r.receipt_url),
+        ...accomRes.rows.map(r => r.receipt_url),
+        ...otherRes.rows.map(r => r.receipt_url)
+      ].filter(Boolean);
+
+      for (const receiptPath of inlineReceipts) {
+        if (typeof receiptPath === 'string' && (receiptPath.startsWith('organizations/') || receiptPath.includes('/trips/'))) {
+          try {
+            await StorageService.deleteObject(receiptPath);
+          } catch (_) {}
+        }
+      }
+
+      // 4. Delete attachment metadata rows
+      await client.query(`
+        DELETE FROM attachments 
+        WHERE organization_id = $1 
+        AND (
+          (entity_type = 'TRIP_EXPENSE' AND entity_id = $2)
+          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3::uuid[]))
+        )
+      `, [organizationId, id, allChildIds.length > 0 ? allChildIds : ['00000000-0000-0000-0000-000000000000']]);
+
+      // 5. Delete child expenses
+      await client.query('DELETE FROM trip_travel_expenses WHERE trip_expense_id = $1', [id]);
+      await client.query('DELETE FROM trip_accommodation_expenses WHERE trip_expense_id = $1', [id]);
+      await client.query('DELETE FROM trip_other_expenses WHERE trip_expense_id = $1', [id]);
+
+      // 6. Delete parent trip record
+      await client.query('DELETE FROM trip_expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
+
+      // 7. Write immutable audit event
+      const oldValuesSnapshot = {
+        tripId: id,
+        purpose: trip.purpose,
+        startPoint: trip.start_point,
+        endPoint: trip.end_point,
+        startDate: trip.start_date,
+        endDate: trip.end_date,
+        currency: trip.currency,
+        totalAmount: Number(trip.total_amount || 0),
+        status: trip.status,
+        employeeId: trip.employee_id || null,
+        employeeName: trip.employee_name || trip.employee_name_snapshot || 'Historical Employee',
+        employeeCode: trip.employee_code || trip.employee_code_snapshot || null,
+        childCounts: {
+          travel: Number(trip.travel_count || 0),
+          accom: Number(trip.accom_count || 0),
+          other: Number(trip.other_count || 0)
+        },
+        deletedBy: userId,
+        deletedAt: new Date().toISOString()
+      };
+
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
+        VALUES ($1, $2, 'TRIP_EXPENSE_DELETED', 'expenses', 'TripExpense', $3, $4)
+      `, [organizationId, userId, id, JSON.stringify(oldValuesSnapshot)]);
+
+      return {
+        ...trip,
+        oldValuesSnapshot
+      };
+    });
   }
 }

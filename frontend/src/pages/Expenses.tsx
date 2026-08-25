@@ -71,8 +71,10 @@ export const Expenses: React.FC = () => {
 
   // Super Admin Delete State
   const [deleteConfirmExpense, setDeleteConfirmExpense] = useState<any | null>(null);
+  const [deleteConfirmTrip, setDeleteConfirmTrip] = useState<any | null>(null);
   const [deleteInputText, setDeleteInputText] = useState('');
   const [deletingExpense, setDeletingExpense] = useState(false);
+  const [deletingTrip, setDeletingTrip] = useState(false);
 
   // Form State
   const [singleFormData, setSingleFormData] = useState({
@@ -752,6 +754,23 @@ export const Expenses: React.FC = () => {
     }
   };
 
+  const handleDeleteSuperAdminTrip = async () => {
+    if (!deleteConfirmTrip || deleteInputText !== 'DELETE') return;
+    try {
+      setDeletingTrip(true);
+      await apiFetch(`/expenses/trips/${deleteConfirmTrip.id}`, { method: 'DELETE' });
+      setSuccessMsg('Trip Expense claim permanently deleted.');
+      setDeleteConfirmTrip(null);
+      setDeleteInputText('');
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(`Failed to delete trip expense: ${err.message || 'Error executing deletion'}`);
+    } finally {
+      setDeletingTrip(false);
+    }
+  };
+
   const displayedSingleExpenses = (activeRoleTab === 'WORKFORCE' ? allExpenses : myExpenses).filter(ex => {
     if (typeFilter && ex.expense_type !== typeFilter) return false;
     if (statusFilter && ex.status !== statusFilter) return false;
@@ -1306,6 +1325,20 @@ export const Expenses: React.FC = () => {
                               <button onClick={() => handleApproveTrip(tr.id)} className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
                               <button onClick={() => handleRejectTrip(tr.id)} className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">Reject</button>
                             </>
+                          )}
+
+                          {user?.role === 'SUPER_ADMIN' && (
+                            <button
+                              onClick={() => {
+                                setDeleteConfirmTrip(tr);
+                                setDeleteInputText('');
+                              }}
+                              className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              title="Delete Trip Expense (Super Admin)"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-400" />
+                              <span>Delete</span>
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -2032,6 +2065,70 @@ export const Expenses: React.FC = () => {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
               >
                 {deletingExpense ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPER ADMIN TRIP DELETE CONFIRMATION MODAL */}
+      {deleteConfirmTrip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-white">Delete Trip Expense Permanently?</h3>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 font-mono">
+              <p><span className="text-slate-500">Trip / Purpose:</span> {deleteConfirmTrip.purpose}</p>
+              <p>
+                <span className="text-slate-500">Employee:</span> {
+                  deleteConfirmTrip.employee_name || deleteConfirmTrip.employee_name_snapshot 
+                    ? `${deleteConfirmTrip.employee_name || deleteConfirmTrip.employee_name_snapshot} ${deleteConfirmTrip.employee_code || deleteConfirmTrip.employee_code_snapshot ? `(${deleteConfirmTrip.employee_code || deleteConfirmTrip.employee_code_snapshot})` : ''}`
+                    : 'Historical Record'
+                }
+                {!deleteConfirmTrip.employee_id && <span className="ml-1 text-[10px] text-amber-400 font-bold">(Historical Record)</span>}
+              </p>
+              <p><span className="text-slate-500">Destination:</span> {deleteConfirmTrip.start_point} → {deleteConfirmTrip.end_point}</p>
+              <p><span className="text-slate-500">Date:</span> {deleteConfirmTrip.start_date} → {deleteConfirmTrip.end_date}</p>
+              <p><span className="text-slate-500">Status:</span> {deleteConfirmTrip.status}</p>
+              <p><span className="text-slate-500">Total Amount:</span> ₹{Number(deleteConfirmTrip.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              <p><span className="text-slate-500">Child Expenses:</span> {deleteConfirmTrip.travel_count || 0} Travel, {deleteConfirmTrip.accom_count || 0} Hotel, {deleteConfirmTrip.other_count || 0} Other</p>
+            </div>
+
+            <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+              <strong>Warning:</strong> This permanently deletes this trip claim and its associated child expenses and attachments from the application. This action cannot be undone.
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                Type <span className="font-mono text-rose-400 font-bold">DELETE</span> to confirm permanent deletion:
+              </label>
+              <input
+                type="text"
+                value={deleteInputText}
+                onChange={e => setDeleteInputText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmTrip(null); setDeleteInputText(''); }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteInputText !== 'DELETE' || deletingTrip}
+                onClick={handleDeleteSuperAdminTrip}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {deletingTrip ? 'Deleting...' : 'Delete Permanently'}
               </button>
             </div>
           </div>
