@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 import { 
-  normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, parseDateOnlyToLocal 
+  normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, getMondayOfWeekStr, parseDateOnlyToLocal 
 } from '../utils/dateUtils';
 
 export const Timesheets: React.FC = () => {
@@ -27,8 +27,8 @@ export const Timesheets: React.FC = () => {
   const [filterOpportunity, setFilterOpportunity] = useState<string>('');
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>('');
 
-  // Active Week Date State (Reference Monday Date)
-  const [selectedMonday, setSelectedMonday] = useState<Date>(() => getMondayOfWeek());
+  // Active Week Date State (Reference Monday Date String "YYYY-MM-DD")
+  const [selectedMondayStr, setSelectedMondayStr] = useState<string>(() => getMondayOfWeekStr());
 
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
@@ -73,7 +73,7 @@ export const Timesheets: React.FC = () => {
   const weekDays = useMemo(() => {
     const days = [];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const baseMondayStr = normalizeDateOnly(selectedMonday);
+    const baseMondayStr = normalizeDateOnly(selectedMondayStr) || getMondayOfWeekStr();
     for (let i = 0; i < 7; i++) {
       const dateStr = addCalendarDays(baseMondayStr, i);
       const localDate = parseDateOnlyToLocal(dateStr);
@@ -85,20 +85,18 @@ export const Timesheets: React.FC = () => {
       });
     }
     return days;
-  }, [selectedMonday]);
+  }, [selectedMondayStr]);
 
   const handlePrevWeek = () => {
-    const prevStr = addCalendarDays(normalizeDateOnly(selectedMonday), -7);
-    setSelectedMonday(parseDateOnlyToLocal(prevStr));
+    setSelectedMondayStr(prev => addCalendarDays(prev, -7));
   };
 
   const handleNextWeek = () => {
-    const nextStr = addCalendarDays(normalizeDateOnly(selectedMonday), 7);
-    setSelectedMonday(parseDateOnlyToLocal(nextStr));
+    setSelectedMondayStr(prev => addCalendarDays(prev, 7));
   };
 
   const handleThisWeek = () => {
-    setSelectedMonday(getMondayOfWeek());
+    setSelectedMondayStr(getMondayOfWeekStr());
   };
 
   const fetchTasks = useCallback(async () => {

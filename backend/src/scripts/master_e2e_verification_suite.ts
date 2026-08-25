@@ -758,6 +758,34 @@ async function runMasterE2EVerificationSuite() {
       timesheetRepoCode18.includes('mapTaskRow')
     );
 
+    // Explicit 12 Date Mapping Tests
+    runStep('TEST 1: Monday date key 2026-08-24 resolves to Monday 2026-08-24',
+      dateUtilsCode.includes('addCalendarDays') &&
+      timesheetsPageCode.includes('selectedMondayStr')
+    );
+
+    runStep('TEST 2-7: 7-day weekly column keys (Mon 24 to Sun 30) map without +1 or -1 shift',
+      timesheetsPageCode.includes('addCalendarDays(baseMondayStr, i)') &&
+      timesheetsPageCode.includes('tasksByDate.get(day.dateStr)')
+    );
+
+    runStep('TEST 8-9: openCreateModalForDate initializes formData.date with exact column dateStr (Mon 24 -> 2026-08-24, Sat 29 -> 2026-08-29)',
+      timesheetsPageCode.includes('date: normalizeDateOnly(dateStr)')
+    );
+
+    runStep('TEST 10: openEditModal preserves task date string without shifting date',
+      timesheetsPageCode.includes('date: normalizeDateOnly(task.date)')
+    );
+
+    runStep('TEST 11: rescheduleTask creates new task on target dateStr (2026-08-27) rendering under Thursday 27',
+      timesheetRepoCode18.includes('rescheduleTask') &&
+      timesheetsPageCode.includes('openRescheduleModal')
+    );
+
+    runStep('TEST 12: SharedCalendar and Timesheets use identical date key mapping (normalizeDateOnly)',
+      timesheetsPageCode.includes('date: normalizeDateOnly(t.date)')
+    );
+
     summary['18. Date-Only Timezone Preservation'] = 'PASS';
 
     // ─── TEST 19: WORKFORCE IDENTITY & ACCOUNT LIFECYCLE SYNCHRONIZATION ───

@@ -110,6 +110,13 @@ export function getMondayOfWeek(dateInput?: Date | string): Date {
 }
 
 /**
+ * Returns Monday date string ("YYYY-MM-DD") for a reference date or string.
+ */
+export function getMondayOfWeekStr(dateInput?: Date | string): string {
+  return normalizeDateOnly(getMondayOfWeek(dateInput));
+}
+
+/**
  * Compares two date-only values ("YYYY-MM-DD").
  * Returns -1 if a < b, 0 if a == b, 1 if a > b.
  */
