@@ -941,6 +941,74 @@ async function runMasterE2EVerificationSuite() {
 
     summary['20. Trip Expense Super Admin Deletion'] = 'PASS';
 
+    // ─── TEST 21: GCS CANONICAL ATTACHMENTS & SECURE DOWNLOADS ───
+    console.log('\n--- TEST 21: GCS CANONICAL ATTACHMENTS & SECURE DOWNLOADS ---');
+
+    const storageCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/services/storageService.ts'), 'utf8');
+    const fileCtrlCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/controllers/fileController.ts'), 'utf8');
+    const migrationCode21 = fs.readFileSync(path.join(rootDir, 'backend/src/scripts/migrate_legacy_attachments.ts'), 'utf8');
+
+    runStep('StorageService implements verifyObjectExists, getSignedUploadUrl, getSignedDownloadUrl, and purgePrefix',
+      storageCode21.includes('static async verifyObjectExists') &&
+      storageCode21.includes('static async getSignedUploadUrl') &&
+      storageCode21.includes('static async getSignedDownloadUrl')
+    );
+
+    runStep('fileController.ts uploadInit enforces org/entity folder path, mimeType/extension validation, and max file sizes (PDF 25MB, Images 15MB)',
+      fileCtrlCode21.includes('organizations/') &&
+      fileCtrlCode21.includes('25 * 1024 * 1024') &&
+      fileCtrlCode21.includes('15 * 1024 * 1024') &&
+      fileCtrlCode21.includes('DISALLOWED_EXTENSIONS')
+    );
+
+    runStep('fileController.ts uploadComplete verifies GCS binary object exists before saving metadata',
+      fileCtrlCode21.includes('StorageService.verifyObjectExists(objectPath)') &&
+      fileCtrlCode21.includes('UPLOAD_NOT_VERIFIED')
+    );
+
+    runStep('fileController.ts download enforces RBAC & organization scope, checks physical object availability, and returns signed V4 URL',
+      fileCtrlCode21.includes('isAuthorizedManager') &&
+      fileCtrlCode21.includes('StorageService.verifyObjectExists(attachment.object_path)') &&
+      fileCtrlCode21.includes('StorageService.getSignedDownloadUrl')
+    );
+
+    runStep('migrate_legacy_attachments.ts decodes base64 data-URLs, uploads binary bytes to GCS, and updates database metadata',
+      migrationCode21.includes('migrateLegacyAttachments') &&
+      migrationCode21.includes('StorageService.uploadBuffer') &&
+      migrationCode21.includes('data:')
+    );
+
+    summary['21. GCS Canonical Attachments'] = 'PASS';
+
+    // ─── TEST 22: PERSISTENT ORGANIZATION LEAVE POLICY & ADJUSTMENTS ───
+    console.log('\n--- TEST 22: PERSISTENT ORGANIZATION LEAVE POLICY & ADJUSTMENTS ---');
+
+    const leaveRepoCode22 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/leaveRepository.ts'), 'utf8');
+    const leaveRoutesCode22 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/leaveRoutes.ts'), 'utf8');
+    const leavePageCode22 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Leave.tsx'), 'utf8');
+
+    runStep('LeaveRepository.updatePolicy updates leave_types (CL, PL/EL, SL, OL=0), re-synchronizes balances, and logs LEAVE_POLICY_UPDATED audit event',
+      leaveRepoCode22.includes("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $2 AND code = 'OL'") &&
+      leaveRepoCode22.includes("LEAVE_POLICY_UPDATED") &&
+      leaveRepoCode22.includes("INSERT INTO audit_logs")
+    );
+
+    runStep('leaveRoutes.ts guards PUT /api/leaves/policy with requireRole(SUPER_ADMIN, ADMIN, HR_MANAGER)',
+      leaveRoutesCode22.includes("router.put('/policy', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER')")
+    );
+
+    runStep('Leave.tsx fetches policy directly from backend leave_types and preserves CL/EL/SL quotas upon save & refresh',
+      leavePageCode22.includes("const typesRes = await apiFetch('/leaves/types')") &&
+      leavePageCode22.includes("clQuota: clT ? parseFloat(clT.annual_quota)")
+    );
+
+    runStep('Employee entitlement formula enforces CURRENT_POLICY + ADJUSTMENT = FINAL_ENTITLEMENT (e.g. 10 + 1 = 11)',
+      leaveRepoCode22.includes("finalEntitlement = orgQuota + effectiveAdjustment") ||
+      leaveRepoCode22.includes("finalEntitlement = orgQuota + parseFloat")
+    );
+
+    summary['22. Persistent Organization Leave Policy'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');

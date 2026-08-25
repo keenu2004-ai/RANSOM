@@ -89,14 +89,28 @@ export class LeaveRepository {
     return parseFloat(res.rows[0]?.cl_used || '0');
   }
 
-  static async updatePolicy(organizationId: string, quotas: { clQuota: number; elQuota: number; slQuota: number }) {
+  static async updatePolicy(organizationId: string, quotas: { clQuota: number; elQuota: number; slQuota: number }, actorUserId?: string) {
     return withTransaction(async (client) => {
       const currentYear = new Date().getFullYear();
 
-      // Update leave_types - handle both 'EL' and 'PL' codes for Earned/Privilege leave
+      // Get old quotas for audit snapshot
+      const oldTypesRes = await client.query('SELECT code, annual_quota FROM leave_types WHERE organization_id = $1', [organizationId]);
+      const oldValues: Record<string, number> = {};
+      oldTypesRes.rows.forEach(r => { oldValues[r.code] = parseFloat(r.annual_quota || '0'); });
+
+      // Update leave_types - handle both 'EL' and 'PL' codes for Earned/Privilege leave, and set OL quota = 0
       await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.clQuota, organizationId, 'CL']);
       await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code IN (\'EL\', \'PL\')', [quotas.elQuota, organizationId]);
       await client.query('UPDATE leave_types SET annual_quota = $1 WHERE organization_id = $2 AND code = $3', [quotas.slQuota, organizationId, 'SL']);
+      await client.query("UPDATE leave_types SET annual_quota = 0, is_active = FALSE WHERE organization_id = $2 AND code = 'OL'", [organizationId]);
+
+      const newValues = { CL: quotas.clQuota, PL: quotas.elQuota, SL: quotas.slQuota, OL: 0 };
+      if (actorUserId) {
+        await client.query(`
+          INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values)
+          VALUES ($1, $2, 'LEAVE_POLICY_UPDATED', 'leaves', 'LeavePolicy', $1, $3, $4)
+        `, [organizationId, actorUserId, JSON.stringify(oldValues), JSON.stringify(newValues)]);
+      }
 
       // Synchronize all leave_balances for active year according to current policy + active employee adjustments
       const balancesRes = await client.query(`

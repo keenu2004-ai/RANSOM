@@ -171,7 +171,7 @@ export class LeaveController {
         return res.status(400).json({ success: false, error: 'clQuota, elQuota, and slQuota must be numbers.', code: 'VALIDATION_ERROR' });
       }
 
-      const result = await LeaveRepository.updatePolicy(organizationId, { clQuota, elQuota, slQuota });
+      const result = await LeaveRepository.updatePolicy(organizationId, { clQuota, elQuota, slQuota }, req.user!.userId);
       return res.status(200).json({
         success: true,
         data: result
