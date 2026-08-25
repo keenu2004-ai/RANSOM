@@ -38,7 +38,13 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
-        u.status,
+        u.status as user_status,
+        e.status as employee_status,
+        CASE 
+          WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
+          WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
+          ELSE 'ACTIVE'
+        END as status,
         u.display_name,
         COALESCE(r.name, 'EMPLOYEE') as role,
         r.name as role_name,
@@ -65,7 +71,13 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
-        u.status,
+        u.status as user_status,
+        e.status as employee_status,
+        CASE 
+          WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
+          WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
+          ELSE 'ACTIVE'
+        END as status,
         u.display_name,
         COALESCE(r.name, 'EMPLOYEE') as role,
         r.name as role_name,
@@ -107,7 +119,13 @@ export class UserRepository {
         u.id,
         u.organization_id,
         u.email,
-        u.status,
+        u.status as user_status,
+        e.status as employee_status,
+        CASE 
+          WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
+          WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
+          ELSE 'ACTIVE'
+        END as status,
         COALESCE(r.name, 'EMPLOYEE') as role,
         r.name as role_name,
         e.id as employee_id,
@@ -117,7 +135,7 @@ export class UserRepository {
       FROM users u
       LEFT JOIN user_roles ur ON ur.user_id = u.id
       LEFT JOIN roles r ON r.id = ur.role_id
-      LEFT JOIN employees e ON e.user_id = u.id
+      LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
       ${whereClause}
       ORDER BY u.created_at DESC
     `;

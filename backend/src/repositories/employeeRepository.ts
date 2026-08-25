@@ -267,57 +267,70 @@ export class EmployeeRepository {
   }
 
   static async setStatus(id: string, organizationId: string, status: string, actorUserId?: string) {
-    if (status === 'INACTIVE') {
-      // Asset safety guard: Block deactivation if employee has active assigned assets
-      const assetCheck = await query(`
-        SELECT COUNT(*) as count FROM assets 
-        WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
-      `, [id, organizationId]);
-      const activeAssetsCount = parseInt(assetCheck.rows[0]?.count || '0', 10);
-      if (activeAssetsCount > 0) {
-        const err: any = new Error(`Employee has ${activeAssetsCount} assigned asset(s). Return/reassign assets before deactivation.`);
-        err.statusCode = 400;
-        err.code = 'ACTIVE_ASSETS_ASSIGNED';
-        throw err;
+    return withTransaction(async (client) => {
+      if (status === 'INACTIVE') {
+        // Asset safety guard: Block deactivation if employee has active assigned assets
+        const assetCheck = await client.query(`
+          SELECT COUNT(*)::int as count FROM assets 
+          WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
+        `, [id, organizationId]);
+        const activeAssetsCount = assetCheck.rows[0]?.count || 0;
+        if (activeAssetsCount > 0) {
+          const err: any = new Error(`Employee has ${activeAssetsCount} assigned asset(s). Return/reassign assets before deactivation.`);
+          err.statusCode = 400;
+          err.code = 'ACTIVE_ASSETS_ASSIGNED';
+          throw err;
+        }
       }
-    }
 
-    const text = `
-      UPDATE employees
-      SET status = $3, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND organization_id = $2
-      RETURNING id, user_id, employee_code, first_name, last_name, status, updated_at
-    `;
-    const res = await query(text, [id, organizationId, status]);
-    const emp = res.rows[0];
-    if (!emp) return null;
+      // Lock employee row
+      const empLockRes = await client.query(`
+        SELECT id, user_id, employee_code, first_name, last_name, status
+        FROM employees
+        WHERE id = $1 AND organization_id = $2
+        FOR UPDATE
+      `, [id, organizationId]);
 
-    // Deactivate or reactivate linked user account
-    if (emp.user_id) {
-      await query(`
-        UPDATE users
-        SET status = $2, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND organization_id = $3
-      `, [emp.user_id, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', organizationId]);
-    }
+      if (empLockRes.rows.length === 0) return null;
+      const emp = empLockRes.rows[0];
 
-    // Write audit log
-    const auditAction = status === 'INACTIVE' ? 'EMPLOYEE_DEACTIVATED' : 'EMPLOYEE_RESTORED';
-    await query(`
-      INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-      VALUES ($1, $2, $3, 'employees', 'Employee', $4, $5)
-    `, [organizationId, actorUserId || '00000000-0000-0000-0000-000000000000', auditAction, id, JSON.stringify({ status, employeeCode: emp.employee_code })]);
+      // Update employee status
+      const updateEmpRes = await client.query(`
+        UPDATE employees
+        SET status = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND organization_id = $2
+        RETURNING id, user_id, employee_code, first_name, last_name, status, updated_at
+      `, [id, organizationId, status]);
 
-    return emp;
+      const updatedEmp = updateEmpRes.rows[0];
+
+      // Synchronize linked user account status in the SAME transaction
+      if (emp.user_id) {
+        await client.query(`
+          UPDATE users
+          SET status = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND organization_id = $3
+        `, [emp.user_id, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', organizationId]);
+      }
+
+      // Write audit log in the SAME transaction
+      const auditAction = status === 'INACTIVE' ? 'EMPLOYEE_DEACTIVATED' : 'EMPLOYEE_RESTORED';
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, $3, 'employees', 'Employee', $4, $5)
+      `, [organizationId, actorUserId || '00000000-0000-0000-0000-000000000000', auditAction, id, JSON.stringify({ status, employeeCode: emp.employee_code })]);
+
+      return updatedEmp;
+    });
   }
 
   static async delete(id: string, organizationId: string, actorUserId?: string): Promise<boolean> {
     // 1. Asset safety guard: Block physical deletion if employee has active assigned assets
     const assetCheck = await query(`
-      SELECT COUNT(*) as count FROM assets 
+      SELECT COUNT(*)::int as count FROM assets 
       WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
     `, [id, organizationId]);
-    const activeAssetsCount = parseInt(assetCheck.rows[0]?.count || '0', 10);
+    const activeAssetsCount = assetCheck.rows[0]?.count || 0;
     if (activeAssetsCount > 0) {
       const err: any = new Error(`Employee has ${activeAssetsCount} assigned asset(s). Return/reassign assets before deletion.`);
       err.statusCode = 400;
@@ -332,28 +345,7 @@ export class EmployeeRepository {
     const emp = empRes.rows[0];
     const fullName = `${emp.first_name} ${emp.last_name}`;
 
-    // 3. Populate snapshots on historical tables before removing employee row so historical records survive seamlessly with name/code snapshots
-    await query(`UPDATE attendance SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-    await query(`UPDATE leave_requests SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-    await query(`UPDATE expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-    await query(`UPDATE timesheets SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-    await query(`UPDATE trip_expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-    await query(`UPDATE employee_leave_adjustments SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
-
-    if (emp.user_id) {
-      const userRes = await query(`SELECT email FROM users WHERE id = $1`, [emp.user_id]);
-      if (userRes.rows.length > 0) {
-        await query(`UPDATE audit_logs SET user_email_snapshot = $1, employee_name_snapshot = $2, employee_code_snapshot = $3 WHERE user_id = $4 AND user_email_snapshot IS NULL`, [userRes.rows[0].email, fullName, emp.employee_code, emp.user_id]);
-      }
-    }
-
-    // 4. Record audit log BEFORE physically removing user/employee
-    await query(`
-      INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values, user_email_snapshot, employee_name_snapshot, employee_code_snapshot)
-      VALUES ($1, $2, 'EMPLOYEE_DELETED', 'employees', 'Employee', $3, $4, NULL, $5, $6)
-    `, [organizationId, actorUserId || null, id, JSON.stringify({ employeeCode: emp.employee_code, fullName }), fullName, emp.employee_code]);
-
-    // 4b. Purge GCS files and attachment metadata for employee
+    // 3. Purge GCS files and attachment metadata for employee
     try {
       const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [organizationId]);
       const orgCode = orgRes.rows[0]?.code || 'default';
@@ -373,16 +365,41 @@ export class EmployeeRepository {
       console.warn('GCS employee file purge warning:', gcsErr);
     }
 
-    // 5. Unlink user_id on employee before deletion, and delete linked user account if exists
-    await query(`UPDATE employees SET user_id = NULL WHERE id = $1`, [id]);
-    if (emp.user_id) {
-      await query(`DELETE FROM user_roles WHERE user_id = $1`, [emp.user_id]);
-      await query(`DELETE FROM users WHERE id = $1 AND organization_id = $2`, [emp.user_id, organizationId]);
-    }
+    // 4. Execute atomic database deletion in transaction
+    return withTransaction(async (client) => {
+      // Populate snapshots on historical tables before removing employee row
+      await client.query(`UPDATE attendance SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+      await client.query(`UPDATE leave_requests SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+      await client.query(`UPDATE expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+      await client.query(`UPDATE timesheets SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+      await client.query(`UPDATE trip_expenses SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
+      await client.query(`UPDATE employee_leave_adjustments SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
 
-    // 6. Physically delete employee row (Historical attendance, leave, expenses, timesheets, and audit logs will survive via ON DELETE SET NULL!)
-    await query(`DELETE FROM employees WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
-    return true;
+      if (emp.user_id) {
+        const userRes = await client.query(`SELECT email FROM users WHERE id = $1`, [emp.user_id]);
+        if (userRes.rows.length > 0) {
+          await client.query(`UPDATE audit_logs SET user_email_snapshot = $1, employee_name_snapshot = $2, employee_code_snapshot = $3 WHERE user_id = $4 AND user_email_snapshot IS NULL`, [userRes.rows[0].email, fullName, emp.employee_code, emp.user_id]);
+        }
+      }
+
+      // Record audit log EMPLOYEE_PERMANENT_DELETION BEFORE physically removing user/employee
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values, user_email_snapshot, employee_name_snapshot, employee_code_snapshot)
+        VALUES ($1, $2, 'EMPLOYEE_PERMANENT_DELETION', 'employees', 'Employee', $3, $4, NULL, $5, $6)
+      `, [organizationId, actorUserId || null, id, JSON.stringify({ employeeCode: emp.employee_code, fullName }), fullName, emp.employee_code]);
+
+      // Unlink user_id on employee before deletion, and delete linked user account if exists
+      await client.query(`UPDATE employees SET user_id = NULL WHERE id = $1`, [id]);
+      if (emp.user_id) {
+        await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [emp.user_id]);
+        await client.query(`DELETE FROM users WHERE id = $1 AND organization_id = $2`, [emp.user_id, organizationId]);
+      }
+
+      // Physically delete employee row (Historical attendance, leave, expenses, timesheets survive via ON DELETE SET NULL!)
+      await client.query(`DELETE FROM employees WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+
+      return true;
+    });
   }
 
   static async getOrgChart(organizationId: string) {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { EmployeeController } from '../controllers/employeeController';
 import { authenticate } from '../middleware/authMiddleware';
-import { requirePermission } from '../middleware/rbacMiddleware';
+import { requirePermission, requireRole } from '../middleware/rbacMiddleware';
 
 const router = Router();
 
@@ -17,6 +17,6 @@ router.post('/:id/deactivate', requirePermission('EMPLOYEE_UPDATE'), EmployeeCon
 router.put('/:id/deactivate', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.deactivate);
 router.post('/:id/restore', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.restore);
 router.put('/:id/restore', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.restore);
-router.delete('/:id', requirePermission('EMPLOYEE_UPDATE'), EmployeeController.delete);
+router.delete('/:id', requireRole('SUPER_ADMIN', 'ADMIN'), EmployeeController.delete);
 
 export default router;
