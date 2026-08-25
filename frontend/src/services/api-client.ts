@@ -185,3 +185,19 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
     throw new ApiError(error.message || 'Unable to download file export.', 0, 'DOWNLOAD_ERROR');
   }
 }
+
+export function getSecureFileUrl(url: string | null | undefined): string {
+  if (!url) return '#';
+  if (url.startsWith('data:')) return url;
+  
+  const token = localStorage.getItem('theiakshi_auth_token') || '';
+  let fullUrl = url;
+  
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    fullUrl = getApiUrl(url);
+  }
+  
+  const separator = fullUrl.includes('?') ? '&' : '?';
+  return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
+}
+

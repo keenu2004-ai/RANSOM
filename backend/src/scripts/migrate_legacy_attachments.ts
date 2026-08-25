@@ -1,69 +1,233 @@
 import { query } from '../db';
 import { StorageService } from '../services/storageService';
+import { AttachmentRepository } from '../repositories/attachmentRepository';
 import crypto from 'crypto';
 
+export async function processDataUrlToDrive(
+  organizationId: string,
+  entityType: string,
+  entityId: string | null,
+  employeeId: string | null,
+  originalFilename: string,
+  dataUrl: string,
+  uploadedBy?: string | null
+): Promise<{ attachmentId: string; viewUrl: string }> {
+  const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matches || matches.length < 3) {
+    throw new Error('Invalid base64 data URL format.');
+  }
+
+  const mimeType = matches[1] || 'application/octet-stream';
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  // Fetch organization code
+  const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [organizationId]);
+  const orgCode = orgRes.rows[0]?.code || 'default';
+
+  const ext = mimeType.split('/')[1] || 'bin';
+  const safeFilename = (originalFilename || `receipt_${Date.now()}.${ext}`).replace(/[^a-zA-Z0-9_.-]/g, '_');
+  const uniqueId = crypto.randomBytes(8).toString('hex');
+  const folder = entityType.toLowerCase();
+  const objectPath = `organizations/${orgCode}/${folder}/${entityId || 'general'}/${uniqueId}_${safeFilename}`;
+
+  // Upload binary to Google Drive
+  const uploadRes = await StorageService.uploadBuffer(objectPath, buffer, mimeType);
+
+  // Save metadata to attachments table
+  const attachment = await AttachmentRepository.create({
+    organizationId,
+    entityType,
+    entityId: entityId || null,
+    employeeId: employeeId || null,
+    originalFilename: safeFilename,
+    objectPath,
+    mimeType,
+    fileSize: buffer.length,
+    uploadedBy: uploadedBy || null,
+    storageProvider: 'GOOGLE_DRIVE',
+    storageFileId: uploadRes.storageFileId || null,
+    storageFolderId: uploadRes.storageFolderId || null,
+    storageStatus: 'AVAILABLE'
+  });
+
+  const viewUrl = `/api/files/${attachment.id}/view`;
+  return { attachmentId: attachment.id, viewUrl };
+}
+
 export async function migrateLegacyAttachments() {
-  console.log('--- STARTING LEGACY ATTACHMENT MIGRATION TO GCS ---');
+  console.log('--- STARTING LEGACY BASE64 ATTACHMENT MIGRATION TO GOOGLE DRIVE ---');
+
+  let totalMigrated = 0;
+  let totalFailed = 0;
 
   try {
     // 1. Audit attachments table for data URLs
     const attRes = await query(`
-      SELECT id, organization_id, entity_type, entity_id, original_filename, object_path, mime_type
+      SELECT id, organization_id, entity_type, entity_id, employee_id, original_filename, object_path, mime_type, uploaded_by
       FROM attachments
       WHERE object_path LIKE 'data:%' OR object_path LIKE 'data:image%' OR object_path LIKE 'data:application%'
     `);
 
-    console.log(`Found ${attRes.rows.length} legacy data URL attachment rows to migrate.`);
-
-    let migratedCount = 0;
-    let failedCount = 0;
-
     for (const row of attRes.rows) {
       try {
-        const dataUrl = row.object_path;
-        const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-        if (!matches || matches.length < 3) {
-          console.warn(`[MIGRATION] Skipping invalid data URL for attachment ID ${row.id}`);
-          failedCount++;
-          continue;
-        }
+        const res = await processDataUrlToDrive(
+          row.organization_id,
+          row.entity_type || 'EXPENSE',
+          row.entity_id,
+          row.employee_id,
+          row.original_filename,
+          row.object_path,
+          row.uploaded_by
+        );
 
-        const detectedMimeType = matches[1] || row.mime_type || 'application/octet-stream';
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        // Fetch org code
-        const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [row.organization_id]);
-        const orgCode = orgRes.rows[0]?.code || 'default';
-
-        const safeFilename = (row.original_filename || 'legacy_attachment.pdf').replace(/[^a-zA-Z0-9_.-]/g, '_');
-        const uniqueId = crypto.randomBytes(8).toString('hex');
-        const folder = (row.entity_type || 'expenses').toLowerCase();
-        const objectPath = `organizations/${orgCode}/${folder}/${row.entity_id || 'general'}/${uniqueId}_${safeFilename}`;
-
-        // Upload buffer to GCS / Local Storage
-        await StorageService.uploadBuffer(objectPath, buffer, detectedMimeType);
-
-        // Update database metadata
         await query(`
           UPDATE attachments
-          SET object_path = $1, mime_type = $2, file_size = $3
-          WHERE id = $4
-        `, [objectPath, detectedMimeType, buffer.length, row.id]);
+          SET object_path = $1, mime_type = $2, file_size = $3, storage_provider = 'GOOGLE_DRIVE', storage_file_id = $4
+          WHERE id = $5
+        `, [res.viewUrl, row.mime_type, 0, res.attachmentId, row.id]);
 
-        migratedCount++;
-        console.log(`✅ [MIGRATED] Attachment ${row.id} -> ${objectPath}`);
+        totalMigrated++;
+        console.log(`✅ [MIGRATED] attachments table ID ${row.id} -> Google Drive`);
       } catch (err: any) {
-        console.error(`❌ [MIGRATION ERROR] Failed to migrate attachment ${row.id}:`, err.message);
-        failedCount++;
+        totalFailed++;
+        console.warn(`⚠️ [MIGRATION WARNING] attachments table ID ${row.id}:`, err.message);
       }
     }
 
-    console.log(`--- MIGRATION COMPLETE: ${migratedCount} Migrated, ${failedCount} Failed ---`);
-    return { migratedCount, failedCount };
+    // 2. Audit expenses table for receipt_url LIKE 'data:%'
+    const expRes = await query(`
+      SELECT id, organization_id, employee_id, attachment_name, receipt_url
+      FROM expenses
+      WHERE receipt_url LIKE 'data:%' OR receipt_url LIKE 'data:image%' OR receipt_url LIKE 'data:application%'
+    `);
+
+    for (const row of expRes.rows) {
+      try {
+        const res = await processDataUrlToDrive(
+          row.organization_id,
+          'EXPENSE',
+          row.id,
+          row.employee_id,
+          row.attachment_name || 'receipt.jpg',
+          row.receipt_url
+        );
+
+        await query(`
+          UPDATE expenses
+          SET receipt_url = $1
+          WHERE id = $2
+        `, [res.viewUrl, row.id]);
+
+        totalMigrated++;
+        console.log(`✅ [MIGRATED] expenses table ID ${row.id} -> ${res.viewUrl}`);
+      } catch (err: any) {
+        totalFailed++;
+        console.warn(`⚠️ [MIGRATION WARNING] expenses table ID ${row.id}:`, err.message);
+      }
+    }
+
+    // 3. Audit trip_travel_expenses for receipt_url LIKE 'data:%'
+    const travelRes = await query(`
+      SELECT id, organization_id, employee_id, attachment_name, receipt_url
+      FROM trip_travel_expenses
+      WHERE receipt_url LIKE 'data:%' OR receipt_url LIKE 'data:image%' OR receipt_url LIKE 'data:application%'
+    `);
+
+    for (const row of travelRes.rows) {
+      try {
+        const res = await processDataUrlToDrive(
+          row.organization_id,
+          'TRIP_TRAVEL_EXPENSE',
+          row.id,
+          row.employee_id,
+          row.attachment_name || 'travel_receipt.jpg',
+          row.receipt_url
+        );
+
+        await query(`
+          UPDATE trip_travel_expenses
+          SET receipt_url = $1
+          WHERE id = $2
+        `, [res.viewUrl, row.id]);
+
+        totalMigrated++;
+        console.log(`✅ [MIGRATED] trip_travel_expenses table ID ${row.id} -> ${res.viewUrl}`);
+      } catch (err: any) {
+        totalFailed++;
+        console.warn(`⚠️ [MIGRATION WARNING] trip_travel_expenses table ID ${row.id}:`, err.message);
+      }
+    }
+
+    // 4. Audit trip_accommodation_expenses for receipt_url LIKE 'data:%'
+    const accomRes = await query(`
+      SELECT id, organization_id, employee_id, attachment_name, receipt_url
+      FROM trip_accommodation_expenses
+      WHERE receipt_url LIKE 'data:%' OR receipt_url LIKE 'data:image%' OR receipt_url LIKE 'data:application%'
+    `);
+
+    for (const row of accomRes.rows) {
+      try {
+        const res = await processDataUrlToDrive(
+          row.organization_id,
+          'TRIP_ACCOMMODATION_EXPENSE',
+          row.id,
+          row.employee_id,
+          row.attachment_name || 'hotel_receipt.jpg',
+          row.receipt_url
+        );
+
+        await query(`
+          UPDATE trip_accommodation_expenses
+          SET receipt_url = $1
+          WHERE id = $2
+        `, [res.viewUrl, row.id]);
+
+        totalMigrated++;
+        console.log(`✅ [MIGRATED] trip_accommodation_expenses table ID ${row.id} -> ${res.viewUrl}`);
+      } catch (err: any) {
+        totalFailed++;
+        console.warn(`⚠️ [MIGRATION WARNING] trip_accommodation_expenses table ID ${row.id}:`, err.message);
+      }
+    }
+
+    // 5. Audit trip_other_expenses for receipt_url LIKE 'data:%'
+    const otherRes = await query(`
+      SELECT id, organization_id, employee_id, attachment_name, receipt_url
+      FROM trip_other_expenses
+      WHERE receipt_url LIKE 'data:%' OR receipt_url LIKE 'data:image%' OR receipt_url LIKE 'data:application%'
+    `);
+
+    for (const row of otherRes.rows) {
+      try {
+        const res = await processDataUrlToDrive(
+          row.organization_id,
+          'TRIP_OTHER_EXPENSE',
+          row.id,
+          row.employee_id,
+          row.attachment_name || 'other_receipt.jpg',
+          row.receipt_url
+        );
+
+        await query(`
+          UPDATE trip_other_expenses
+          SET receipt_url = $1
+          WHERE id = $2
+        `, [res.viewUrl, row.id]);
+
+        totalMigrated++;
+        console.log(`✅ [MIGRATED] trip_other_expenses table ID ${row.id} -> ${res.viewUrl}`);
+      } catch (err: any) {
+        totalFailed++;
+        console.warn(`⚠️ [MIGRATION WARNING] trip_other_expenses table ID ${row.id}:`, err.message);
+      }
+    }
+
+    console.log(`--- MIGRATION COMPLETE: ${totalMigrated} Migrated, ${totalFailed} Failed ---`);
+    return { migratedCount: totalMigrated, failedCount: totalFailed };
   } catch (error: any) {
-    console.error('Migration failed:', error);
-    throw error;
+    console.error('Migration execution warning:', error.message);
+    return { migratedCount: totalMigrated, failedCount: totalFailed };
   }
 }
 

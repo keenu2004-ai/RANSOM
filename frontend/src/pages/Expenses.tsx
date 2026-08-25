@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '../services/api-client';
+import { apiFetch, getSecureFileUrl } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import {
@@ -61,6 +61,7 @@ export const Expenses: React.FC = () => {
 
   // File Attachment State
   const [attachment, setAttachment] = useState<{ name: string; url: string } | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
 
   // Common Form Error & Loading
   const [formError, setFormError] = useState<string | null>(null);
@@ -176,20 +177,17 @@ export const Expenses: React.FC = () => {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setFormError('File size exceeds 10MB limit.');
+    if (file.size > 15 * 1024 * 1024) {
+      setFormError('File size exceeds 15MB limit.');
       return;
     }
 
     setFormError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAttachment({
-        name: file.name,
-        url: reader.result as string
-      });
-    };
-    reader.readAsDataURL(file);
+    setRawFile(file);
+    setAttachment({
+      name: file.name,
+      url: URL.createObjectURL(file)
+    });
   };
 
   // Open Business / Local Travel Single Claim Modal
@@ -927,7 +925,7 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {t.receipt_url && (
-                            <a href={t.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <a href={getSecureFileUrl(t.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -978,7 +976,7 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {a.receipt_url && (
-                            <a href={a.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <a href={getSecureFileUrl(a.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -1030,7 +1028,7 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {o.receipt_url && (
-                            <a href={o.receipt_url} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <a href={getSecureFileUrl(o.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -1970,7 +1968,7 @@ export const Expenses: React.FC = () => {
                     <FileText className="w-4 h-4 text-cyan-400" />
                     <span className="font-semibold text-slate-200 truncate">{selectedSingleExpense.attachment_name || 'Receipt Document'}</span>
                   </div>
-                  <a href={selectedSingleExpense.receipt_url} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded text-[10px] font-bold">View File</a>
+                  <a href={getSecureFileUrl(selectedSingleExpense.receipt_url)} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded text-[10px] font-bold">View File</a>
                 </div>
               )}
             </div>

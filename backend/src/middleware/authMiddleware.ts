@@ -1,20 +1,25 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { AuthenticatedRequest, AuthUser } from '../types';
+import { AuthenticatedRequest } from '../types';
 
 export function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  let token: string | null = null;
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.query.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return res.status(401).json({
       success: false,
       error: 'Authentication token is required.',
       code: 'UNAUTHENTICATED'
     });
   }
-
-  const token = authHeader.substring(7);
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as any;

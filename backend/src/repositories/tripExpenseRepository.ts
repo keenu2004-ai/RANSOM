@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../db';
 import { StorageService } from '../services/storageService';
+import { processDataUrlToDrive } from '../scripts/migrate_legacy_attachments';
 
 export interface CreateTripDTO {
   purpose: string;
@@ -112,6 +113,26 @@ export class TripExpenseRepository {
       if (tripRes.rows.length === 0) throw new Error('Trip Expense not found.');
       if (tripRes.rows[0].status !== 'DRAFT') throw new Error('Cannot add travel expense to a non-draft trip.');
 
+      let receiptUrl = data.receiptUrl || null;
+      let attachmentName = data.attachmentName || null;
+
+      if (receiptUrl && receiptUrl.startsWith('data:')) {
+        try {
+          const driveRes = await processDataUrlToDrive(
+            organizationId,
+            'TRIP_TRAVEL_EXPENSE',
+            tripId,
+            employeeId,
+            attachmentName || 'travel_receipt.jpg',
+            receiptUrl
+          );
+          receiptUrl = driveRes.viewUrl;
+          attachmentName = attachmentName || 'travel_receipt.jpg';
+        } catch (err: any) {
+          console.warn('[STORAGE] Auto-convert travel receipt to Google Drive failed:', err.message);
+        }
+      }
+
       const text = `
         INSERT INTO trip_travel_expenses (
           trip_expense_id, organization_id, employee_id, start_date, end_date, transport_mode, purpose, merchant,
@@ -124,7 +145,7 @@ export class TripExpenseRepository {
       const params = [
         tripId, organizationId, employeeId, data.startDate, data.endDate, data.transportMode, data.purpose,
         data.merchant || null, data.startLocation, data.endLocation, data.distanceKm || 0, data.currency || 'INR',
-        data.amount, data.attachmentName || null, data.receiptUrl || null
+        data.amount, attachmentName, receiptUrl
       ];
       const res = await client.query(text, params);
       await this.recalculateTripTotal(client, tripId);
@@ -187,6 +208,26 @@ export class TripExpenseRepository {
       if (tripRes.rows.length === 0) throw new Error('Trip Expense not found.');
       if (tripRes.rows[0].status !== 'DRAFT') throw new Error('Cannot add accommodation expense to a non-draft trip.');
 
+      let receiptUrl = data.receiptUrl || null;
+      let attachmentName = data.attachmentName || null;
+
+      if (receiptUrl && receiptUrl.startsWith('data:')) {
+        try {
+          const driveRes = await processDataUrlToDrive(
+            organizationId,
+            'TRIP_ACCOMMODATION_EXPENSE',
+            tripId,
+            employeeId,
+            attachmentName || 'hotel_receipt.jpg',
+            receiptUrl
+          );
+          receiptUrl = driveRes.viewUrl;
+          attachmentName = attachmentName || 'hotel_receipt.jpg';
+        } catch (err: any) {
+          console.warn('[STORAGE] Auto-convert accommodation receipt to Google Drive failed:', err.message);
+        }
+      }
+
       const text = `
         INSERT INTO trip_accommodation_expenses (
           trip_expense_id, organization_id, employee_id, start_date, end_date, currency, amount, accommodation_details, attachment_name, receipt_url
@@ -197,7 +238,7 @@ export class TripExpenseRepository {
       `;
       const params = [
         tripId, organizationId, employeeId, data.startDate, data.endDate, data.currency || 'INR',
-        data.amount, data.accommodationDetails, data.attachmentName || null, data.receiptUrl || null
+        data.amount, data.accommodationDetails, attachmentName, receiptUrl
       ];
       const res = await client.query(text, params);
       await this.recalculateTripTotal(client, tripId);
@@ -254,6 +295,26 @@ export class TripExpenseRepository {
       if (tripRes.rows.length === 0) throw new Error('Trip Expense not found.');
       if (tripRes.rows[0].status !== 'DRAFT') throw new Error('Cannot add other expense to a non-draft trip.');
 
+      let receiptUrl = data.receiptUrl || null;
+      let attachmentName = data.attachmentName || null;
+
+      if (receiptUrl && receiptUrl.startsWith('data:')) {
+        try {
+          const driveRes = await processDataUrlToDrive(
+            organizationId,
+            'TRIP_OTHER_EXPENSE',
+            tripId,
+            employeeId,
+            attachmentName || 'other_receipt.jpg',
+            receiptUrl
+          );
+          receiptUrl = driveRes.viewUrl;
+          attachmentName = attachmentName || 'other_receipt.jpg';
+        } catch (err: any) {
+          console.warn('[STORAGE] Auto-convert other receipt to Google Drive failed:', err.message);
+        }
+      }
+
       const text = `
         INSERT INTO trip_other_expenses (
           trip_expense_id, organization_id, employee_id, transaction_date, category, merchant, currency, amount, purpose, attachment_name, receipt_url
@@ -264,7 +325,7 @@ export class TripExpenseRepository {
       `;
       const params = [
         tripId, organizationId, employeeId, data.transactionDate, data.category, data.merchant || null,
-        data.currency || 'INR', data.amount, data.purpose, data.attachmentName || null, data.receiptUrl || null
+        data.currency || 'INR', data.amount, data.purpose, attachmentName, receiptUrl
       ];
       const res = await client.query(text, params);
       await this.recalculateTripTotal(client, tripId);

@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../db';
 import { StorageService } from '../services/storageService';
+import { processDataUrlToDrive } from '../scripts/migrate_legacy_attachments';
 
 export interface CreateExpenseDTO {
   expenseType: 'BUSINESS' | 'LOCAL_TRAVEL';
@@ -29,6 +30,26 @@ export class ExpenseRepository {
     const transactionDate = data.transactionDate || new Date().toISOString().split('T')[0];
     const currency = data.currency || 'INR';
 
+    let receiptUrl = data.receiptUrl || null;
+    let attachmentName = data.attachmentName || null;
+
+    if (receiptUrl && receiptUrl.startsWith('data:')) {
+      try {
+        const driveRes = await processDataUrlToDrive(
+          organizationId,
+          'EXPENSE',
+          null,
+          employeeId,
+          attachmentName || 'receipt.jpg',
+          receiptUrl
+        );
+        receiptUrl = driveRes.viewUrl;
+        attachmentName = attachmentName || 'receipt.jpg';
+      } catch (err: any) {
+        console.warn('[STORAGE] Auto-convert base64 receipt to Google Drive failed:', err.message);
+      }
+    }
+
     const text = `
       INSERT INTO expenses (
         organization_id, employee_id, expense_type, transaction_date, category, merchant,
@@ -57,8 +78,8 @@ export class ExpenseRepository {
       data.startLocation || null,
       data.endLocation || null,
       data.description,
-      data.attachmentName || null,
-      data.receiptUrl || null,
+      attachmentName,
+      receiptUrl,
       status
     ];
 
