@@ -7,6 +7,9 @@ import {
   MapPin, Phone, Mail, DollarSign, Target, Briefcase, Calendar, AlertCircle
 } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
+import { 
+  normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, parseDateOnlyToLocal 
+} from '../utils/dateUtils';
 
 export const Timesheets: React.FC = () => {
   const { user } = useAuth();
@@ -25,14 +28,7 @@ export const Timesheets: React.FC = () => {
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>('');
 
   // Active Week Date State (Reference Monday Date)
-  const [selectedMonday, setSelectedMonday] = useState<Date>(() => {
-    const today = new Date();
-    const day = today.getDay(); // 0 = Sun, 1 = Mon ...
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  });
+  const [selectedMonday, setSelectedMonday] = useState<Date>(() => getMondayOfWeek());
 
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
@@ -44,7 +40,7 @@ export const Timesheets: React.FC = () => {
     assignedEmployeeId: '',
     title: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: normalizeDateOnly(new Date()),
     hours: 8,
     status: 'PLANNED',
     customerName: '',
@@ -77,39 +73,32 @@ export const Timesheets: React.FC = () => {
   const weekDays = useMemo(() => {
     const days = [];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const baseMondayStr = normalizeDateOnly(selectedMonday);
     for (let i = 0; i < 7; i++) {
-      const d = new Date(selectedMonday);
-      d.setDate(selectedMonday.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = addCalendarDays(baseMondayStr, i);
+      const localDate = parseDateOnlyToLocal(dateStr);
       days.push({
         name: dayNames[i],
-        date: d,
+        date: localDate,
         dateStr: dateStr,
-        dayNum: d.getDate()
+        dayNum: localDate.getDate()
       });
     }
     return days;
   }, [selectedMonday]);
 
   const handlePrevWeek = () => {
-    const prev = new Date(selectedMonday);
-    prev.setDate(selectedMonday.getDate() - 7);
-    setSelectedMonday(prev);
+    const prevStr = addCalendarDays(normalizeDateOnly(selectedMonday), -7);
+    setSelectedMonday(parseDateOnlyToLocal(prevStr));
   };
 
   const handleNextWeek = () => {
-    const next = new Date(selectedMonday);
-    next.setDate(selectedMonday.getDate() + 7);
-    setSelectedMonday(next);
+    const nextStr = addCalendarDays(normalizeDateOnly(selectedMonday), 7);
+    setSelectedMonday(parseDateOnlyToLocal(nextStr));
   };
 
   const handleThisWeek = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    setSelectedMonday(monday);
+    setSelectedMonday(getMondayOfWeek());
   };
 
   const fetchTasks = useCallback(async () => {
@@ -146,7 +135,7 @@ export const Timesheets: React.FC = () => {
       // Map to Calendar Events
       const events: CalendarEvent[] = rawTasks.map((t: any) => ({
         id: `task-${t.id}`,
-        date: t.date.split('T')[0],
+        date: normalizeDateOnly(t.date),
         type: 'TASK',
         title: `${t.customer_name ? `[${t.customer_name}] ` : ''}${t.title || 'Field Visit'}`,
         status: t.status || 'PLANNED',
@@ -179,7 +168,7 @@ export const Timesheets: React.FC = () => {
       assignedEmployeeId: defaultEmpId,
       title: '',
       description: '',
-      date: dateStr,
+      date: normalizeDateOnly(dateStr) || normalizeDateOnly(new Date()),
       hours: 8,
       status: 'PLANNED',
       customerName: '',
@@ -208,7 +197,7 @@ export const Timesheets: React.FC = () => {
       assignedEmployeeId: task.assigned_employee_id || '',
       title: task.title || task.description || '',
       description: task.description || '',
-      date: task.date ? task.date.split('T')[0] : '',
+      date: normalizeDateOnly(task.date),
       hours: task.hours || 8,
       status: task.status || 'PLANNED',
       customerName: task.customer_name || '',
@@ -221,7 +210,7 @@ export const Timesheets: React.FC = () => {
       visitObjective: task.visit_objective || '',
       outcomeSummary: task.outcome_summary || '',
       nextAction: task.next_action || '',
-      followUpDate: task.follow_up_date ? task.follow_up_date.split('T')[0] : '',
+      followUpDate: normalizeDateOnly(task.follow_up_date),
       opportunityStage: task.opportunity_stage || 'Qualified',
       estimatedValue: task.estimated_value ? Number(task.estimated_value) : 0,
       priority: task.priority || 'MEDIUM',
@@ -233,9 +222,8 @@ export const Timesheets: React.FC = () => {
 
   const openRescheduleModal = (task: any) => {
     setRescheduleTaskItem(task);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setRescheduleNewDate(tomorrow.toISOString().split('T')[0]);
+    const tomorrowStr = addCalendarDays(normalizeDateOnly(new Date()), 1);
+    setRescheduleNewDate(tomorrowStr);
     setRescheduleReason('Rescheduled for customer follow-up');
   };
 
@@ -340,7 +328,7 @@ export const Timesheets: React.FC = () => {
   const tasksByDate = useMemo(() => {
     const map = new Map<string, any[]>();
     tasks.forEach(t => {
-      const dKey = t.date.split('T')[0];
+      const dKey = normalizeDateOnly(t.date);
       if (!map.has(dKey)) map.set(dKey, []);
       map.get(dKey)!.push(t);
     });
@@ -369,8 +357,8 @@ export const Timesheets: React.FC = () => {
     return { totalPlanned, completed, inProgress, cancelled, rescheduled, pipelineVal, dealsWon };
   }, [tasks]);
 
-  const weekStartStr = weekDays[0].date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-  const weekEndStr = weekDays[6].date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  const weekStartStr = displayDateOnly(weekDays[0].dateStr);
+  const weekEndStr = displayDateOnly(weekDays[6].dateStr);
 
   return (
     <div className="space-y-6">
@@ -397,7 +385,7 @@ export const Timesheets: React.FC = () => {
           </button>
 
           <button
-            onClick={() => openCreateModalForDate(new Date().toISOString().split('T')[0])}
+            onClick={() => openCreateModalForDate(normalizeDateOnly(new Date()))}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -584,7 +572,7 @@ export const Timesheets: React.FC = () => {
         {/* 7-Day Weekly Layout (Mon - Sun) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {weekDays.map((day, idx) => {
-            const isToday = day.dateStr === new Date().toISOString().split('T')[0];
+            const isToday = day.dateStr === normalizeDateOnly(new Date());
             const dayTasks = tasksByDate.get(day.dateStr) || [];
 
             return (

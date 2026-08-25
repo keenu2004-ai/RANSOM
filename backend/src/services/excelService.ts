@@ -3,14 +3,22 @@ import ExcelJS from 'exceljs';
 export function safeFormatDate(val: any, fallback: string = '-'): string {
   if (val === null || val === undefined || val === '') return fallback;
   if (typeof val === 'string') {
-    return val.includes('T') ? val.split('T')[0] : val;
+    return val.includes('T') ? val.split('T')[0] : val.trim();
   }
   if (val instanceof Date && !isNaN(val.getTime())) {
-    return val.toISOString().split('T')[0];
+    const y = val.getUTCFullYear();
+    const m = String(val.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(val.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
   if (typeof val === 'number') {
     const d = new Date(val);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    if (!isNaN(d.getTime())) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
   }
   return fallback;
 }

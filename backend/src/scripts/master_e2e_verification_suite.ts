@@ -730,6 +730,34 @@ async function runMasterE2EVerificationSuite() {
 
     summary['17. Storage, Display Name, Expense Cleanup & Archiving'] = 'PASS';
 
+    // ─── TEST 18: WEEKLY PLAN DATE-ONLY TIMEZONE PRESERVATION ───
+    console.log('\n--- TEST 18: WEEKLY PLAN DATE-ONLY TIMEZONE PRESERVATION ---');
+
+    const dateUtilsCode = fs.readFileSync(path.join(rootDir, 'frontend/src/utils/dateUtils.ts'), 'utf8');
+    const timesheetsPageCode = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Timesheets.tsx'), 'utf8');
+    const timesheetRepoCode18 = fs.readFileSync(path.join(rootDir, 'backend/src/repositories/timesheetRepository.ts'), 'utf8');
+
+    runStep('frontend/src/utils/dateUtils.ts exists with canonical date-only functions',
+      dateUtilsCode.includes('export function normalizeDateOnly') &&
+      dateUtilsCode.includes('export function addCalendarDays') &&
+      dateUtilsCode.includes('export function getMondayOfWeek') &&
+      dateUtilsCode.includes('export function displayDateOnly')
+    );
+
+    runStep('Timesheets.tsx uses normalizeDateOnly & dateUtils without timezone-shifting toISOString() on local midnight Dates',
+      timesheetsPageCode.includes('import {') &&
+      timesheetsPageCode.includes('normalizeDateOnly') &&
+      timesheetsPageCode.includes('addCalendarDays') &&
+      !timesheetsPageCode.includes('d.toISOString().split')
+    );
+
+    runStep('timesheetRepository.ts formats date as TO_CHAR(t.date, \'YYYY-MM-DD\') and maps task rows to prevent UTC shifting',
+      timesheetRepoCode18.includes("TO_CHAR(t.date, 'YYYY-MM-DD') AS date") &&
+      timesheetRepoCode18.includes('mapTaskRow')
+    );
+
+    summary['18. Date-Only Timezone Preservation'] = 'PASS';
+
 
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');

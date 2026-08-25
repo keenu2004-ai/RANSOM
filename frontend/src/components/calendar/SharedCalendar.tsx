@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { normalizeDateOnly } from '../../utils/dateUtils';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, 
   CheckCircle2, XCircle, Clock, AlertTriangle, Palmtree, Award, Briefcase, X
@@ -126,7 +127,7 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
       if (evt.type === 'HOLIDAY' && !showHolidays) return;
       if ((evt.type === 'TASK' || evt.type === 'WEEKLY_PLAN') && !showTasks) return;
 
-      const dateKey = evt.date.split('T')[0];
+      const dateKey = normalizeDateOnly(evt.date);
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -146,8 +147,10 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
     let tasks = 0;
 
     events.forEach(evt => {
-      const evtDate = new Date(evt.date);
-      if (evtDate.getFullYear() === currentYear && evtDate.getMonth() === currentMonth) {
+      const dateStr = normalizeDateOnly(evt.date);
+      if (!dateStr || !dateStr.includes('-')) return;
+      const [y, m] = dateStr.split('-').map(n => parseInt(n, 10));
+      if (y === currentYear && m === (currentMonth + 1)) {
         if (evt.type === 'ATTENDANCE') {
           const st = (evt.status || '').toUpperCase();
           if (st === 'PRESENT') present++;
@@ -329,7 +332,7 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
                 const dayNum = cell.date.getDate();
                 const isWeekend = cIdx === 0 || cIdx === 6;
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = normalizeDateOnly(new Date());
                 const isToday = cell.dateStr === todayStr;
                 const dayEvents = filteredEventsMap.get(cell.dateStr) || [];
 

@@ -1,5 +1,28 @@
 import { query } from '../db';
 
+export function normalizeDateOnly(val: any): string | null {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'string') {
+    return val.includes('T') ? val.split('T')[0] : val.trim();
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getUTCFullYear();
+    const m = String(val.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(val.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(val);
+}
+
+export function mapTaskRow(row: any): any {
+  if (!row) return row;
+  return {
+    ...row,
+    date: normalizeDateOnly(row.date) || row.date,
+    follow_up_date: normalizeDateOnly(row.follow_up_date)
+  };
+}
+
 export class TimesheetRepository {
   static async findProjects(organizationId: string) {
     const res = await query('SELECT id, name, code, description, status FROM projects WHERE organization_id = $1 ORDER BY name ASC', [organizationId]);
@@ -78,6 +101,9 @@ export class TimesheetRepository {
     const status = data.status || 'PLANNED';
     const projectId = data.projectId && data.projectId.trim() !== '' ? data.projectId.trim() : null;
 
+    const taskDateStr = normalizeDateOnly(data.date) || data.date;
+    const followUpDateStr = normalizeDateOnly((data as any).followUpDate || (data as any).follow_up_date);
+
     const insertSql = `
       INSERT INTO timesheets (
         organization_id, employee_id, project_id, title, date, hours, description, status, created_by,
@@ -85,7 +111,7 @@ export class TimesheetRepository {
         products_to_present, visit_objective, outcome_summary, next_action, follow_up_date,
         opportunity_stage, estimated_value, priority
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
-      RETURNING *
+      RETURNING *, TO_CHAR(date, 'YYYY-MM-DD') AS date, TO_CHAR(follow_up_date, 'YYYY-MM-DD') AS follow_up_date
     `;
 
     const res = await query(insertSql, [
@@ -93,7 +119,7 @@ export class TimesheetRepository {
       finalAssignedEmpId,
       projectId,
       title,
-      data.date,
+      taskDateStr,
       hours,
       description,
       status,
@@ -108,13 +134,13 @@ export class TimesheetRepository {
       (data as any).visitObjective || (data as any).visit_objective || null,
       (data as any).outcomeSummary || (data as any).outcome_summary || null,
       (data as any).nextAction || (data as any).next_action || null,
-      (data as any).followUpDate || (data as any).follow_up_date || null,
+      followUpDateStr,
       (data as any).opportunityStage || (data as any).opportunity_stage || null,
       ((data as any).estimatedValue ?? (data as any).estimated_value) !== undefined ? Number((data as any).estimatedValue ?? (data as any).estimated_value) : null,
       (data as any).priority || 'MEDIUM'
     ]);
 
-    const newTask = res.rows[0];
+    const newTask = mapTaskRow(res.rows[0]);
 
     // Notification for Management Assignment
     if (finalAssignedEmpId !== actorEmployeeId) {
@@ -123,17 +149,16 @@ export class TimesheetRepository {
         await query(`
           INSERT INTO notifications (organization_id, user_id, title, message)
           VALUES ($1, $2, 'New Task Assigned', $3)
-        `, [organizationId, targetEmp.rows[0].user_id, `New task assigned: ${title} — ${data.date}`]).catch(() => null);
+        `, [organizationId, targetEmp.rows[0].user_id, `You have been assigned a new task: ${title}`]);
       }
     }
 
     // Audit Log
-    const auditAction = finalAssignedEmpId !== actorEmployeeId ? 'TASK_ASSIGNED' : 'TASK_CREATED';
     await query(`
       INSERT INTO audit_logs (
         organization_id, user_id, action, module, entity_name, entity_id, new_values
-      ) VALUES ($1, $2, $3, 'tasks', 'DailyTask', $4, $5)
-    `, [organizationId, actorUserId, auditAction, newTask.id, JSON.stringify({ title, date: data.date, assignedEmployeeId: finalAssignedEmpId })]);
+      ) VALUES ($1, $2, 'TASK_CREATED', 'tasks', 'DailyTask', $3, $4)
+    `, [organizationId, actorUserId, newTask.id, JSON.stringify({ title, date: taskDateStr, assignedEmployeeId: finalAssignedEmpId })]);
 
     return newTask;
   }
@@ -182,12 +207,12 @@ export class TimesheetRepository {
     }
 
     if (filters.startDate) {
-      params.push(filters.startDate);
+      params.push(normalizeDateOnly(filters.startDate));
       conditions.push(`t.date >= $${params.length}`);
     }
 
     if (filters.endDate) {
-      params.push(filters.endDate);
+      params.push(normalizeDateOnly(filters.endDate));
       conditions.push(`t.date <= $${params.length}`);
     }
 
@@ -213,10 +238,10 @@ export class TimesheetRepository {
 
     const dataSql = `
       SELECT 
-        t.id, t.date, t.hours, t.title, t.description, t.status, t.project_id,
+        t.id, TO_CHAR(t.date, 'YYYY-MM-DD') AS date, t.hours, t.title, t.description, t.status, t.project_id,
         t.customer_name, t.contact_person, t.contact_details, t.visit_location,
         t.visit_type, t.time_slot, t.products_to_present, t.visit_objective,
-        t.outcome_summary, t.next_action, t.follow_up_date, t.opportunity_stage,
+        t.outcome_summary, t.next_action, TO_CHAR(t.follow_up_date, 'YYYY-MM-DD') AS follow_up_date, t.opportunity_stage,
         t.estimated_value, t.priority, t.cancelled_at, t.cancelled_by, t.cancellation_reason,
         t.rescheduled_from_task_id, t.rescheduled_to_task_id, t.reschedule_count, t.reschedule_reason,
         t.employee_id as assigned_employee_id,
@@ -234,7 +259,7 @@ export class TimesheetRepository {
     `;
 
     const res = await query(dataSql, params);
-    return res.rows;
+    return res.rows.map(mapTaskRow);
   }
 
   static async updateTask(
@@ -270,35 +295,18 @@ export class TimesheetRepository {
     if (existing.rows.length === 0) {
       throw new Error('Task not found.');
     }
+
     const task = existing.rows[0];
 
-    // RBAC check
+    // RBAC: Normal employee can only update tasks assigned to them or created by them
     if (actorRole === 'EMPLOYEE' && task.employee_id !== actorEmployeeId && task.created_by !== actorUserId) {
-      throw new Error('Unauthorized to modify this task.');
+      throw new Error('Unauthorized to update this task.');
     }
 
-    const title = data.title !== undefined ? data.title : task.title;
-    const description = data.description !== undefined
-      ? (data.description !== null ? String(data.description).trim() : '')
-      : task.description;
+    const title = data.title !== undefined ? data.title.trim() : task.title;
+    const description = data.description !== undefined ? data.description.trim() : task.description;
     const hours = data.hours !== undefined ? Number(data.hours) : task.hours;
-    const status = data.status !== undefined ? data.status : task.status;
-    const date = data.date !== undefined ? data.date : task.date;
-
-    const customerName = (data as any).customerName ?? (data as any).customer_name ?? task.customer_name;
-    const contactPerson = (data as any).contactPerson ?? (data as any).contact_person ?? task.contact_person;
-    const contactDetails = (data as any).contactDetails ?? (data as any).contact_details ?? task.contact_details;
-    const visitLocation = (data as any).visitLocation ?? (data as any).visit_location ?? task.visit_location;
-    const visitType = (data as any).visitType ?? (data as any).visit_type ?? task.visit_type;
-    const timeSlot = (data as any).timeSlot ?? (data as any).time_slot ?? task.time_slot;
-    const productsToPresent = (data as any).productsToPresent ?? (data as any).products_to_present ?? task.products_to_present;
-    const visitObjective = (data as any).visitObjective ?? (data as any).visit_objective ?? task.visit_objective;
-    const outcomeSummary = (data as any).outcomeSummary ?? (data as any).outcome_summary ?? task.outcome_summary;
-    const nextAction = (data as any).nextAction ?? (data as any).next_action ?? task.next_action;
-    const followUpDate = (data as any).followUpDate ?? (data as any).follow_up_date ?? task.follow_up_date;
-    const opportunityStage = (data as any).opportunityStage ?? (data as any).opportunity_stage ?? task.opportunity_stage;
-    const estimatedValue = ((data as any).estimatedValue ?? (data as any).estimated_value) !== undefined ? Number((data as any).estimatedValue ?? (data as any).estimated_value) : task.estimated_value;
-    const priority = (data as any).priority ?? task.priority;
+    const status = data.status || task.status;
 
     let cancelledAt = task.cancelled_at;
     let cancelledBy = task.cancelled_by;
@@ -310,49 +318,70 @@ export class TimesheetRepository {
       cancellationReason = data.cancellationReason || 'Task cancelled by user';
     }
 
-    const res = await query(`
-      UPDATE timesheets SET
+    const updateSql = `
+      UPDATE timesheets
+      SET 
         title = $1,
         description = $2,
         hours = $3,
         status = $4,
-        date = $5,
-        customer_name = $6,
-        contact_person = $7,
-        contact_details = $8,
-        visit_location = $9,
-        visit_type = $10,
-        time_slot = $11,
-        products_to_present = $12,
-        visit_objective = $13,
-        outcome_summary = $14,
-        next_action = $15,
-        follow_up_date = $16,
-        opportunity_stage = $17,
-        estimated_value = $18,
-        priority = $19,
+        date = COALESCE($5, date),
+        customer_name = COALESCE($6, customer_name),
+        contact_person = COALESCE($7, contact_person),
+        contact_details = COALESCE($8, contact_details),
+        visit_location = COALESCE($9, visit_location),
+        visit_type = COALESCE($10, visit_type),
+        time_slot = COALESCE($11, time_slot),
+        products_to_present = COALESCE($12, products_to_present),
+        visit_objective = COALESCE($13, visit_objective),
+        outcome_summary = COALESCE($14, outcome_summary),
+        next_action = COALESCE($15, next_action),
+        follow_up_date = COALESCE($16, follow_up_date),
+        opportunity_stage = COALESCE($17, opportunity_stage),
+        estimated_value = COALESCE($18, estimated_value),
+        priority = COALESCE($19, priority),
         cancelled_at = $20,
         cancelled_by = $21,
         cancellation_reason = $22,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $23 AND organization_id = $24
-      RETURNING *
-    `, [
-      title, description, hours, status, date,
-      customerName, contactPerson, contactDetails, visitLocation, visitType,
-      timeSlot, productsToPresent, visitObjective, outcomeSummary, nextAction,
-      followUpDate, opportunityStage, estimatedValue, priority,
-      cancelledAt, cancelledBy, cancellationReason,
-      taskId, organizationId
+      RETURNING *, TO_CHAR(date, 'YYYY-MM-DD') AS date, TO_CHAR(follow_up_date, 'YYYY-MM-DD') AS follow_up_date
+    `;
+
+    const res = await query(updateSql, [
+      title,
+      description,
+      hours,
+      status,
+      data.date ? normalizeDateOnly(data.date) : null,
+      (data as any).customerName || (data as any).customer_name || null,
+      (data as any).contactPerson || (data as any).contact_person || null,
+      (data as any).contactDetails || (data as any).contact_details || null,
+      (data as any).visitLocation || (data as any).visit_location || null,
+      (data as any).visitType || (data as any).visit_type || null,
+      (data as any).timeSlot || (data as any).time_slot || null,
+      (data as any).productsToPresent || (data as any).products_to_present || null,
+      (data as any).visitObjective || (data as any).visit_objective || null,
+      (data as any).outcomeSummary || (data as any).outcome_summary || null,
+      (data as any).nextAction || (data as any).next_action || null,
+      (data as any).followUpDate || (data as any).follow_up_date ? normalizeDateOnly((data as any).followUpDate || (data as any).follow_up_date) : null,
+      (data as any).opportunityStage || (data as any).opportunity_stage || null,
+      ((data as any).estimatedValue ?? (data as any).estimated_value) !== undefined ? Number((data as any).estimatedValue ?? (data as any).estimated_value) : null,
+      (data as any).priority || null,
+      cancelledAt,
+      cancelledBy,
+      cancellationReason,
+      taskId,
+      organizationId
     ]);
 
-    const updatedTask = res.rows[0];
+    const updatedTask = mapTaskRow(res.rows[0]);
 
     await query(`
       INSERT INTO audit_logs (
         organization_id, user_id, action, module, entity_name, entity_id, new_values
       ) VALUES ($1, $2, 'TASK_UPDATED', 'tasks', 'DailyTask', $3, $4)
-    `, [organizationId, actorUserId, taskId, JSON.stringify({ title, status, hours, outcomeSummary })]);
+    `, [organizationId, actorUserId, taskId, JSON.stringify({ title, status, hours, outcomeSummary: updatedTask.outcome_summary })]);
 
     return updatedTask;
   }
@@ -366,7 +395,7 @@ export class TimesheetRepository {
     newDate: string,
     reason?: string
   ) {
-    const existing = await query('SELECT * FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
+    const existing = await query('SELECT *, TO_CHAR(date, \'YYYY-MM-DD\') AS date_str FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
     if (existing.rows.length === 0) {
       throw new Error('Task not found.');
     }
@@ -376,9 +405,10 @@ export class TimesheetRepository {
       throw new Error('Unauthorized to reschedule this task.');
     }
 
+    const targetDateStr = normalizeDateOnly(newDate) || newDate;
     const newRescheduleCount = (orig.reschedule_count || 0) + 1;
 
-    // Create new task on newDate linked to original
+    // Create new task on targetDateStr linked to original
     const newInsertSql = `
       INSERT INTO timesheets (
         organization_id, employee_id, project_id, title, date, hours, description, status, created_by,
@@ -386,7 +416,7 @@ export class TimesheetRepository {
         products_to_present, visit_objective, opportunity_stage, estimated_value, priority,
         rescheduled_from_task_id, reschedule_count, reschedule_reason
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'PLANNED', $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
-      RETURNING *
+      RETURNING *, TO_CHAR(date, 'YYYY-MM-DD') AS date, TO_CHAR(follow_up_date, 'YYYY-MM-DD') AS follow_up_date
     `;
 
     const newRes = await query(newInsertSql, [
@@ -394,7 +424,7 @@ export class TimesheetRepository {
       orig.employee_id,
       orig.project_id,
       orig.title,
-      newDate,
+      targetDateStr,
       orig.hours,
       orig.description,
       actorUserId,
@@ -414,7 +444,7 @@ export class TimesheetRepository {
       reason || 'Rescheduled to next week'
     ]);
 
-    const newTask = newRes.rows[0];
+    const newTask = mapTaskRow(newRes.rows[0]);
 
     // Update original task link to new task
     await query(`
@@ -432,11 +462,11 @@ export class TimesheetRepository {
       organizationId,
       actorUserId,
       taskId,
-      JSON.stringify({ date: orig.date, title: orig.title }),
-      JSON.stringify({ newTaskId: newTask.id, newDate, reason })
+      JSON.stringify({ date: orig.date_str || orig.date, title: orig.title }),
+      JSON.stringify({ newTaskId: newTask.id, newDate: targetDateStr, reason })
     ]);
 
-    return { originalTask: orig, newTask };
+    return { originalTask: mapTaskRow(orig), newTask };
   }
 
   static async findPendingCarryForward(
@@ -446,16 +476,17 @@ export class TimesheetRepository {
     actorEmployeeId: string | null,
     beforeDate?: string
   ) {
-    const cutoffDate = beforeDate || new Date().toISOString().split('T')[0];
+    const cutoffDate = normalizeDateOnly(beforeDate) || normalizeDateOnly(new Date());
     const conditions: string[] = [
       't.organization_id = $1',
       't.deleted_at IS NULL',
-      't.date < $2',
-      "t.status IN ('PLANNED', 'IN_PROGRESS')",
-      't.rescheduled_to_task_id IS NULL'
+      't.status = \'PLANNED\'',
+      't.rescheduled_to_task_id IS NULL',
+      't.date < $2'
     ];
     const params: any[] = [organizationId, cutoffDate];
 
+    // RBAC
     if (actorRole === 'EMPLOYEE') {
       if (!actorEmployeeId) return [];
       params.push(actorEmployeeId, actorUserId);
@@ -469,10 +500,10 @@ export class TimesheetRepository {
 
     const dataSql = `
       SELECT 
-        t.id, t.date, t.hours, t.title, t.description, t.status, t.project_id,
+        t.id, TO_CHAR(t.date, 'YYYY-MM-DD') AS date, t.hours, t.title, t.description, t.status, t.project_id,
         t.customer_name, t.contact_person, t.contact_details, t.visit_location,
         t.visit_type, t.time_slot, t.products_to_present, t.visit_objective,
-        t.outcome_summary, t.next_action, t.follow_up_date, t.opportunity_stage,
+        t.outcome_summary, t.next_action, TO_CHAR(t.follow_up_date, 'YYYY-MM-DD') AS follow_up_date, t.opportunity_stage,
         t.estimated_value, t.priority, t.rescheduled_from_task_id, t.rescheduled_to_task_id, t.reschedule_count,
         t.employee_id as assigned_employee_id,
         CONCAT(e.first_name, ' ', e.last_name) as assigned_employee_name,
@@ -484,11 +515,11 @@ export class TimesheetRepository {
     `;
 
     const res = await query(dataSql, params);
-    return res.rows;
+    return res.rows.map(mapTaskRow);
   }
 
   static async deleteTask(organizationId: string, taskId: string, actorUserId: string, actorRole: string, actorEmployeeId: string | null) {
-    const existing = await query('SELECT * FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
+    const existing = await query('SELECT *, TO_CHAR(date, \'YYYY-MM-DD\') AS date_str FROM timesheets WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL', [taskId, organizationId]);
     if (existing.rows.length === 0) {
       throw new Error('Task not found.');
     }
@@ -504,32 +535,8 @@ export class TimesheetRepository {
       INSERT INTO audit_logs (
         organization_id, user_id, action, module, entity_name, entity_id, old_values
       ) VALUES ($1, $2, 'TASK_DELETED', 'tasks', 'DailyTask', $3, $4)
-    `, [organizationId, actorUserId, taskId, JSON.stringify({ title: task.title, date: task.date })]);
+    `, [organizationId, actorUserId, taskId, JSON.stringify({ title: task.title, date: task.date_str || task.date })]);
 
     return true;
-  }
-
-  // Legacy compatibility methods
-  static async create(organizationId: string, employeeId: string, data: { projectId?: string; date: string; hours: number; description: string; title?: string }) {
-    return this.createTask(organizationId, '00000000-0000-0000-0000-000000000000', 'EMPLOYEE', employeeId, {
-      assignedEmployeeId: employeeId,
-      projectId: data.projectId,
-      date: data.date,
-      title: data.title || data.description || 'Daily Task',
-      description: data.description,
-      hours: data.hours
-    });
-  }
-
-  static async findByEmployee(organizationId: string, employeeId: string) {
-    return this.findTasks(organizationId, '00000000-0000-0000-0000-000000000000', 'SUPER_ADMIN', employeeId, { assignedEmployeeId: employeeId });
-  }
-
-  static async findAll(organizationId: string, filters: { page?: number; limit?: number }) {
-    const tasks = await this.findTasks(organizationId, '00000000-0000-0000-0000-000000000000', 'SUPER_ADMIN', null, {});
-    return {
-      timesheets: tasks,
-      pagination: { total: tasks.length, page: 1, limit: 500, totalPages: 1 }
-    };
   }
 }
