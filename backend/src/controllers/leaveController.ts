@@ -73,7 +73,21 @@ export class LeaveController {
       const { status, page, limit, employeeId } = req.query;
 
       const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
-      const targetEmpId = isManager && employeeId ? (employeeId as string) : (isManager ? undefined : (userEmpId || undefined));
+      let targetEmpId: string | undefined = undefined;
+
+      if (isManager) {
+        targetEmpId = employeeId ? (employeeId as string) : undefined;
+      } else {
+        if (!userEmpId) {
+          return res.status(400).json({
+            success: false,
+            code: 'EMPLOYEE_PROFILE_NOT_LINKED',
+            error: 'Your employee profile is not linked to this account.',
+            message: 'Your employee profile is not linked to this account.'
+          });
+        }
+        targetEmpId = userEmpId;
+      }
 
       const result = await LeaveRepository.findAll(organizationId, {
         status: status as string,
@@ -84,7 +98,10 @@ export class LeaveController {
 
       return res.status(200).json({
         success: true,
-        data: result
+        data: {
+          leaveRequests: result.leaveRequests,
+          pagination: result.pagination
+        }
       });
     } catch (error) {
       return next(error);

@@ -202,6 +202,9 @@ async function runMasterE2EVerificationSuite() {
           runStep('Second status update on non-pending leave request correctly rejected with error', err.message.includes('already'));
         }
 
+        const empLeaves = await LeaveRepository.findAll(orgId, { employeeId: emp.id });
+        runStep('LeaveRepository.findAll employee query returns array with pagination', Array.isArray(empLeaves.leaveRequests) && !!empLeaves.pagination);
+        
         await query('DELETE FROM leave_requests WHERE id = $1', [leaveApp.rows[0].id]);
       } else {
         runStep('Leave workflow check passed (no leave_types seeded)', true);
@@ -210,11 +213,16 @@ async function runMasterE2EVerificationSuite() {
       runStep('Leave Workflow Check (Code Contract Validation)', true);
     }
 
-    // Code Contract Check for Leave Approve/Reject Routes
+    // Code Contract Check for Leave Approve/Reject & List Routes
     const leaveRoutesPath = path.join(__dirname, '../routes/leaveRoutes.ts');
     const leaveRoutesContent = fs.readFileSync(leaveRoutesPath, 'utf8');
+    runStep('leaveRoutes.ts binds GET / endpoint to LeaveController.list', leaveRoutesContent.includes("router.get('/', LeaveController.list)"));
     runStep('leaveRoutes.ts binds /:id/approve endpoint', leaveRoutesContent.includes("router.put('/:id/approve'") || leaveRoutesContent.includes("router.post('/:id/approve'"));
     runStep('leaveRoutes.ts binds /:id/reject endpoint', leaveRoutesContent.includes("router.put('/:id/reject'") || leaveRoutesContent.includes("router.post('/:id/reject'"));
+
+    const leaveControllerPath = path.join(__dirname, '../controllers/leaveController.ts');
+    const leaveControllerContent = fs.readFileSync(leaveControllerPath, 'utf8');
+    runStep('leaveController.ts defines static async list method', leaveControllerContent.includes('static async list('));
 
     summary['4. Leave Workflow'] = 'PASS';
 

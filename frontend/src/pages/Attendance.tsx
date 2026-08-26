@@ -43,13 +43,23 @@ interface TodaySummary {
 
 export const Attendance: React.FC = () => {
   const { user } = useAuth();
-  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
+  const {
+    todaySummary,
+    activeSession,
+    canCheckIn,
+    canCheckOut,
+    actionLoading,
+    checkIn: contextCheckIn,
+    checkOut: contextCheckOut,
+    handlePunch,
+    refreshAttendance: contextRefresh
+  } = useAttendance();
+
   const [workforceSummary, setWorkforceSummary] = useState<any>(null);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [regularizations, setRegularizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [attFetchError, setAttFetchError] = useState<string | null>(null);
 
@@ -137,41 +147,11 @@ export const Attendance: React.FC = () => {
     }
   }, []);
 
-  const { refreshAttendance: contextRefresh } = useAttendance();
-
   const fetchAttendance = async () => {
     setAttFetchError(null);
     try {
-      if (user?.employeeId) {
-        const todayRes = await apiFetch('/attendance/today').catch((err) => {
-          throw new Error(err.message || 'Unable to load attendance status.');
-        });
-        const summaryData = todayRes?.summary || todayRes?.data?.summary;
-        const attData = todayRes?.attendance || todayRes?.data?.attendance;
-        const activeSess = todayRes?.activeSession || todayRes?.data?.activeSession || summaryData?.activeSession;
-
-        if (summaryData) {
-          setTodaySummary({
-            ...summaryData,
-            activeSession: activeSess || summaryData.activeSession || null
-          });
-        } else if (attData) {
-          setTodaySummary({
-            date: new Date().toISOString().split('T')[0],
-            activeSession: attData.check_out ? null : attData,
-            sessions: [attData],
-            totalSessions: 1,
-            totalSessionCount: 1,
-            completedSessionCount: attData.check_out ? 1 : 0,
-            canCheckIn: !!attData.check_out,
-            canCheckOut: !attData.check_out,
-            totalWorkingHours: parseFloat(attData.working_hours || 0),
-            totalBreakMins: attData.break_duration_mins || 0,
-            firstCheckIn: attData.check_in,
-            lastCheckOut: attData.check_out,
-            status: attData.check_out ? 'COMPLETED' : 'ACTIVE'
-          });
-        }
+      if (contextRefresh) {
+        await contextRefresh().catch(() => null);
       }
 
       if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
@@ -184,10 +164,6 @@ export const Attendance: React.FC = () => {
 
       const regRes = await apiFetch('/attendance/regularizations').catch(() => null);
       setRegularizations(regRes?.regularizations || regRes?.data?.regularizations || (Array.isArray(regRes) ? regRes : []));
-
-      if (contextRefresh) {
-        await contextRefresh().catch(() => null);
-      }
     } catch (err: any) {
       console.error('Error fetching attendance:', err);
       setAttFetchError(err.message || 'Unable to load attendance information.');
@@ -202,41 +178,13 @@ export const Attendance: React.FC = () => {
   }, [currentYear, currentMonth, fetchCalendarEvents]);
 
   const handleCheckIn = async () => {
-    setActionLoading(true);
-    try {
-      const gps = await getGPSLocation();
-      await apiFetch('/attendance/check-in', {
-        method: 'POST',
-        body: JSON.stringify(gps)
-      });
-      await fetchAttendance();
-      await fetchCalendarEvents(currentYear, currentMonth);
-    } catch (err: any) {
-      if (err.code === 'ACTIVE_SESSION_EXISTS' || err.message?.includes('active attendance session') || err.message?.includes('active check-in session')) {
-        await fetchAttendance();
-      } else {
-        alert(err.message || 'Check-in failed.');
-      }
-    } finally {
-      setActionLoading(false);
-    }
+    await contextCheckIn();
+    await fetchCalendarEvents(currentYear, currentMonth);
   };
 
   const handleCheckOut = async () => {
-    setActionLoading(true);
-    try {
-      const gps = await getGPSLocation();
-      await apiFetch('/attendance/check-out', {
-        method: 'POST',
-        body: JSON.stringify(gps)
-      });
-      await fetchAttendance();
-      await fetchCalendarEvents(currentYear, currentMonth);
-    } catch (err: any) {
-      alert(err.message || 'Check-out failed.');
-    } finally {
-      setActionLoading(false);
-    }
+    await contextCheckOut();
+    await fetchCalendarEvents(currentYear, currentMonth);
   };
 
   const handleRegularizationSubmit = async (e: React.FormEvent) => {
@@ -305,7 +253,6 @@ export const Attendance: React.FC = () => {
     }
   };
 
-  const activeSession = todaySummary?.activeSession;
   const sessions = todaySummary?.sessions || [];
 
   return (

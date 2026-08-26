@@ -14,6 +14,8 @@ export interface SessionData {
   punch_out_lng: number | string | null;
   punch_out_accuracy: number | string | null;
   punch_out_location_name?: string | null;
+  working_hours?: number | string;
+  break_duration_mins?: number;
   status: string;
 }
 
@@ -44,6 +46,8 @@ interface AttendanceContextType {
   actionLoading: boolean;
   gpsError: string | null;
   refreshAttendance: () => Promise<void>;
+  checkIn: () => Promise<void>;
+  checkOut: () => Promise<void>;
   handlePunch: () => Promise<void>;
 }
 
@@ -135,28 +139,57 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     refreshAttendance();
   }, [refreshAttendance]);
 
-  const handlePunch = async () => {
+  const checkIn = async () => {
+    if (actionLoading) return;
     if (!user?.employeeId) {
-      alert('Your account is not linked to an employee profile. Attendance punching requires an employee profile.');
+      alert('Your account is not linked to an employee profile.');
       return;
     }
     setActionLoading(true);
     try {
       const gps = await getGPSLocation();
-      const endpoint = todaySummary?.activeSession ? '/attendance/check-out' : '/attendance/check-in';
-      await apiFetch(endpoint, {
+      await apiFetch('/attendance/check-in', {
         method: 'POST',
         body: JSON.stringify(gps)
       });
       await refreshAttendance();
     } catch (err: any) {
-      if (err.code === 'ACTIVE_SESSION_EXISTS' || err.message?.includes('active attendance session')) {
+      if (err.code === 'ACTIVE_SESSION_EXISTS' || err.message?.includes('active attendance session') || err.message?.includes('active check-in session')) {
         await refreshAttendance();
       } else {
-        alert(err.message || 'Attendance action failed.');
+        alert(err.message || 'Check-in failed.');
       }
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const checkOut = async () => {
+    if (actionLoading) return;
+    if (!user?.employeeId) {
+      alert('Your account is not linked to an employee profile.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const gps = await getGPSLocation();
+      await apiFetch('/attendance/check-out', {
+        method: 'POST',
+        body: JSON.stringify(gps)
+      });
+      await refreshAttendance();
+    } catch (err: any) {
+      alert(err.message || 'Check-out failed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePunch = async () => {
+    if (todaySummary?.activeSession) {
+      await checkOut();
+    } else {
+      await checkIn();
     }
   };
 
@@ -174,6 +207,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       actionLoading,
       gpsError,
       refreshAttendance,
+      checkIn,
+      checkOut,
       handlePunch
     }}>
       {children}
@@ -186,10 +221,15 @@ export const useAttendance = () => {
   if (!context) {
     return {
       todaySummary: null,
+      activeSession: null,
+      canCheckIn: true,
+      canCheckOut: false,
       loading: false,
       actionLoading: false,
       gpsError: null,
       refreshAttendance: async () => {},
+      checkIn: async () => {},
+      checkOut: async () => {},
       handlePunch: async () => {}
     };
   }
