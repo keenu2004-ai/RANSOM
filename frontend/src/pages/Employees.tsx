@@ -438,7 +438,7 @@ export const Employees: React.FC = () => {
                               Restore
                             </button>
                           )}
-                          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && (
+                          {user?.role === 'SUPER_ADMIN' && (
                             <button
                               onClick={() => { setDeleteConfirmEmp(emp); setDeleteConfirmCodeInput(''); }}
                               className="px-2.5 py-1 text-[11px] font-medium bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer"

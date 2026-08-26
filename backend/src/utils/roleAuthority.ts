@@ -5,19 +5,13 @@ export interface RoleAssignmentValidationResult {
   reason?: string;
 }
 
-/**
- * Allowed roles that an actor role can assign to another user in their organization.
- */
 export function getAllowedAssignableRoles(actorRole?: string | null): string[] {
   const canonicalRole = normalizeRole(actorRole);
   switch (canonicalRole) {
     case 'SUPER_ADMIN':
-      return ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE'];
-    case 'ADMIN':
-      return ['HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE'];
+      return ['SUPER_ADMIN', 'HR_MANAGER', 'EMPLOYEE'];
     case 'HR_MANAGER':
-      return ['OPERATIONAL_MANAGER', 'EMPLOYEE'];
-    case 'OPERATIONAL_MANAGER':
+      return ['EMPLOYEE'];
     case 'EMPLOYEE':
     default:
       return [];

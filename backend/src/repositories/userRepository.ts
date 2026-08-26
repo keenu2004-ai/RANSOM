@@ -31,6 +31,46 @@ export interface UserWithRole {
 }
 
 export class UserRepository {
+  static async findByMicrosoftOid(oid: string): Promise<UserWithRole | null> {
+    const text = `
+      SELECT 
+        u.id, 
+        u.organization_id, 
+        u.email, 
+        u.password_hash, 
+        u.status as user_status,
+        e.status as employee_status,
+        CASE 
+          WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
+          WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
+          ELSE 'ACTIVE'
+        END as status,
+        u.display_name,
+        COALESCE(r.name, 'EMPLOYEE') as role,
+        r.name as role_name,
+        e.id as employee_id,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name
+      FROM users u
+      LEFT JOIN user_roles ur ON ur.user_id = u.id
+      LEFT JOIN roles r ON r.id = ur.role_id
+      LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
+      WHERE u.microsoft_oid = $1
+      LIMIT 1
+    `;
+    const res = await query<UserWithRole>(text, [oid]);
+    return res.rows[0] || null;
+  }
+
+  static async linkMicrosoftIdentity(userId: string, oid: string, tid: string): Promise<void> {
+    await query(
+      `UPDATE users SET microsoft_oid = $1, microsoft_tid = $2, last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [oid, tid, userId]
+    );
+  }
+
   static async findByEmail(email: string): Promise<UserWithRole | null> {
     const text = `
       SELECT 

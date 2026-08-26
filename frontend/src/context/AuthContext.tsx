@@ -5,7 +5,7 @@ export interface User {
   userId: string;
   organizationId: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'HR_MANAGER' | 'MANAGER' | 'EMPLOYEE';
+  role: 'SUPER_ADMIN' | 'HR_MANAGER' | 'EMPLOYEE';
   employeeId: string | null;
   name?: string;
   displayName?: string;
@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  loginWithMicrosoft: (msToken: string) => Promise<void>;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
@@ -56,6 +57,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
+  const loginWithMicrosoft = async (msToken: string) => {
+    setError(null);
+    try {
+      const res = await apiFetch<{ token: string; user: User }>('/auth/microsoft', {
+        method: 'POST',
+        body: JSON.stringify({ token: msToken })
+      });
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('theiakshi_auth_token', res.token);
+      localStorage.setItem('theiakshi_auth_user', JSON.stringify(res.user));
+    } catch (err: any) {
+      setError(err.message || 'Microsoft Authentication failed.');
+      throw err;
+    }
+  };
+
   const login = async (email: string, pass: string) => {
     setError(null);
     try {
@@ -89,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearError = () => setError(null);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, error, clearError }}>
+    <AuthContext.Provider value={{ user, token, loading, loginWithMicrosoft, login, logout, error, clearError }}>
       {children}
     </AuthContext.Provider>
   );

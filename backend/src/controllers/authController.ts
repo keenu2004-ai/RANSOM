@@ -9,6 +9,29 @@ const loginSchema = z.object({
 });
 
 export class AuthController {
+  static async microsoft(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { token, idToken, accessToken } = req.body || {};
+      const microsoftToken = token || idToken || accessToken;
+
+      if (!microsoftToken) {
+        return res.status(400).json({
+          success: false,
+          error: 'Microsoft authentication token is required.',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
+      const result = await AuthService.loginWithMicrosoftToken(microsoftToken);
+
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
   static async login(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const parseResult = loginSchema.safeParse(req.body);

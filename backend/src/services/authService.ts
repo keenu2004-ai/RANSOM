@@ -4,9 +4,92 @@ import { config } from '../config';
 import { query } from '../db';
 import { UserRepository } from '../repositories/userRepository';
 import { AuthUser } from '../types';
+import { MicrosoftAuthService } from './microsoftAuthService';
+import { normalizeRole } from '../config/permissions';
 
 export class AuthService {
+  static async loginWithMicrosoftToken(microsoftToken: string): Promise<{ token: string; user: AuthUser }> {
+    const claims = await MicrosoftAuthService.verifyMicrosoftToken(microsoftToken);
+
+    // 1. Primary Identity Lookup by Microsoft Object Identifier (oid)
+    let userWithRole = await UserRepository.findByMicrosoftOid(claims.oid);
+
+    // 2. Secondary Fallback Lookup by Company Email (for first-time Microsoft identity linking)
+    if (!userWithRole && claims.email) {
+      userWithRole = await UserRepository.findByEmail(claims.email);
+      if (userWithRole) {
+        await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
+      }
+    }
+
+    if (!userWithRole) {
+      const err: any = new Error('Access denied. Your Microsoft account is not an authorized THEIAKSHI user.');
+      err.statusCode = 403;
+      err.code = 'UNAUTHORIZED_USER';
+      throw err;
+    }
+
+    if (userWithRole.status !== 'ACTIVE') {
+      const err: any = new Error('Your user account is suspended or inactive.');
+      err.statusCode = 403;
+      err.code = 'ACCOUNT_INACTIVE';
+      throw err;
+    }
+
+    const employeeId = await UserRepository.findEmployeeIdByUserId(userWithRole.id, userWithRole.organization_id);
+    const canonicalRole = normalizeRole(userWithRole.role || userWithRole.role_name);
+
+    const resolvedName = (userWithRole.first_name || userWithRole.last_name)
+      ? `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()
+      : (userWithRole.display_name && userWithRole.display_name.trim() !== '')
+        ? userWithRole.display_name.trim()
+        : claims.name || userWithRole.email.split('@')[0];
+
+    const authUser: AuthUser = {
+      userId: userWithRole.id,
+      organizationId: userWithRole.organization_id,
+      email: userWithRole.email,
+      role: canonicalRole,
+      employeeId: employeeId,
+      name: resolvedName,
+      displayName: resolvedName,
+      firstName: userWithRole.first_name || null,
+      lastName: userWithRole.last_name || null
+    };
+
+    const token = jwt.sign(authUser, config.jwtSecret, { expiresIn: '24h' });
+
+    // Record Audit Event
+    try {
+      await query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, 'LOGIN_SUCCESS', 'security', 'User', $2, $3)
+      `, [
+        userWithRole.organization_id,
+        userWithRole.id,
+        JSON.stringify({
+          provider: 'MICROSOFT_ENTRA_ID',
+          microsoft_oid: claims.oid,
+          microsoft_tid: claims.tid,
+          email: userWithRole.email
+        })
+      ]);
+    } catch (auditErr) {
+      console.error('Failed to log audit event for Microsoft login:', auditErr);
+    }
+
+    return { token, user: authUser };
+  }
+
   static async login(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
+    // Password login policy check
+    if (process.env.ALLOW_PASSWORD_LOGIN !== 'true') {
+      const err: any = new Error('Password authentication has been replaced by Microsoft Entra ID. Please sign in with Microsoft.');
+      err.statusCode = 400;
+      err.code = 'MICROSOFT_AUTH_REQUIRED';
+      throw err;
+    }
+
     const userWithRole = await UserRepository.findByEmail(email);
 
     if (!userWithRole) {
@@ -39,6 +122,8 @@ export class AuthService {
     }
 
     const employeeId = await UserRepository.findEmployeeIdByUserId(userWithRole.id, userWithRole.organization_id);
+    const canonicalRole = normalizeRole(userWithRole.role || userWithRole.role_name);
+
     const resolvedName = (userWithRole.first_name || userWithRole.last_name)
       ? `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()
       : (userWithRole.display_name && userWithRole.display_name.trim() !== '')
@@ -49,7 +134,7 @@ export class AuthService {
       userId: userWithRole.id,
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
-      role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
+      role: canonicalRole,
       employeeId: employeeId,
       name: resolvedName,
       displayName: resolvedName,

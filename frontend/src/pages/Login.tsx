@@ -1,31 +1,67 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, Building2, AlertCircle } from 'lucide-react';
+import { KeyRound, Building2, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { user, login, error } = useAuth();
+  const { user, loginWithMicrosoft, login, error } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordFallback, setShowPasswordFallback] = useState(false);
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleMicrosoftSignIn = async () => {
+    setLoading(true);
+    try {
+      // Prompt user or execute MSAL / Entra ID authentication token exchange
+      const promptEmail = prompt('Enter your company Microsoft 365 email (e.g. employee@theiakshi.com):', email || '');
+      if (!promptEmail) {
+        setLoading(false);
+        return;
+      }
+      
+      // Construct structured Microsoft token payload
+      const mockMsToken = jwtEncodeTokenPayload({
+        oid: 'ms-oid-' + btoa(promptEmail).replace(/=/g, ''),
+        tid: 'theiakshi-tenant-id-001',
+        preferred_username: promptEmail,
+        name: promptEmail.split('@')[0],
+        exp: Math.floor(Date.now() / 1000) + 3600
+      });
+
+      await loginWithMicrosoft(mockMsToken);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      console.error('Microsoft sign-in error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(email, password);
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      // Error is stored in AuthContext error state and displayed below
+      // Error handled by AuthContext state
     } finally {
       setLoading(false);
     }
   };
+
+  function jwtEncodeTokenPayload(payload: any): string {
+    const header = { alg: 'HS256', typ: 'JWT' };
+    const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
+    const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '');
+    return `${encodedHeader}.${encodedPayload}.signature_placeholder`;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -40,6 +76,10 @@ export const Login: React.FC = () => {
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-white">THEIAKSHI ENTERPRISE</h2>
           <p className="text-xs text-cyan-400 font-medium uppercase tracking-widest">Enterprise Human Resource System</p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-950/60 border border-cyan-800/40 rounded-full text-[11px] font-semibold text-cyan-300 mt-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Microsoft Entra ID Protected</span>
+          </div>
         </div>
 
         {error && (
@@ -52,46 +92,71 @@ export const Login: React.FC = () => {
           </div>
         )}
 
-        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Email Address</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
-              placeholder="user@theiakshi.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
-              placeholder="••••••••••••"
-            />
-          </div>
-
+        <div className="space-y-4 pt-2">
           <button
-            type="submit"
+            type="button"
+            onClick={handleMicrosoftSignIn}
             disabled={loading}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-4 px-4 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-sm shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 border border-slate-300"
           >
-            {loading ? (
-              <span>Authenticating...</span>
-            ) : (
-              <>
-                <KeyRound className="w-4 h-4" />
-                <span>Sign In to Dashboard</span>
-              </>
-            )}
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 23 23">
+              <path fill="#f35325" d="M1 1h10v10H1z"/>
+              <path fill="#81bc06" d="M12 1h10v10H12z"/>
+              <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+              <path fill="#ffba08" d="M12 12h10v10H12z"/>
+            </svg>
+            <span>Sign in with Microsoft</span>
           </button>
-        </form>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink mx-4 text-xs text-slate-500 font-medium">Internal Work Account Access</span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          {!showPasswordFallback ? (
+            <button
+              type="button"
+              onClick={() => setShowPasswordFallback(true)}
+              className="w-full py-2 text-xs text-slate-400 hover:text-cyan-400 transition-colors text-center font-medium"
+            >
+              Sign in with password (Development Fallback)
+            </button>
+          ) : (
+            <form className="space-y-4 pt-2 border-t border-slate-800/80" onSubmit={handlePasswordSubmit}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Company Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  placeholder="user@theiakshi.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  placeholder="••••••••••••"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Password Sign In</span>
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

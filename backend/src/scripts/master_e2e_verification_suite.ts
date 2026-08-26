@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { query } from '../db';
 import { EmployeeRepository } from '../repositories/employeeRepository';
 import { AttendanceRepository } from '../repositories/attendanceRepository';
@@ -9,7 +10,7 @@ import { TimesheetRepository } from '../repositories/timesheetRepository';
 import { ExpenseRepository } from '../repositories/expenseRepository';
 import { TripExpenseRepository } from '../repositories/tripExpenseRepository';
 import { validateExpenseApprover } from '../utils/approvalHierarchy';
-import { hasPermission } from '../config/permissions';
+import { hasPermission, normalizeRole } from '../config/permissions';
 import { UserRepository } from '../repositories/userRepository';
 import { AuthService } from '../services/authService';
 import { validateRoleAssignment } from '../utils/roleAuthority';
@@ -69,11 +70,22 @@ async function runMasterE2EVerificationSuite() {
       const userRes = await query('SELECT u.id, u.email, u.password_hash, r.name as role FROM users u JOIN user_roles ur ON u.id = ur.user_id JOIN roles r ON ur.role_id = r.id WHERE u.id = $1 AND u.organization_id = $2', [emp.user_id, orgId]);
       runStep('User record matches employee user_id link', userRes.rows.length === 1);
       const userRole = userRes.rows[0].role;
-      runStep('User has valid RBAC role assignment', ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'].includes(userRole));
+      runStep('User has valid RBAC role assignment', ['SUPER_ADMIN', 'HR_MANAGER', 'EMPLOYEE'].includes(normalizeRole(userRole)));
     } else {
       runStep('User record matches employee user_id link', true);
       runStep('User has valid RBAC role assignment', true);
     }
+
+    // Microsoft Entra ID Token Verification Checks
+    const { MicrosoftAuthService } = require('../services/microsoftAuthService');
+    const mockPersonalToken = jwt.sign({ oid: 'oid-1', tid: '9188040d-6c67-4c5b-b112-36a304b66dad', email: 'personal@outlook.com' }, 'secret');
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(mockPersonalToken);
+      runStep('Personal Microsoft accounts strictly rejected with 403', false);
+    } catch (msErr: any) {
+      runStep('Personal Microsoft accounts strictly rejected with 403', msErr.code === 'PERSONAL_ACCOUNT_REJECTED' || msErr.message.includes('Personal Microsoft accounts'));
+    }
+
     summary['2. Authentication & RBAC'] = 'PASS';
 
 
@@ -378,20 +390,23 @@ async function runMasterE2EVerificationSuite() {
     const opManagerCanCreateTeamEmp = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_CREATE', 'TEAM');
     runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_CREATE', opManagerCanCreateTeamEmp);
 
-    const opManagerCanUpdateTeamEmp = hasPermission('OPERATIONAL_MANAGER', 'EMPLOYEE_UPDATE', 'TEAM');
-    runStep('OPERATIONAL_MANAGER has TEAM scope for EMPLOYEE_UPDATE', opManagerCanUpdateTeamEmp);
+    const hrManagerCanUpdateEmp = hasPermission('HR_MANAGER', 'EMPLOYEE_UPDATE', 'ORGANIZATION');
+    runStep('HR_MANAGER has ORGANIZATION scope for EMPLOYEE_UPDATE', hrManagerCanUpdateEmp);
 
     const hrManagerCanCreateEmp = hasPermission('HR_MANAGER', 'EMPLOYEE_CREATE', 'ORGANIZATION');
     runStep('HR_MANAGER has ORGANIZATION scope for EMPLOYEE_CREATE', hrManagerCanCreateEmp);
 
-    const adminCanAssignRoles = hasPermission('ADMIN', 'USER_ROLE_ASSIGN', 'ORGANIZATION');
-    runStep('ADMIN role can assign roles at ORGANIZATION level', adminCanAssignRoles);
+    const superAdminCanAssignRoles = hasPermission('SUPER_ADMIN', 'USER_ROLE_ASSIGN', 'ORGANIZATION');
+    runStep('SUPER_ADMIN role can assign roles at ORGANIZATION level', superAdminCanAssignRoles);
 
     const superAdminFullAccess = hasPermission('SUPER_ADMIN', 'ANY_SYSTEM_PERMISSION');
     runStep('SUPER_ADMIN role has implicit full system access', superAdminFullAccess);
 
-    const adminNormalizedAlias = hasPermission('ADMINISTRATOR', 'EMPLOYEE_CREATE');
-    runStep('ADMINISTRATOR alias correctly normalizes to ADMIN role permissions', adminNormalizedAlias);
+    const adminNormalizedAlias = normalizeRole('ADMINISTRATOR') === 'SUPER_ADMIN';
+    runStep('ADMINISTRATOR alias correctly normalizes to SUPER_ADMIN role', adminNormalizedAlias);
+
+    const managerNormalizedAlias = normalizeRole('MANAGER') === 'HR_MANAGER';
+    runStep('MANAGER alias correctly normalizes to HR_MANAGER role', managerNormalizedAlias);
 
     summary['11. Centralized RBAC System'] = 'PASS';
 
@@ -406,33 +421,33 @@ async function runMasterE2EVerificationSuite() {
     );
     runStep('SUPER_ADMIN authorized to assign HR_MANAGER role', saCheck.allowed);
 
-    // 2. ADMIN assigning OPERATIONAL_MANAGER -> Allowed
-    const adminCheck = validateRoleAssignment(
-      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
+    // 2. HR_MANAGER assigning EMPLOYEE -> Allowed
+    const hrCheck = validateRoleAssignment(
+      { id: 'hr-user-1', role: 'HR_MANAGER', organizationId: orgId },
       { id: 'emp-user-1', organizationId: orgId, role: 'EMPLOYEE' },
-      'OPERATIONAL_MANAGER'
+      'EMPLOYEE'
     );
-    runStep('ADMIN authorized to assign OPERATIONAL_MANAGER role', adminCheck.allowed);
+    runStep('HR_MANAGER authorized to assign EMPLOYEE role', hrCheck.allowed);
 
-    // 3. ADMIN attempting to assign SUPER_ADMIN -> Forbidden
-    const adminSaCheck = validateRoleAssignment(
-      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
+    // 3. HR_MANAGER attempting to assign SUPER_ADMIN -> Forbidden
+    const hrSaCheck = validateRoleAssignment(
+      { id: 'hr-user-1', role: 'HR_MANAGER', organizationId: orgId },
       { id: 'emp-user-1', organizationId: orgId, role: 'EMPLOYEE' },
       'SUPER_ADMIN'
     );
-    runStep('ADMIN prohibited from assigning SUPER_ADMIN role', !adminSaCheck.allowed && adminSaCheck.reason!.includes('not authorized'));
+    runStep('HR_MANAGER prohibited from assigning SUPER_ADMIN role', !hrSaCheck.allowed && hrSaCheck.reason!.includes('not authorized'));
 
     // 4. Self-Role Escalation Check -> Forbidden
     const selfCheck = validateRoleAssignment(
-      { id: 'admin-user-1', role: 'ADMIN', organizationId: orgId },
-      { id: 'admin-user-1', organizationId: orgId, role: 'ADMIN' },
+      { id: 'hr-user-1', role: 'HR_MANAGER', organizationId: orgId },
+      { id: 'hr-user-1', organizationId: orgId, role: 'HR_MANAGER' },
       'SUPER_ADMIN'
     );
-    runStep('Self-role escalation by ADMIN to SUPER_ADMIN strictly forbidden', !selfCheck.allowed && selfCheck.reason!.includes('Self-role escalation'));
+    runStep('Self-role escalation by HR_MANAGER to SUPER_ADMIN strictly forbidden', !selfCheck.allowed && selfCheck.reason!.includes('Self-role escalation'));
 
     // 5. Cross-Tenant Organization Protection -> Forbidden
     const crossCheck = validateRoleAssignment(
-      { id: 'admin-user-1', role: 'SUPER_ADMIN', organizationId: orgId },
+      { id: 'sa-user-1', role: 'SUPER_ADMIN', organizationId: orgId },
       { id: 'other-user-1', organizationId: 'other-org-99', role: 'EMPLOYEE' },
       'HR_MANAGER'
     );
