@@ -38,7 +38,10 @@ export const Leave: React.FC = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [leaveFetchError, setLeaveFetchError] = useState<string | null>(null);
+
   const fetchLeaveData = useCallback(async () => {
+    setLeaveFetchError(null);
     try {
       if (user?.employeeId) {
         const [balRes, usageRes] = await Promise.all([
@@ -69,16 +72,33 @@ export const Leave: React.FC = () => {
         });
       }
 
-      if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
-        const [reqRes, empRes] = await Promise.all([
-          apiFetch('/leaves').catch(() => null),
-          apiFetch('/employees').catch(() => null)
-        ]);
-        setLeaveRequests(reqRes?.leaveRequests || []);
-        setEmployees(empRes?.employees || empRes || []);
+      const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
+
+      if (isManager) {
+        try {
+          const [reqRes, empRes] = await Promise.all([
+            apiFetch('/leaves'),
+            apiFetch('/employees').catch(() => null)
+          ]);
+          const reqs = reqRes?.data?.leaveRequests || reqRes?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
+          setLeaveRequests(reqs);
+          const emps = empRes?.data?.employees || empRes?.employees || (Array.isArray(empRes) ? empRes : []);
+          setEmployees(emps);
+        } catch (err: any) {
+          setLeaveFetchError(err.message || 'Unable to load leave requests.');
+        }
+      } else {
+        try {
+          const reqRes = await apiFetch('/leaves');
+          const reqs = reqRes?.data?.leaveRequests || reqRes?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
+          setLeaveRequests(reqs);
+        } catch (err: any) {
+          setLeaveFetchError(err.message || 'Unable to load leave requests.');
+        }
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error in fetchLeaveData:', err);
+      setLeaveFetchError(err.message || 'Unable to load leave information.');
     } finally {
       setLoading(false);
     }
@@ -299,19 +319,31 @@ export const Leave: React.FC = () => {
         </div>
       )}
 
-      {/* Leave Requests Table for Admin / Management */}
-      {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold text-base text-slate-100 flex items-center gap-2">
-              <span>Workforce Leave Requests</span>
-              <span className="px-2 py-0.5 text-xs bg-slate-800 text-cyan-400 rounded-full font-mono font-semibold">
-                {leaveRequests.length}
-              </span>
-            </h2>
-          </div>
+      {/* Leave Requests Table for All Roles */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-base text-slate-100 flex items-center gap-2">
+            <span>{['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') ? 'Workforce Leave Requests' : 'My Leave Requests'}</span>
+            <span className="px-2 py-0.5 text-xs bg-slate-800 text-cyan-400 rounded-full font-mono font-semibold">
+              {leaveRequests.length}
+            </span>
+          </h2>
+        </div>
 
-          {loading ? (
+        {leaveFetchError ? (
+          <div className="p-4 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{leaveFetchError}</span>
+            </div>
+            <button
+              onClick={fetchLeaveData}
+              className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
             <p className="text-xs text-slate-400 py-4">Loading workforce requests...</p>
           ) : leaveRequests.length === 0 ? (
             <p className="text-xs text-slate-500 py-4">No leave requests found.</p>
@@ -385,7 +417,6 @@ export const Leave: React.FC = () => {
             </div>
           )}
         </div>
-      )}
 
       {/* MODAL 1: Adjust Employee Leave Entitlement */}
       {showAdjustmentModal && (

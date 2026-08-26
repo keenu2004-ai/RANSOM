@@ -122,12 +122,12 @@ export class AttendanceController {
     try {
       const organizationId = req.user!.organizationId;
       const employeeId = req.user!.employeeId;
-      const { attendanceDate, requestedPunchIn, requestedPunchOut, reason } = req.body;
+      const { attendanceDate, requestedPunchIn, requestedPunchOut, reason, attendanceType } = req.body;
 
-      if (!attendanceDate || !reason || reason.trim() === '') {
+      if (!attendanceDate || !reason || typeof reason !== 'string' || reason.trim() === '') {
         return res.status(400).json({
           success: false,
-          error: 'Attendance date and reason are required for regularization.',
+          error: 'Attendance date and a valid reason are required for regularization.',
           code: 'INVALID_REGULARIZATION_INPUT'
         });
       }
@@ -138,7 +138,9 @@ export class AttendanceController {
         attendanceDate,
         requestedPunchIn || null,
         requestedPunchOut || null,
-        reason.trim()
+        reason.trim(),
+        attendanceType || 'PRESENT',
+        employeeId!
       );
 
       return res.status(201).json({

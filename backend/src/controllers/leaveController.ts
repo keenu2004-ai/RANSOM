@@ -64,16 +64,22 @@ export class LeaveController {
     }
   }
 
-  // Administrative Overview: Does NOT require employeeId
+  // Leave list endpoint for Management & Employee self-service
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { status, page, limit } = req.query;
+      const userRole = req.user!.role;
+      const userEmpId = req.user!.employeeId;
+      const { status, page, limit, employeeId } = req.query;
+
+      const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
+      const targetEmpId = isManager && employeeId ? (employeeId as string) : (isManager ? undefined : (userEmpId || undefined));
 
       const result = await LeaveRepository.findAll(organizationId, {
         status: status as string,
+        employeeId: targetEmpId,
         page: page ? parseInt(page as string, 10) : 1,
-        limit: limit ? parseInt(limit as string, 10) : 20
+        limit: limit ? parseInt(limit as string, 10) : 500
       });
 
       return res.status(200).json({

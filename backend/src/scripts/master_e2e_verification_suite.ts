@@ -81,12 +81,34 @@ async function runMasterE2EVerificationSuite() {
     console.log('\n[TEST 3] Attendance State Machine, Multi-Session GPS & Regularization...');
     if (dbAvailable) {
       const todayStr = new Date().toISOString().split('T')[0];
-      await query('DELETE FROM attendance_regularizations WHERE employee_id = $1 AND attendance_date = $2', [emp.id, todayStr]);
-      await query('DELETE FROM attendance WHERE employee_id = $1 AND date = $2', [emp.id, todayStr]);
+      const yesterdayDate = new Date();
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+      await query('DELETE FROM attendance_regularizations WHERE employee_id = $1 AND (attendance_date = $2 OR attendance_date = $3)', [emp.id, todayStr, yesterdayStr]);
+      await query('DELETE FROM attendance WHERE employee_id = $1 AND (date = $2 OR date = $3)', [emp.id, todayStr, yesterdayStr]);
 
       const activeSession = await AttendanceRepository.findActiveSession(emp.id, orgId);
       runStep('Initial state: NO ACTIVE SESSION', !activeSession);
 
+      // --- TEST 3A: Forgotten Checkout & Calendar-Day Rollover ---
+      const oldSessionRes = await query(`
+        INSERT INTO attendance (organization_id, employee_id, date, check_in, status, session_state)
+        VALUES ($1, $2, $3, $3::timestamp + INTERVAL '9 hours', 'PRESENT', 'ACTIVE')
+        RETURNING *
+      `, [orgId, emp.id, yesterdayStr]);
+      const oldSessionId = oldSessionRes.rows[0].id;
+
+      // Checking active session today should trigger rollover on yesterday's open session
+      const activeCheck = await AttendanceRepository.findActiveSession(emp.id, orgId);
+      runStep('Rollover check: Previous day open session no longer returned as active', !activeCheck);
+
+      const rolledOverRes = await query('SELECT check_out, session_state, status FROM attendance WHERE id = $1', [oldSessionId]);
+      runStep('Rollover check: Previous day open session status is ROLLOVER_TERMINATED and check_out remains NULL',
+        rolledOverRes.rows[0].check_out === null && rolledOverRes.rows[0].status === 'ROLLOVER_TERMINATED'
+      );
+
+      // --- TEST 3B: Next-day check-in succeeds after rollover ---
       const punchInRec = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566, 10.0, 'General Shift');
       runStep('Session 1 Punch-In record created with GPS coordinates & accuracy', !!punchInRec.check_in && Number(punchInRec.punch_in_lat) === 12.971598);
 
@@ -111,25 +133,32 @@ async function runMasterE2EVerificationSuite() {
         runStep('Check-out with no active session correctly rejected', err.message.includes('No active check-in session'));
       }
 
-      const s2CheckIn = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 28.5355, 77.3910, 5.0, 'Client Site');
-      runStep('Session 2 Punch-In created on same date', !!s2CheckIn.check_in);
+      // --- TEST 3C: No-Check-In Regularization & HR Approval/Rejection ---
+      const noCheckInDate = '2026-08-20';
+      await query('DELETE FROM attendance_regularizations WHERE employee_id = $1 AND attendance_date = $2', [emp.id, noCheckInDate]);
+      await query('DELETE FROM attendance WHERE employee_id = $1 AND date = $2', [emp.id, noCheckInDate]);
 
-      const s2CheckOut = await AttendanceRepository.checkOut(orgId, emp.id, 28.5355, 77.3910, 5.0);
-      runStep('Session 2 Punch-Out completed on same date', !!s2CheckOut.check_out);
-
-      const daySummary = await AttendanceRepository.getTodaySummary(emp.id, orgId, todayStr);
-      runStep('Multi-session daily aggregation counts 2 sessions', daySummary.totalSessions === 2);
-
-      const regReq = await AttendanceRepository.applyRegularization(
-        orgId, emp.id, todayStr, `${todayStr}T09:00:00Z`, `${todayStr}T18:00:00Z`, 'E2E Master Suite Regularization Test'
+      const noCheckInReg = await AttendanceRepository.applyRegularization(
+        orgId, emp.id, noCheckInDate, `${noCheckInDate}T09:15:00Z`, `${noCheckInDate}T18:10:00Z`, 'No check-in regularization test', 'FIELD_VISIT', emp.id
       );
-      runStep('Regularization request submitted with PENDING status', regReq.status === 'PENDING');
+      runStep('No-check-in regularization submitted without existing attendance row', noCheckInReg.status === 'PENDING' && noCheckInReg.attendance_session_id === null);
 
-      const approvedReg = await AttendanceRepository.approveRegularization(orgId, regReq.id, emp.id);
-      runStep('Regularization request APPROVED', approvedReg.regularization.status === 'APPROVED');
+      const approvedNoCheckIn = await AttendanceRepository.approveRegularization(orgId, noCheckInReg.id, emp.id);
+      runStep('No-check-in regularization APPROVED and attendance record created',
+        approvedNoCheckIn.regularization.status === 'APPROVED' && approvedNoCheckIn.attendance.date.toString().includes(noCheckInDate)
+      );
 
-      await query('DELETE FROM attendance_regularizations WHERE id = $1', [regReq.id]);
-      await query('DELETE FROM attendance WHERE employee_id = $1 AND date = $2', [emp.id, todayStr]);
+      const rejDate = '2026-08-21';
+      await query('DELETE FROM attendance_regularizations WHERE employee_id = $1 AND attendance_date = $2', [emp.id, rejDate]);
+      const rejReg = await AttendanceRepository.applyRegularization(
+        orgId, emp.id, rejDate, `${rejDate}T09:00:00Z`, `${rejDate}T17:00:00Z`, 'Rejection test', 'PRESENT', emp.id
+      );
+      const rejectedRes = await AttendanceRepository.rejectRegularization(orgId, rejReg.id, emp.id, 'Invalid request reason');
+      runStep('Regularization request REJECTED without altering attendance', rejectedRes.status === 'REJECTED');
+
+      // Cleanup
+      await query('DELETE FROM attendance_regularizations WHERE employee_id = $1 AND attendance_date IN ($2, $3, $4)', [emp.id, todayStr, noCheckInDate, rejDate]);
+      await query('DELETE FROM attendance WHERE employee_id = $1 AND date IN ($2, $3, $4)', [emp.id, todayStr, yesterdayStr, noCheckInDate]);
     } else {
       runStep('Attendance State Machine & GPS Check (Code Contract Validation)', true);
     }

@@ -316,8 +316,8 @@ export class LeaveRepository {
     });
   }
 
-  static async findAll(organizationId: string, options: { status?: string; page?: number; limit?: number }) {
-    const { status, page = 1, limit = 20 } = options;
+  static async findAll(organizationId: string, options: { status?: string; employeeId?: string; page?: number; limit?: number } = {}) {
+    const { status, employeeId, page = 1, limit = 500 } = options;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE lr.organization_id = $1';
@@ -328,20 +328,27 @@ export class LeaveRepository {
       whereClause += ` AND lr.status = $${params.length}`;
     }
 
+    if (employeeId) {
+      params.push(employeeId);
+      whereClause += ` AND lr.employee_id = $${params.length}`;
+    }
+
     const countText = `SELECT COUNT(*) FROM leave_requests lr ${whereClause}`;
     const countRes = await query(countText, params);
-    const total = parseInt(countRes.rows[0].count, 10);
+    const total = parseInt(countRes.rows[0]?.count || '0', 10);
 
     params.push(limit, offset);
     const dataText = `
       SELECT 
         lr.id, lr.employee_id, lr.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
         lr.start_date, lr.end_date, lr.total_days, lr.reason, lr.status, lr.rejection_reason, lr.created_at,
-        e.first_name, e.last_name, e.employee_code,
+        COALESCE(e.first_name, SPLIT_PART(lr.employee_name_snapshot, ' ', 1), 'Deleted') as first_name,
+        COALESCE(e.last_name, SUBSTRING(lr.employee_name_snapshot FROM POSITION(' ' IN lr.employee_name_snapshot) + 1), 'Employee') as last_name,
+        COALESCE(e.employee_code, lr.employee_code_snapshot, 'EMP') as employee_code,
         rev.first_name as reviewer_first_name, rev.last_name as reviewer_last_name
       FROM leave_requests lr
       INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
-      INNER JOIN employees e ON lr.employee_id = e.id
+      LEFT JOIN employees e ON lr.employee_id = e.id
       LEFT JOIN employees rev ON lr.reviewer_employee_id = rev.id
       ${whereClause}
       ORDER BY lr.created_at DESC

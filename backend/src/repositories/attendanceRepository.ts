@@ -1,24 +1,119 @@
-import { query } from '../db';
+import { query, withTransaction } from '../db';
 import { reverseGeocode } from '../utils/geocoding';
 
 export class AttendanceRepository {
   /**
-   * Find current open active session (check_out IS NULL)
+   * Helper: Get Organization Timezone from settings (default 'Asia/Kolkata')
+   */
+  static async getOrganizationTimeZone(organizationId: string, client?: any): Promise<string> {
+    const db = client || { query };
+    const res = await db.query(
+      `SELECT time_zone FROM organization_settings WHERE organization_id = $1 LIMIT 1`,
+      [organizationId]
+    );
+    return res.rows[0]?.time_zone || 'Asia/Kolkata';
+  }
+
+  /**
+   * Helper: Format Date string YYYY-MM-DD in Organization Timezone
+   */
+  static getOrgDateStr(dateInput: Date | string = new Date(), timeZone: string = 'Asia/Kolkata'): string {
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(d);
+  }
+
+  /**
+   * Internal helper: Perform calendar-day session rollover for older open sessions
+   */
+  static async performRolloverCheck(client: any, organizationId: string, employeeId: string, todayOrgDateStr: string) {
+    const openRes = await client.query(
+      `SELECT id, date, check_in, check_out, employee_id, organization_id, status, session_state
+       FROM attendance
+       WHERE employee_id = $1 AND organization_id = $2 AND check_out IS NULL
+       FOR UPDATE`,
+      [employeeId, organizationId]
+    );
+
+    for (const session of openRes.rows) {
+      const sessionDateStr = session.date ? (typeof session.date === 'string' ? session.date.split('T')[0] : new Date(session.date).toISOString().split('T')[0]) : null;
+      if (sessionDateStr && sessionDateStr < todayOrgDateStr) {
+        // Old open session from an earlier calendar date -> ROLLOVER_TERMINATED
+        // DO NOT set check_out time! check_out remains NULL
+        await client.query(
+          `UPDATE attendance
+           SET session_state = 'ROLLOVER_TERMINATED',
+               status = 'ROLLOVER_TERMINATED',
+               system_terminated_at = CURRENT_TIMESTAMP,
+               termination_reason = 'CALENDAR_DAY_ROLLOVER',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [session.id]
+        );
+
+        const empRes = await client.query(`SELECT employee_code, first_name, last_name FROM employees WHERE id = $1`, [employeeId]);
+        const emp = empRes.rows[0];
+        const empCode = emp?.employee_code || 'EMP';
+
+        // Write Audit Log for automatic rollover
+        await client.query(
+          `INSERT INTO audit_logs (
+            organization_id, user_id, action, module, entity_name, entity_id, new_values, employee_name_snapshot
+          ) VALUES ($1, NULL, 'ATTENDANCE_SESSION_ROLLOVER_TERMINATED', 'attendance', 'AttendanceSession', $2, $3, $4)`,
+          [
+            organizationId,
+            session.id,
+            JSON.stringify({
+              organizationId,
+              employeeId,
+              employeeCode: empCode,
+              attendanceSessionId: session.id,
+              attendanceDate: sessionDateStr,
+              originalInTime: session.check_in,
+              originalOutTime: null,
+              systemTerminatedAt: new Date().toISOString(),
+              terminationReason: 'CALENDAR_DAY_ROLLOVER',
+              actor: 'SYSTEM'
+            }),
+            emp ? `${emp.first_name} ${emp.last_name}` : 'Employee'
+          ]
+        );
+      }
+    }
+  }
+
+  /**
+   * Find current open active session for today's calendar date
    */
   static async findActiveSession(employeeId: string, organizationId: string) {
-    const text = `
-      SELECT 
-        a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
-        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
-        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
-        a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
-      FROM attendance a
-      WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.check_out IS NULL
-      ORDER BY a.check_in DESC
-      LIMIT 1
-    `;
-    const res = await query(text, [employeeId, organizationId]);
-    return res.rows[0] || null;
+    return withTransaction(async (client) => {
+      const tz = await this.getOrganizationTimeZone(organizationId, client);
+      const todayStr = this.getOrgDateStr(new Date(), tz);
+      await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
+
+      const text = `
+        SELECT 
+          a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
+          a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+          a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
+          a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
+        FROM attendance a
+        WHERE a.employee_id = $1 AND a.organization_id = $2 
+          AND a.check_out IS NULL 
+          AND (a.session_state IS NULL OR a.session_state = 'ACTIVE')
+          AND a.date = $3
+        ORDER BY a.check_in DESC
+        LIMIT 1
+      `;
+      const res = await client.query(text, [employeeId, organizationId, todayStr]);
+      return res.rows[0] || null;
+    });
   }
 
   /**
@@ -30,7 +125,7 @@ export class AttendanceRepository {
         a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
         a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
         a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
-        a.break_duration_mins, a.shift_name, a.status, a.working_hours, a.location_id
+        a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
       FROM attendance a
       WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.date = $3
       ORDER BY a.check_in ASC
@@ -42,46 +137,112 @@ export class AttendanceRepository {
   /**
    * Aggregate daily summary across all sessions for an employee on a date
    */
-  static async getTodaySummary(employeeId: string, organizationId: string, dateStr: string) {
-    const sessions = await this.findTodaySessions(employeeId, organizationId, dateStr);
-    const activeSession = await this.findActiveSession(employeeId, organizationId);
+  static async getTodaySummary(employeeId: string, organizationId: string, dateStr?: string) {
+    return withTransaction(async (client) => {
+      const tz = await this.getOrganizationTimeZone(organizationId, client);
+      const targetDateStr = dateStr || this.getOrgDateStr(new Date(), tz);
+      const todayStr = this.getOrgDateStr(new Date(), tz);
 
-    let totalWorkingHours = 0;
-    let totalBreakMins = 0;
-    let firstCheckIn: string | null = null;
-    let lastCheckOut: string | null = null;
+      if (targetDateStr === todayStr) {
+        await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
+      }
 
-    sessions.forEach((s: any) => {
-      totalWorkingHours += Number(s.working_hours || 0);
-      totalBreakMins += Number(s.break_duration_mins || 0);
-      if (!firstCheckIn || new Date(s.check_in) < new Date(firstCheckIn)) {
-        firstCheckIn = s.check_in;
+      const sessionsRes = await client.query(
+        `SELECT 
+          a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
+          a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+          a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
+          a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
+        FROM attendance a
+        WHERE a.employee_id = $1 AND a.organization_id = $2 AND a.date = $3
+        ORDER BY a.check_in ASC`,
+        [employeeId, organizationId, targetDateStr]
+      );
+      const sessions = sessionsRes.rows;
+
+      const activeSession = sessions.find(s => s.check_out === null && (s.session_state === null || s.session_state === 'ACTIVE')) || null;
+
+      let totalWorkingHours = 0;
+      let totalBreakMins = 0;
+      let firstCheckIn: string | null = null;
+      let lastCheckOut: string | null = null;
+
+      sessions.forEach((s: any) => {
+        totalWorkingHours += Number(s.working_hours || 0);
+        totalBreakMins += Number(s.break_duration_mins || 0);
+        if (s.check_in && (!firstCheckIn || new Date(s.check_in) < new Date(firstCheckIn))) {
+          firstCheckIn = s.check_in;
+        }
+        if (s.check_out && (!lastCheckOut || new Date(s.check_out) > new Date(lastCheckOut))) {
+          lastCheckOut = s.check_out;
+        }
+      });
+
+      // Check Leave status for date
+      const leaveRes = await client.query(
+        `SELECT lr.id, lr.status, lt.name as leave_type_name, lt.code as leave_type_code
+         FROM leave_requests lr
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
+         WHERE lr.employee_id = $1 AND lr.organization_id = $2 
+           AND lr.status = 'APPROVED'
+           AND $3 BETWEEN lr.start_date AND lr.end_date
+         LIMIT 1`,
+        [employeeId, organizationId, targetDateStr]
+      );
+      const approvedLeave = leaveRes.rows[0] || null;
+
+      // Check Holiday status for date
+      const holidayRes = await client.query(
+        `SELECT title, holiday_type FROM holidays WHERE organization_id = $1 AND date = $2 LIMIT 1`,
+        [organizationId, targetDateStr]
+      );
+      const holiday = holidayRes.rows[0] || null;
+
+      // Check Pending Regularization
+      const regRes = await client.query(
+        `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations 
+         WHERE employee_id = $1 AND organization_id = $2 AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
+        [employeeId, organizationId, targetDateStr]
+      );
+      const pendingReg = regRes.rows[0] || null;
+
+      let dayStatus = 'NOT_CHECKED_IN';
+      if (approvedLeave) {
+        dayStatus = 'LEAVE';
+      } else if (holiday) {
+        dayStatus = 'HOLIDAY';
+      } else if (activeSession) {
+        dayStatus = 'ACTIVE';
+      } else if (sessions.length > 0) {
+        dayStatus = 'COMPLETED';
+      } else if (pendingReg) {
+        dayStatus = 'PENDING_REGULARIZATION';
       }
-      if (s.check_out && (!lastCheckOut || new Date(s.check_out) > new Date(lastCheckOut))) {
-        lastCheckOut = s.check_out;
-      }
+
+      return {
+        date: targetDateStr,
+        sessions,
+        activeSession,
+        totalSessions: sessions.length,
+        totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
+        totalBreakMins,
+        firstCheckIn,
+        lastCheckOut,
+        status: dayStatus,
+        leave: approvedLeave,
+        holiday,
+        pendingRegularization: pendingReg
+      };
     });
-
-    return {
-      date: dateStr,
-      sessions,
-      activeSession,
-      totalSessions: sessions.length,
-      totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
-      totalBreakMins,
-      firstCheckIn,
-      lastCheckOut,
-      status: activeSession ? 'ACTIVE' : (sessions.length > 0 ? 'COMPLETED' : 'NOT_CHECKED_IN')
-    };
   }
 
   /**
-   * Create a new attendance check-in session
+   * Create a new attendance check-in session (concurrency and transaction safe)
    */
   static async checkIn(
     organizationId: string,
     employeeId: string,
-    dateStr: string,
+    dateStr?: string,
     latitude?: number,
     longitude?: number,
     accuracy?: number,
@@ -89,38 +250,48 @@ export class AttendanceRepository {
     locationId?: string,
     ipAddress?: string
   ) {
-    // 1. Guard against active session in application layer
-    const active = await this.findActiveSession(employeeId, organizationId);
-    if (active) {
-      throw new Error('Employee has an active check-in session. Please check out before checking in again.');
-    }
+    return withTransaction(async (client) => {
+      const tz = await this.getOrganizationTimeZone(organizationId, client);
+      const todayStr = dateStr || this.getOrgDateStr(new Date(), tz);
 
-    // 2. Reverse-geocode coordinates for human-readable location name
-    const locationName = await reverseGeocode(latitude, longitude);
+      // 1. Perform rollover check to terminate yesterday's open session if any
+      await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
 
-    const text = `
-      INSERT INTO attendance (
-        organization_id, employee_id, date, check_in, status,
-        punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name, location_id, ip_address
-      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id, employee_id, date, check_in, status, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name
-    `;
-    try {
-      const res = await query(text, [
-        organizationId, employeeId, dateStr,
-        latitude || null, longitude || null, accuracy || null, locationName, shiftName, locationId || null, ipAddress || null
-      ]);
-      return res.rows[0];
-    } catch (err: any) {
-      if (err.code === '23505' || (err.message && (err.message.includes('idx_attendance_active_session') || err.message.includes('unique')))) {
+      // 2. Lock & check active session for todayStr
+      const activeRes = await client.query(
+        `SELECT id FROM attendance 
+         WHERE employee_id = $1 AND organization_id = $2 
+           AND check_out IS NULL 
+           AND (session_state IS NULL OR session_state = 'ACTIVE')
+           AND date = $3
+         FOR UPDATE`,
+        [employeeId, organizationId, todayStr]
+      );
+
+      if (activeRes.rows.length > 0) {
         throw new Error('Employee has an active check-in session. Please check out before checking in again.');
       }
-      throw err;
-    }
+
+      const locationName = await reverseGeocode(latitude, longitude);
+
+      const text = `
+        INSERT INTO attendance (
+          organization_id, employee_id, date, check_in, status, session_state,
+          punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name, location_id, ip_address
+        ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', 'ACTIVE', $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id, employee_id, date, check_in, status, session_state, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name
+      `;
+      const res = await client.query(text, [
+        organizationId, employeeId, todayStr,
+        latitude || null, longitude || null, accuracy || null, locationName, shiftName, locationId || null, ipAddress || null
+      ]);
+
+      return res.rows[0];
+    });
   }
 
   /**
-   * Complete the currently active check-in session
+   * Complete active check-in session for today
    */
   static async checkOut(
     organizationId: string,
@@ -129,31 +300,46 @@ export class AttendanceRepository {
     longitude?: number,
     accuracy?: number
   ) {
-    const active = await this.findActiveSession(employeeId, organizationId);
-    if (!active) {
-      throw new Error('No active check-in session found.');
-    }
+    return withTransaction(async (client) => {
+      const tz = await this.getOrganizationTimeZone(organizationId, client);
+      const todayStr = this.getOrgDateStr(new Date(), tz);
 
-    const locationName = await reverseGeocode(latitude, longitude);
+      await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
 
-    const text = `
-      UPDATE attendance
-      SET 
-        check_out = CURRENT_TIMESTAMP,
-        punch_out_lat = $1,
-        punch_out_lng = $2,
-        punch_out_accuracy = $3,
-        punch_out_location_name = $4,
-        working_hours = ROUND(GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in)) / 3600.0 - (COALESCE(break_duration_mins, 0) / 60.0))::numeric, 2),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5 AND organization_id = $6 AND check_out IS NULL
-      RETURNING id, employee_id, date, check_in, check_out, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, punch_out_lat, punch_out_lng, punch_out_accuracy, punch_out_location_name, working_hours, break_duration_mins, status
-    `;
-    const res = await query(text, [latitude || null, longitude || null, accuracy || null, locationName, active.id, organizationId]);
-    if (!res.rows[0]) {
-      throw new Error('No active check-in session found or session already completed.');
-    }
-    return res.rows[0];
+      const activeRes = await client.query(
+        `SELECT id, check_in FROM attendance
+         WHERE employee_id = $1 AND organization_id = $2 
+           AND check_out IS NULL 
+           AND (session_state IS NULL OR session_state = 'ACTIVE')
+           AND date = $3
+         FOR UPDATE`,
+        [employeeId, organizationId, todayStr]
+      );
+
+      const active = activeRes.rows[0];
+      if (!active) {
+        throw new Error('No active check-in session found.');
+      }
+
+      const locationName = await reverseGeocode(latitude, longitude);
+
+      const text = `
+        UPDATE attendance
+        SET 
+          check_out = CURRENT_TIMESTAMP,
+          session_state = 'COMPLETED',
+          punch_out_lat = $1,
+          punch_out_lng = $2,
+          punch_out_accuracy = $3,
+          punch_out_location_name = $4,
+          working_hours = ROUND(GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - check_in)) / 3600.0 - (COALESCE(break_duration_mins, 0) / 60.0))::numeric, 2),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5 AND organization_id = $6
+        RETURNING id, employee_id, date, check_in, check_out, session_state, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, punch_out_lat, punch_out_lng, punch_out_accuracy, punch_out_location_name, working_hours, break_duration_mins, status
+      `;
+      const res = await client.query(text, [latitude || null, longitude || null, accuracy || null, locationName, active.id, organizationId]);
+      return res.rows[0];
+    });
   }
 
   /**
@@ -184,21 +370,95 @@ export class AttendanceRepository {
     attendanceDate: string,
     requestedPunchIn: string | null,
     requestedPunchOut: string | null,
-    reason: string
+    reason: string,
+    attendanceType: string = 'PRESENT',
+    submittedBy?: string
   ) {
-    const text = `
-      INSERT INTO attendance_regularizations (
-        organization_id, employee_id, attendance_date, requested_punch_in, requested_punch_out, reason, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')
-      RETURNING *
-    `;
-    const res = await query(text, [
-      organizationId, employeeId, attendanceDate,
-      requestedPunchIn ? new Date(requestedPunchIn).toISOString() : null,
-      requestedPunchOut ? new Date(requestedPunchOut).toISOString() : null,
-      reason
-    ]);
-    return res.rows[0];
+    if (!reason || reason.trim() === '') {
+      throw new Error('Reason is required for attendance regularization.');
+    }
+
+    return withTransaction(async (client) => {
+      const attRes = await client.query(
+        `SELECT id, check_in, check_out FROM attendance 
+         WHERE employee_id = $1 AND organization_id = $2 AND date = $3 
+         ORDER BY check_in ASC LIMIT 1`,
+        [employeeId, organizationId, attendanceDate]
+      );
+      const existingAtt = attRes.rows[0] || null;
+
+      const origIn = existingAtt ? existingAtt.check_in : null;
+      const origOut = existingAtt ? existingAtt.check_out : null;
+      const attSessionId = existingAtt ? existingAtt.id : null;
+
+      const text = `
+        INSERT INTO attendance_regularizations (
+          organization_id, employee_id, attendance_date, 
+          attendance_session_id, attendance_type,
+          original_in_time, original_out_time,
+          requested_punch_in, requested_punch_out, 
+          reason, status, submitted_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING', $11)
+        RETURNING *
+      `;
+      const res = await client.query(text, [
+        organizationId, employeeId, attendanceDate,
+        attSessionId, attendanceType,
+        origIn, origOut,
+        requestedPunchIn ? new Date(requestedPunchIn).toISOString() : null,
+        requestedPunchOut ? new Date(requestedPunchOut).toISOString() : null,
+        reason.trim(),
+        submittedBy || employeeId
+      ]);
+      const reg = res.rows[0];
+
+      const empRes = await client.query(`SELECT employee_code, first_name, last_name FROM employees WHERE id = $1`, [employeeId]);
+      const emp = empRes.rows[0];
+      const fullName = emp ? `${emp.first_name} ${emp.last_name}` : 'Employee';
+
+      await client.query(
+        `INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values, employee_name_snapshot
+        ) VALUES ($1, NULL, 'ATTENDANCE_REGULARIZATION_SUBMITTED', 'attendance', 'AttendanceRegularization', $2, $3, $4)`,
+        [
+          organizationId,
+          reg.id,
+          JSON.stringify({
+            employeeId,
+            attendanceDate,
+            attendanceType,
+            requestedPunchIn,
+            requestedPunchOut,
+            reason: reason.trim()
+          }),
+          fullName
+        ]
+      );
+
+      const hrUsersRes = await client.query(
+        `SELECT u.id FROM users u
+         JOIN user_roles ur ON u.id = ur.user_id
+         JOIN roles r ON ur.role_id = r.id
+         WHERE u.organization_id = $1 AND r.name IN ('HR_MANAGER', 'ADMIN', 'SUPER_ADMIN')`,
+        [organizationId]
+      );
+
+      for (const hrUser of hrUsersRes.rows) {
+        await client.query(
+          `INSERT INTO notifications (organization_id, user_id, title, message, link)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            organizationId,
+            hrUser.id,
+            'Attendance Regularization Request',
+            `${fullName} submitted an attendance regularization request for ${attendanceDate}.`,
+            '/attendance'
+          ]
+        );
+      }
+
+      return reg;
+    });
   }
 
   static async getRegularizations(organizationId: string, filters: { employeeId?: string; status?: string }) {
@@ -221,11 +481,13 @@ export class AttendanceRepository {
     const sql = `
       SELECT 
         r.id, r.organization_id, r.employee_id,
-        e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-        r.attendance_date, r.requested_punch_in, r.requested_punch_out, r.reason,
+        COALESCE(CONCAT(e.first_name, ' ', e.last_name), r.employee_name_snapshot, 'Deleted Employee') as employee_name,
+        COALESCE(e.employee_code, r.employee_code_snapshot, 'EMP') as employee_code,
+        r.attendance_date, r.attendance_type, r.original_in_time, r.original_out_time,
+        r.requested_punch_in, r.requested_punch_out, r.reason,
         r.status, r.approved_by, r.approved_at, r.rejection_reason, r.created_at
       FROM attendance_regularizations r
-      INNER JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees e ON r.employee_id = e.id
       ${whereClause}
       ORDER BY r.created_at DESC
     `;
@@ -234,51 +496,194 @@ export class AttendanceRepository {
   }
 
   static async approveRegularization(organizationId: string, regularizationId: string, approverId: string) {
-    const regRes = await query(
-      `SELECT * FROM attendance_regularizations WHERE id = $1 AND organization_id = $2 AND status = 'PENDING'`,
-      [regularizationId, organizationId]
-    );
-    const reg = regRes.rows[0];
-    if (!reg) {
-      throw new Error('Pending regularization request not found.');
-    }
+    return withTransaction(async (client) => {
+      const regRes = await client.query(
+        `SELECT * FROM attendance_regularizations 
+         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING' 
+         FOR UPDATE`,
+        [regularizationId, organizationId]
+      );
+      const reg = regRes.rows[0];
+      if (!reg) {
+        throw new Error('Pending regularization request not found or already processed.');
+      }
 
-    // 1. Update regularization status
-    await query(
-      `UPDATE attendance_regularizations SET status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [approverId, regularizationId]
-    );
+      await client.query(
+        `UPDATE attendance_regularizations 
+         SET status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2`,
+        [approverId, regularizationId]
+      );
 
-    // 2. Insert new regularized session
-    const dateStr = new Date(reg.attendance_date).toISOString().split('T')[0];
-    const checkInTime = reg.requested_punch_in ? new Date(reg.requested_punch_in) : null;
-    const checkOutTime = reg.requested_punch_out ? new Date(reg.requested_punch_out) : null;
+      const dateStr = typeof reg.attendance_date === 'string' 
+        ? reg.attendance_date.split('T')[0] 
+        : new Date(reg.attendance_date).toISOString().split('T')[0];
 
-    let workingHours = 0;
-    if (checkInTime && checkOutTime) {
-      workingHours = Math.max(0, Number(((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60)).toFixed(2)));
-    }
+      const checkInTime = reg.requested_punch_in ? new Date(reg.requested_punch_in) : null;
+      const checkOutTime = reg.requested_punch_out ? new Date(reg.requested_punch_out) : null;
 
-    const insertSql = `
-      INSERT INTO attendance (
-        organization_id, employee_id, date, check_in, check_out, working_hours, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'PRESENT')
-      RETURNING *
-    `;
-    const attRes = await query(insertSql, [organizationId, reg.employee_id, dateStr, checkInTime, checkOutTime, workingHours]);
+      let workingHours = 0;
+      if (checkInTime && checkOutTime) {
+        workingHours = Math.max(0, Number(((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60)).toFixed(2)));
+      }
 
-    return { regularization: { ...reg, status: 'APPROVED' }, attendance: attRes.rows[0] };
+      const attType = reg.attendance_type || 'PRESENT';
+
+      let attRecord: any = null;
+
+      if (reg.attendance_session_id) {
+        const updateSql = `
+          UPDATE attendance
+          SET check_in = COALESCE($1, check_in),
+              check_out = COALESCE($2, check_out),
+              working_hours = CASE WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN $3 ELSE working_hours END,
+              status = $4,
+              session_state = 'COMPLETED',
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $5 AND organization_id = $6
+          RETURNING *
+        `;
+        const res = await client.query(updateSql, [checkInTime, checkOutTime, workingHours, attType, reg.attendance_session_id, organizationId]);
+        attRecord = res.rows[0];
+      }
+
+      if (!attRecord) {
+        const existingAtt = await client.query(
+          `SELECT id FROM attendance WHERE employee_id = $1 AND organization_id = $2 AND date = $3 LIMIT 1`,
+          [reg.employee_id, organizationId, dateStr]
+        );
+
+        if (existingAtt.rows.length > 0) {
+          const updateSql = `
+            UPDATE attendance
+            SET check_in = COALESCE($1, check_in),
+                check_out = COALESCE($2, check_out),
+                working_hours = CASE WHEN $1 IS NOT NULL AND $2 IS NOT NULL THEN $3 ELSE working_hours END,
+                status = $4,
+                session_state = 'COMPLETED',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $5 AND organization_id = $6
+            RETURNING *
+          `;
+          const res = await client.query(updateSql, [checkInTime, checkOutTime, workingHours, attType, existingAtt.rows[0].id, organizationId]);
+          attRecord = res.rows[0];
+        } else {
+          const insertSql = `
+            INSERT INTO attendance (
+              organization_id, employee_id, date, check_in, check_out, working_hours, status, session_state
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'COMPLETED')
+            RETURNING *
+          `;
+          const res = await client.query(insertSql, [organizationId, reg.employee_id, dateStr, checkInTime, checkOutTime, workingHours, attType]);
+          attRecord = res.rows[0];
+        }
+      }
+
+      const empRes = await client.query(`SELECT user_id, employee_code, first_name, last_name FROM employees WHERE id = $1`, [reg.employee_id]);
+      const emp = empRes.rows[0];
+      const fullName = emp ? `${emp.first_name} ${emp.last_name}` : 'Employee';
+
+      await client.query(
+        `INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values, employee_name_snapshot
+        ) VALUES ($1, NULL, 'ATTENDANCE_REGULARIZATION_APPROVED', 'attendance', 'AttendanceRegularization', $2, $3, $4)`,
+        [
+          organizationId,
+          regularizationId,
+          JSON.stringify({
+            regularizationId,
+            employeeId: reg.employee_id,
+            attendanceDate: dateStr,
+            attendanceType: attType,
+            requestedPunchIn: reg.requested_punch_in,
+            requestedPunchOut: reg.requested_punch_out,
+            approvedBy: approverId
+          }),
+          fullName
+        ]
+      );
+
+      if (emp?.user_id) {
+        await client.query(
+          `INSERT INTO notifications (organization_id, user_id, title, message, link)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            organizationId,
+            emp.user_id,
+            'Attendance Regularization Approved',
+            `Your attendance regularization request for ${dateStr} has been approved.`,
+            '/attendance'
+          ]
+        );
+      }
+
+      return { regularization: { ...reg, status: 'APPROVED' }, attendance: attRecord };
+    });
   }
 
   static async rejectRegularization(organizationId: string, regularizationId: string, approverId: string, rejectionReason?: string) {
-    const res = await query(
-      `UPDATE attendance_regularizations SET status = 'REJECTED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND organization_id = $4 AND status = 'PENDING' RETURNING *`,
-      [approverId, rejectionReason || 'Rejected by manager', regularizationId, organizationId]
-    );
-    if (!res.rows[0]) {
-      throw new Error('Pending regularization request not found.');
-    }
-    return res.rows[0];
+    return withTransaction(async (client) => {
+      const regRes = await client.query(
+        `SELECT * FROM attendance_regularizations 
+         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING' 
+         FOR UPDATE`,
+        [regularizationId, organizationId]
+      );
+      const reg = regRes.rows[0];
+      if (!reg) {
+        throw new Error('Pending regularization request not found or already processed.');
+      }
+
+      const res = await client.query(
+        `UPDATE attendance_regularizations 
+         SET status = 'REJECTED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $3 AND organization_id = $4 
+         RETURNING *`,
+        [approverId, rejectionReason || 'Rejected by manager', regularizationId, organizationId]
+      );
+
+      const dateStr = typeof reg.attendance_date === 'string' 
+        ? reg.attendance_date.split('T')[0] 
+        : new Date(reg.attendance_date).toISOString().split('T')[0];
+
+      const empRes = await client.query(`SELECT user_id, employee_code, first_name, last_name FROM employees WHERE id = $1`, [reg.employee_id]);
+      const emp = empRes.rows[0];
+      const fullName = emp ? `${emp.first_name} ${emp.last_name}` : 'Employee';
+
+      await client.query(
+        `INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, new_values, employee_name_snapshot
+        ) VALUES ($1, NULL, 'ATTENDANCE_REGULARIZATION_REJECTED', 'attendance', 'AttendanceRegularization', $2, $3, $4)`,
+        [
+          organizationId,
+          regularizationId,
+          JSON.stringify({
+            regularizationId,
+            employeeId: reg.employee_id,
+            attendanceDate: dateStr,
+            rejectedBy: approverId,
+            rejectionReason
+          }),
+          fullName
+        ]
+      );
+
+      if (emp?.user_id) {
+        await client.query(
+          `INSERT INTO notifications (organization_id, user_id, title, message, link)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            organizationId,
+            emp.user_id,
+            'Attendance Regularization Rejected',
+            `Your attendance regularization request for ${dateStr} was rejected. Reason: ${rejectionReason || 'Rejected by manager'}.`,
+            '/attendance'
+          ]
+        );
+      }
+
+      return res.rows[0];
+    });
   }
 
   static async findAll(organizationId: string, filters: { date?: string; startDate?: string; endDate?: string; employeeId?: string; departmentId?: string; page?: number; limit?: number }) {
@@ -323,7 +728,7 @@ export class AttendanceRepository {
     const countSql = `
       SELECT COUNT(*)::int as total
       FROM attendance a
-      INNER JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees e ON a.employee_id = e.id
       ${whereClause}
     `;
     const countRes = await query<{ total: number }>(countSql, params);
@@ -331,14 +736,15 @@ export class AttendanceRepository {
     const dataSql = `
       SELECT 
         a.id, a.organization_id, a.employee_id,
-        e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+        COALESCE(CONCAT(e.first_name, ' ', e.last_name), a.employee_name_snapshot, 'Deleted Employee') as employee_name,
+        COALESCE(e.employee_code, a.employee_code_snapshot, 'EMP') as employee_code,
         d.name as department_name,
         a.date, a.check_in, a.check_out, 
         a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
         a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
-        a.break_duration_mins, a.shift_name, a.status, a.working_hours
+        a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours
       FROM attendance a
-      INNER JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees e ON a.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
       ${whereClause}
       ORDER BY a.date DESC, a.check_in DESC
@@ -359,15 +765,18 @@ export class AttendanceRepository {
     };
   }
 
-  static async getWorkforceSummary(organizationId: string, dateStr: string) {
+  static async getWorkforceSummary(organizationId: string, dateStr?: string) {
+    const tz = await this.getOrganizationTimeZone(organizationId);
+    const targetDateStr = dateStr || this.getOrgDateStr(new Date(), tz);
+
     const text = `
       SELECT 
         (SELECT COUNT(*)::int FROM employees WHERE organization_id = $1 AND status = 'ACTIVE') as total_employees,
-        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status IN ('PRESENT', 'LATE')) as present_today,
+        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status IN ('PRESENT', 'LATE', 'FIELD_VISIT', 'ON_DUTY', 'WORK_FROM_HOME')) as present_today,
         (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status = 'LATE') as late_today,
         (SELECT COUNT(*)::int FROM leave_requests WHERE organization_id = $1 AND $2 BETWEEN start_date AND end_date AND status = 'APPROVED') as on_leave_today
     `;
-    const res = await query(text, [organizationId, dateStr]);
+    const res = await query(text, [organizationId, targetDateStr]);
     const row = res.rows[0] || { total_employees: 0, present_today: 0, late_today: 0, on_leave_today: 0 };
     const absent_today = Math.max(0, row.total_employees - (row.present_today + row.on_leave_today));
 

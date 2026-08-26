@@ -141,12 +141,15 @@ if (require.main === module) {
     if (process.env.DATABASE_URL) {
       try {
         const migratePath = path.join(__dirname, '../../database/scripts/migrate.js');
-        const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
         const { runMigrations } = require(migratePath);
-        const { runSeed } = require(seedPath);
-
         await runMigrations();
-        await runSeed(true);
+
+        const shouldSeed = process.env.SEED_DEMO_DATA === 'true' && process.env.NODE_ENV !== 'production';
+        if (shouldSeed) {
+          const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
+          const { runSeed } = require(seedPath);
+          await runSeed(true);
+        }
 
         const { migrateLegacyAttachments } = require('./scripts/migrate_legacy_attachments');
         await migrateLegacyAttachments();
