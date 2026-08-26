@@ -669,8 +669,29 @@ async function runMasterE2EVerificationSuite() {
     console.log('\n--- TEST 16: WORKFORCE LIFECYCLE & LEAVE ENTITLEMENT CONTROLS ---');
     const loginPageFile = path.join(rootDir, 'frontend/src/pages/Login.tsx');
     const loginPageCode = fs.readFileSync(loginPageFile, 'utf8');
-    runStep('Login.tsx has demo account buttons removed and default credentials cleared',
-      !loginPageCode.includes('Quick Demo Account Switch') && !loginPageCode.includes('superadmin@theiakshi.com')
+    const msalConfigFile = path.join(rootDir, 'frontend/src/config/msalConfig.ts');
+    const msalConfigCode = fs.readFileSync(msalConfigFile, 'utf8');
+
+    runStep('Login.tsx has demo buttons, password inputs, and fallback password form completely removed',
+      !loginPageCode.includes('Quick Demo Account Switch') &&
+      !loginPageCode.includes('superadmin@theiakshi.com') &&
+      !loginPageCode.includes('showPasswordFallback') &&
+      !loginPageCode.includes('Company Email') &&
+      !loginPageCode.includes('Password Sign In')
+    );
+
+    runStep('msalConfig.ts initializes singleton PublicClientApplication with module-level promise and interaction protection',
+      msalConfigCode.includes('export const msalInstance = new PublicClientApplication') &&
+      msalConfigCode.includes('msalInitPromise') &&
+      msalConfigCode.includes('executeMicrosoftPopupLogin') &&
+      msalConfigCode.includes('isInteractionInProgress')
+    );
+
+    runStep('Login.tsx prevents concurrent popup triggers with execution ref guard and displays friendly error states',
+      loginPageCode.includes('isExecutingRef') &&
+      loginPageCode.includes('executeMicrosoftPopupLogin()') &&
+      loginPageCode.includes('interaction_in_progress') &&
+      loginPageCode.includes('Signing in with Microsoft...')
     );
 
     const empRepoFile = path.join(rootDir, 'backend/src/repositories/employeeRepository.ts');

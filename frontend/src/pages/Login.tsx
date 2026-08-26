@@ -1,37 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, Building2, AlertCircle, ShieldCheck } from 'lucide-react';
-import { ensureMsalInitialized, loginRequest } from '../config/msalConfig';
+import { Building2, AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
+import { executeMicrosoftPopupLogin } from '../config/msalConfig';
 
 export const Login: React.FC = () => {
-  const { user, loginWithMicrosoft, login, error } = useAuth();
+  const { user, loginWithMicrosoft, error } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [showPasswordFallback, setShowPasswordFallback] = useState(false);
+  
+  // Guard against concurrent clicks or rapid re-renders
+  const isExecutingRef = useRef(false);
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleMicrosoftSignIn = async () => {
+    if (loading || isExecutingRef.current) {
+      return;
+    }
+
+    isExecutingRef.current = true;
     setLoading(true);
     setLocalError(null);
+
     try {
-      const msalInstance = await ensureMsalInitialized();
       let response;
       try {
-        response = await msalInstance.loginPopup(loginRequest);
+        response = await executeMicrosoftPopupLogin();
       } catch (popupErr: any) {
-        if (popupErr.errorCode === 'user_cancelled') {
-          setLocalError('Microsoft sign in was cancelled.');
+        if (popupErr.errorCode === 'user_cancelled' || popupErr.errorCode === 'popup_window_closed' || popupErr.message?.includes('user_cancelled')) {
+          setLocalError('Microsoft sign in was cancelled or closed. Please try again.');
           return;
         }
-        if (popupErr.errorCode === 'interaction_in_progress') {
-          setLocalError('An authentication interaction is already in progress. Please complete or close the pop-up.');
+        if (popupErr.errorCode === 'interaction_in_progress' || popupErr.message?.includes('interaction_in_progress')) {
+          setLocalError('A Microsoft sign-in window is already open. Please complete or close the pop-up window and try again.');
           return;
         }
         throw popupErr;
@@ -49,20 +54,7 @@ export const Login: React.FC = () => {
       setLocalError(err.message || 'Microsoft authentication failed.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setLocalError(null);
-    try {
-      await login(email, password);
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      // Error handled by AuthContext state
-    } finally {
-      setLoading(false);
+      isExecutingRef.current = false;
     }
   };
 
@@ -95,70 +87,30 @@ export const Login: React.FC = () => {
           </div>
         )}
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-4">
           <button
             type="button"
             onClick={handleMicrosoftSignIn}
             disabled={loading}
-            className="w-full py-4 px-4 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-sm shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 border border-slate-300"
+            className="w-full py-4 px-4 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-sm shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 border border-slate-300 cursor-pointer"
           >
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 23 23">
-              <path fill="#f35325" d="M1 1h10v10H1z"/>
-              <path fill="#81bc06" d="M12 1h10v10H12z"/>
-              <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-              <path fill="#ffba08" d="M12 12h10v10H12z"/>
-            </svg>
-            <span>Sign in with Microsoft</span>
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-slate-700" />
+                <span>Signing in with Microsoft...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 23 23">
+                  <path fill="#f35325" d="M1 1h10v10H1z"/>
+                  <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                  <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                  <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                </svg>
+                <span>Sign in with Microsoft</span>
+              </>
+            )}
           </button>
-
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink mx-4 text-xs text-slate-500 font-medium">Internal Work Account Access</span>
-            <div className="flex-grow border-t border-slate-800"></div>
-          </div>
-
-          {!showPasswordFallback ? (
-            <button
-              type="button"
-              onClick={() => setShowPasswordFallback(true)}
-              className="w-full py-2 text-xs text-slate-400 hover:text-cyan-400 transition-colors text-center font-medium"
-            >
-              Sign in with password (Development Fallback)
-            </button>
-          ) : (
-            <form className="space-y-4 pt-2 border-t border-slate-800/80" onSubmit={handlePasswordSubmit}>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Company Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="user@theiakshi.com"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="••••••••••••"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Password Sign In</span>
-              </button>
-            </form>
-          )}
         </div>
       </div>
     </div>
