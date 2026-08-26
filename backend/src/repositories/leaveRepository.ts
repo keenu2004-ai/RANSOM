@@ -307,7 +307,7 @@ export class LeaveRepository {
 
       const updatedRes = await client.query(`
         UPDATE leave_requests
-        SET status = $1, reviewer_employee_id = $2, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
+        SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
         WHERE id = $4 AND organization_id = $5
         RETURNING *
       `, [status, reviewerEmployeeId || null, rejectionReason || null, id, organizationId]);
@@ -349,7 +349,7 @@ export class LeaveRepository {
       FROM leave_requests lr
       INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
       LEFT JOIN employees e ON lr.employee_id = e.id
-      LEFT JOIN employees rev ON lr.reviewer_employee_id = rev.id
+      LEFT JOIN employees rev ON lr.reviewed_by = rev.id
       ${whereClause}
       ORDER BY lr.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}

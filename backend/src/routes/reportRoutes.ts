@@ -326,7 +326,7 @@ router.delete('/archives/:id', requireRole('SUPER_ADMIN'), async (req: Authentic
       await client.query('DELETE FROM report_archives WHERE id = $1 AND organization_id = $2', [id, organizationId]);
 
       // Audit Log: REPORT_ARCHIVE_DELETED
-      const uRes = await client.query('SELECT display_name, email, role FROM users WHERE id = $1', [req.user!.userId]);
+      const uRes = await client.query('SELECT display_name, email FROM users WHERE id = $1', [req.user!.userId]);
       const actorUser = uRes.rows[0] || {};
       const actorName = actorUser.display_name || req.user!.email || 'SUPER_ADMIN';
 

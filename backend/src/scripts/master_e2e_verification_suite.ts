@@ -66,7 +66,7 @@ async function runMasterE2EVerificationSuite() {
     // ─── 2. AUTHENTICATION & RBAC CONTRACTS ────────────────────────────────────
     console.log('\n[TEST 2] Authentication & RBAC User Identity Contracts...');
     if (dbAvailable) {
-      const userRes = await query('SELECT id, email, password_hash, role FROM users WHERE id = $1 AND organization_id = $2', [emp.user_id, orgId]);
+      const userRes = await query('SELECT u.id, u.email, u.password_hash, r.name as role FROM users u JOIN user_roles ur ON u.id = ur.user_id JOIN roles r ON ur.role_id = r.id WHERE u.id = $1 AND u.organization_id = $2', [emp.user_id, orgId]);
       runStep('User record matches employee user_id link', userRes.rows.length === 1);
       const userRole = userRes.rows[0].role;
       runStep('User has valid RBAC role assignment', ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER', 'EMPLOYEE'].includes(userRole));
@@ -1114,6 +1114,20 @@ async function runMasterE2EVerificationSuite() {
     runStep('reportRoutes.ts safely handles already missing physical storage files with clear storageAlreadyMissing status without failing backend transaction',
       reportRoutesCode23.includes("storageAlreadyMissing = true") &&
       reportRoutesCode23.includes("Archived report metadata deleted; storage file was already unavailable.")
+    );
+
+    const leaveRepoFile23 = path.join(rootDir, 'backend/src/repositories/leaveRepository.ts');
+    const leaveRepoCode23 = fs.readFileSync(leaveRepoFile23, 'utf8');
+
+    runStep('reportRoutes.ts audit logging uses valid users columns (SELECT display_name, email) without invalid role column',
+      !reportRoutesCode23.includes('SELECT display_name, email, role FROM users') &&
+      reportRoutesCode23.includes('SELECT display_name, email FROM users')
+    );
+
+    runStep('leaveRepository.ts uses canonical reviewed_by column without non-existent reviewer_employee_id',
+      !leaveRepoCode23.includes('reviewer_employee_id') &&
+      leaveRepoCode23.includes('reviewed_by = $2') &&
+      leaveRepoCode23.includes('LEFT JOIN employees rev ON lr.reviewed_by = rev.id')
     );
 
     runStep('Reports.tsx renders Delete button ONLY for SUPER_ADMIN users and opens high-risk confirmation modal requiring exact "DELETE" input',

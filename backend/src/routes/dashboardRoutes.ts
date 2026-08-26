@@ -27,6 +27,11 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
         pendingLeaves: leavePending.rows[0].count,
         pendingExpenses: expensePending.rows[0].count
       };
+    } else if (employeeId) {
+      const leavePending = await query('SELECT COUNT(*)::int as count FROM leave_requests WHERE organization_id = $1 AND employee_id = $2 AND status = \'PENDING\'', [organizationId, employeeId]);
+      summary = {
+        pendingLeaves: leavePending.rows[0].count
+      };
     }
 
     let personal: any = null;
