@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
-import { query } from '../db';
+import { query, withTransaction } from '../db';
 import { authenticate } from '../middleware/authMiddleware';
 import { requireRole } from '../middleware/rbacMiddleware';
 import { AuthenticatedRequest } from '../types';
@@ -255,6 +255,141 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
 
     stream.pipe(res);
   } catch (error) {
+    return next(error);
+  }
+});
+
+// 5. Delete Archived Report (SUPER_ADMIN ONLY)
+router.delete('/archives/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { id } = req.params;
+
+    // First verify existence and tenant isolation before entering transaction
+    // If record exists under ANOTHER organization, return 403 (do not reveal cross-tenant existence)
+    const existsAnyOrg = await query('SELECT id, organization_id FROM report_archives WHERE id = $1', [id]);
+    if (existsAnyOrg.rows.length > 0 && existsAnyOrg.rows[0].organization_id !== organizationId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have permission to delete this archived report.',
+        code: 'FORBIDDEN'
+      });
+    }
+
+    if (existsAnyOrg.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Archived report not found.',
+        code: 'NOT_FOUND'
+      });
+    }
+
+    let storageDeleted = false;
+    let storageAlreadyMissing = false;
+    let deletedArchive: any = null;
+
+    await withTransaction(async (client) => {
+      // Load report_archives row FOR UPDATE with organization_id check
+      const archiveRes = await client.query(
+        'SELECT * FROM report_archives WHERE id = $1 AND organization_id = $2 FOR UPDATE',
+        [id, organizationId]
+      );
+
+      if (archiveRes.rows.length === 0) {
+        throw { status: 404, message: 'Archived report not found.', code: 'NOT_FOUND' };
+      }
+
+      deletedArchive = archiveRes.rows[0];
+
+      // Physical Google Drive cleanup
+      const fileId = deletedArchive.storage_file_id;
+      const objectPath = deletedArchive.object_path;
+
+      if (fileId || objectPath) {
+        const fileExists = await StorageService.verifyObjectExists(fileId, objectPath);
+        if (fileExists) {
+          const deleteSuccess = await StorageService.deleteObject(fileId, objectPath);
+          if (!deleteSuccess) {
+            throw { status: 500, message: 'Could not delete the archived file from storage. The archive was not deleted.', code: 'STORAGE_DELETE_FAILED' };
+          }
+          storageDeleted = true;
+        } else {
+          storageAlreadyMissing = true;
+          storageDeleted = false;
+        }
+      } else {
+        storageAlreadyMissing = true;
+        storageDeleted = false;
+      }
+
+      // Delete database row
+      await client.query('DELETE FROM report_archives WHERE id = $1 AND organization_id = $2', [id, organizationId]);
+
+      // Audit Log: REPORT_ARCHIVE_DELETED
+      const uRes = await client.query('SELECT display_name, email, role FROM users WHERE id = $1', [req.user!.userId]);
+      const actorUser = uRes.rows[0] || {};
+      const actorName = actorUser.display_name || req.user!.email || 'SUPER_ADMIN';
+
+      const oldValues = {
+        actor_user_id: req.user!.userId,
+        actor_name: actorName,
+        actor_role: req.user!.role,
+        organization_id: organizationId,
+        archive_id: deletedArchive.id,
+        report_name: deletedArchive.report_name,
+        report_type: deletedArchive.report_type,
+        period: `${deletedArchive.period_year}-${String(deletedArchive.period_month || 1).padStart(2, '0')}`,
+        storage_provider: deletedArchive.storage_provider,
+        storage_file_id: deletedArchive.storage_file_id,
+        file_size: deletedArchive.file_size,
+        generated_by: deletedArchive.generated_by,
+        generated_at: deletedArchive.created_at,
+        deletion_timestamp: new Date().toISOString(),
+        storage_deleted: storageDeleted,
+        storage_already_missing: storageAlreadyMissing
+      };
+
+      const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+      const userAgent = req.headers['user-agent'] || 'App';
+
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, old_values, ip_address, user_agent
+        ) VALUES ($1, $2, 'REPORT_ARCHIVE_DELETED', 'REPORTS', 'REPORT_ARCHIVE', $3, $4, $5, $6)
+      `, [
+        organizationId,
+        req.user!.userId,
+        id,
+        JSON.stringify(oldValues),
+        ipAddress,
+        userAgent
+      ]);
+    });
+
+    if (storageAlreadyMissing) {
+      return res.status(200).json({
+        success: true,
+        message: 'Archived report metadata deleted; storage file was already unavailable.',
+        archiveId: id,
+        storageDeleted: false,
+        storageAlreadyMissing: true
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Archived report deleted successfully.',
+      archiveId: id,
+      storageDeleted: true
+    });
+  } catch (error: any) {
+    if (error && error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.message,
+        code: error.code || 'DELETE_FAILED'
+      });
+    }
     return next(error);
   }
 });

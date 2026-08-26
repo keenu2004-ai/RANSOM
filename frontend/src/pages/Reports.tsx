@@ -3,7 +3,7 @@ import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { 
   BarChart3, Download, Calendar, Filter, FileSpreadsheet,
-  CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Archive, FileCheck, Loader2
+  CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Archive, FileCheck, Loader2, Trash2, AlertTriangle
 } from 'lucide-react';
 
 export const Reports: React.FC = () => {
@@ -21,6 +21,68 @@ export const Reports: React.FC = () => {
   const [archivingWeekly, setArchivingWeekly] = useState(false);
   const [archivingMonthly, setArchivingMonthly] = useState(false);
   const [downloadingArchiveId, setDownloadingArchiveId] = useState<string | null>(null);
+
+  // State for SUPER_ADMIN Delete Modal
+  const [deleteModalArchive, setDeleteModalArchive] = useState<any | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingArchive, setIsDeletingArchive] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
+
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  // Open high-risk confirmation modal
+  const handleOpenDeleteModal = (arch: any) => {
+    setDeleteModalArchive(arch);
+    setDeleteConfirmText('');
+    setDeleteErrorMessage(null);
+  };
+
+  // Close high-risk modal
+  const handleCloseDeleteModal = () => {
+    setDeleteModalArchive(null);
+    setDeleteConfirmText('');
+    setDeleteErrorMessage(null);
+  };
+
+  // Perform permanent deletion
+  const handlePerformDelete = async () => {
+    if (!deleteModalArchive) return;
+    if (deleteConfirmText.trim() !== 'DELETE') return;
+
+    try {
+      setIsDeletingArchive(true);
+      setDeleteErrorMessage(null);
+
+      const targetId = deleteModalArchive.id;
+      const res = await apiFetch<{ success: boolean; message: string; archiveId: string }>(
+        `/reports/archives/${targetId}`,
+        { method: 'DELETE' }
+      );
+
+      // Close modal
+      handleCloseDeleteModal();
+
+      // Remove archive from local state
+      setArchives(prev => prev.filter(a => a.id !== targetId));
+
+      // Show success toast notification
+      setDeleteSuccessMessage(res?.message || 'Archived report deleted successfully.');
+      setTimeout(() => setDeleteSuccessMessage(null), 5000);
+    } catch (err: any) {
+      if (err.status === 403) {
+        setDeleteErrorMessage('You do not have permission to delete archived reports.');
+      } else if (err.status === 404) {
+        setDeleteErrorMessage('Archived report no longer exists.');
+      } else if (err.code === 'STORAGE_DELETE_FAILED' || (err.message && err.message.includes('storage'))) {
+        setDeleteErrorMessage('Could not delete the archived file from storage. The archive was not deleted.');
+      } else {
+        setDeleteErrorMessage(err.message || 'An error occurred while deleting the report archive.');
+      }
+    } finally {
+      setIsDeletingArchive(false);
+    }
+  };
 
   // State for Monthly Report Selection
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -503,7 +565,7 @@ export const Reports: React.FC = () => {
                     <td className="px-6 py-3.5 text-slate-300">{arch.generated_by_name || 'System'}</td>
                     <td className="px-6 py-3.5 font-mono text-slate-400">{new Date(arch.created_at).toLocaleString()}</td>
                     <td className="px-6 py-3.5 font-mono text-slate-400">{(arch.file_size / 1024).toFixed(1)} KB</td>
-                    <td className="px-6 py-3.5 text-right">
+                    <td className="px-6 py-3.5 text-right flex items-center justify-end gap-2">
                       <button
                         type="button"
                         disabled={downloadingArchiveId === arch.id}
@@ -513,6 +575,17 @@ export const Reports: React.FC = () => {
                         <Download className="w-3.5 h-3.5" />
                         <span>{downloadingArchiveId === arch.id ? 'Downloading...' : 'Download'}</span>
                       </button>
+
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeleteModal(arch)}
+                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -521,6 +594,104 @@ export const Reports: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Toast Notification Banner */}
+      {deleteSuccessMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-semibold">{deleteSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* HIGH-RISK CONFIRMATION MODAL FOR SUPER_ADMIN DELETION */}
+      {deleteModalArchive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-white">Delete Archived Report Permanently?</h3>
+                <p className="text-xs text-rose-300/90 font-medium">
+                  This permanently deletes the archived report from Google Drive and removes its archive record from RANSOM. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Error banner inside modal */}
+            {deleteErrorMessage && (
+              <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-3 text-xs text-rose-300">
+                {deleteErrorMessage}
+              </div>
+            )}
+
+            {/* Archive Details */}
+            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold">Report Name</span>
+                <span className="text-white font-bold max-w-[220px] truncate">{deleteModalArchive.report_name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold">Report Type</span>
+                <span className="text-cyan-400 font-mono font-bold">{deleteModalArchive.report_type}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold">Period</span>
+                <span className="text-white font-mono">{deleteModalArchive.period_year}-{String(deleteModalArchive.period_month || 1).padStart(2, '0')}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold">Generated By</span>
+                <span className="text-white">{deleteModalArchive.generated_by_name || 'System'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold">Generated At</span>
+                <span className="text-slate-300 font-mono">{new Date(deleteModalArchive.created_at).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400 font-semibold">File Size</span>
+                <span className="text-slate-300 font-mono">{(deleteModalArchive.file_size / 1024).toFixed(1)} KB</span>
+              </div>
+            </div>
+
+            {/* Required Input Confirmation */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-300">
+                Type <span className="text-rose-400 font-mono font-bold">DELETE</span> to confirm permanent removal:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 font-mono focus:outline-none"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeletingArchive}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmText.trim() !== 'DELETE' || isDeletingArchive}
+                onClick={handlePerformDelete}
+                className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {isDeletingArchive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>Delete Permanently</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 4: DEPARTMENTAL HEADCOUNT TABLE */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">

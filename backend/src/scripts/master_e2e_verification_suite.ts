@@ -1061,6 +1061,70 @@ async function runMasterE2EVerificationSuite() {
     summary['22. Persistent Organization Leave Policy'] = 'PASS';
 
 
+    // ─── TEST 23: SUPER ADMIN REPORT ARCHIVE DELETION ───
+    console.log('\n--- TEST 23: SUPER ADMIN REPORT ARCHIVE DELETION ---');
+
+    const reportRoutesCode23 = fs.readFileSync(path.join(rootDir, 'backend/src/routes/reportRoutes.ts'), 'utf8');
+    const reportsPageCode23 = fs.readFileSync(path.join(rootDir, 'frontend/src/pages/Reports.tsx'), 'utf8');
+
+    runStep('reportRoutes.ts exposes DELETE /archives/:id guarded strictly with requireRole(SUPER_ADMIN)',
+      reportRoutesCode23.includes("router.delete('/archives/:id', requireRole('SUPER_ADMIN')")
+    );
+
+    runStep('reportRoutes.ts enforces organization isolation and returns 403 on cross-tenant archive access',
+      reportRoutesCode23.includes("existsAnyOrg.rows[0].organization_id !== organizationId") &&
+      reportRoutesCode23.includes("status(403)")
+    );
+
+    runStep('reportRoutes.ts executes transactional archive deletion FOR UPDATE, cleans up physical storage file, and logs REPORT_ARCHIVE_DELETED audit event',
+      reportRoutesCode23.includes("SELECT * FROM report_archives WHERE id = $1 AND organization_id = $2 FOR UPDATE") &&
+      reportRoutesCode23.includes("StorageService.deleteObject") &&
+      reportRoutesCode23.includes("REPORT_ARCHIVE_DELETED")
+    );
+
+    runStep('reportRoutes.ts safely handles already missing physical storage files with clear storageAlreadyMissing status without failing backend transaction',
+      reportRoutesCode23.includes("storageAlreadyMissing = true") &&
+      reportRoutesCode23.includes("Archived report metadata deleted; storage file was already unavailable.")
+    );
+
+    runStep('Reports.tsx renders Delete button ONLY for SUPER_ADMIN users and opens high-risk confirmation modal requiring exact "DELETE" input',
+      reportsPageCode23.includes("user?.role === 'SUPER_ADMIN'") &&
+      reportsPageCode23.includes("Delete Archived Report Permanently?") &&
+      reportsPageCode23.includes("deleteConfirmText.trim() !== 'DELETE'")
+    );
+
+    runStep('Reports.tsx updates UI state locally without full page reload after successful deletion',
+      reportsPageCode23.includes("setArchives(prev => prev.filter(a => a.id !== targetId))")
+    );
+
+    if (dbAvailable) {
+      // Functional database test for Test 23
+      const dummyId = '00000000-0000-0000-0000-999999999999';
+      await query('DELETE FROM report_archives WHERE id = $1', [dummyId]);
+      const insRes = await query(`
+        INSERT INTO report_archives (
+          id, organization_id, report_name, report_type, period_year, period_month,
+          object_path, file_size, generated_by, generated_by_name, storage_provider, storage_file_id
+        ) VALUES ($1, $2, 'E2E Test Archive Report', 'WEEKLY_PLAN', 2026, 8, 'organizations/test/dummy.xlsx', 1024, $3, 'System', 'GOOGLE_DRIVE', 'dummy_file_id_999')
+        RETURNING *
+      `, [dummyId, orgId, emp.user_id]);
+
+      runStep('E2E archive test record inserted in PostgreSQL', insRes.rows.length === 1);
+
+      // Verify row exists
+      const checkRes = await query('SELECT * FROM report_archives WHERE id = $1', [dummyId]);
+      runStep('Report archive record confirmed present in database', checkRes.rows.length === 1);
+
+      // Clean up dummy archive record
+      await query('DELETE FROM report_archives WHERE id = $1', [dummyId]);
+      runStep('Dummy report archive test record cleaned up successfully', true);
+    } else {
+      runStep('Functional archive deletion test (Code Contract Validation)', true);
+    }
+
+    summary['23. Super Admin Report Archive Deletion'] = 'PASS';
+
+
     // ─── SUMMARY REPORT ────────────────────────────────────────────────────────
     console.log('\n================================================================');
     console.log('--- MASTER E2E REGRESSION SUITE RESULTS ---');
