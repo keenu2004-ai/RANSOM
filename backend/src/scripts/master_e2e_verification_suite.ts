@@ -192,11 +192,15 @@ async function runMasterE2EVerificationSuite() {
         `, [orgId, emp.id, ltId, todayStr]);
         runStep('Leave application submitted with PENDING status', leaveApp.rows[0].status === 'PENDING');
 
-        const approvedLeave = await query(`
-          UPDATE leave_requests SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1 RETURNING *
-        `, [leaveApp.rows[0].id]);
-        runStep('Leave request APPROVED', approvedLeave.rows[0].status === 'APPROVED');
+        const rejectTestRes = await LeaveRepository.updateStatus(leaveApp.rows[0].id, orgId, 'REJECTED', emp.id, 'E2E Test Rejection Reason');
+        runStep('Leave request REJECTED successfully via LeaveRepository', rejectTestRes.status === 'REJECTED');
+
+        try {
+          await LeaveRepository.updateStatus(leaveApp.rows[0].id, orgId, 'APPROVED', emp.id);
+          runStep('Second status update on non-pending leave request rejected', false);
+        } catch (err: any) {
+          runStep('Second status update on non-pending leave request correctly rejected with error', err.message.includes('already'));
+        }
 
         await query('DELETE FROM leave_requests WHERE id = $1', [leaveApp.rows[0].id]);
       } else {
@@ -205,6 +209,13 @@ async function runMasterE2EVerificationSuite() {
     } else {
       runStep('Leave Workflow Check (Code Contract Validation)', true);
     }
+
+    // Code Contract Check for Leave Approve/Reject Routes
+    const leaveRoutesPath = path.join(__dirname, '../routes/leaveRoutes.ts');
+    const leaveRoutesContent = fs.readFileSync(leaveRoutesPath, 'utf8');
+    runStep('leaveRoutes.ts binds /:id/approve endpoint', leaveRoutesContent.includes("router.put('/:id/approve'") || leaveRoutesContent.includes("router.post('/:id/approve'"));
+    runStep('leaveRoutes.ts binds /:id/reject endpoint', leaveRoutesContent.includes("router.put('/:id/reject'") || leaveRoutesContent.includes("router.post('/:id/reject'"));
+
     summary['4. Leave Workflow'] = 'PASS';
 
 

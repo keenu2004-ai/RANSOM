@@ -117,7 +117,13 @@ export class LeaveController {
         success: true,
         data: { leaveRequest: updated, message: 'Leave request approved successfully.' }
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes('Leave request not found')) {
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request no longer exists.' });
+      }
+      if (error.message?.includes('already')) {
+        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: error.message });
+      }
       return next(error);
     }
   }
@@ -135,7 +141,13 @@ export class LeaveController {
         success: true,
         data: { leaveRequest: updated, message: 'Leave request rejected.' }
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes('Leave request not found')) {
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request no longer exists.' });
+      }
+      if (error.message?.includes('already')) {
+        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: error.message });
+      }
       return next(error);
     }
   }

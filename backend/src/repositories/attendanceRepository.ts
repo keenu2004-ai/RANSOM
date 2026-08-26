@@ -314,14 +314,8 @@ export class AttendanceRepository {
         return res.rows[0];
       } catch (insertErr: any) {
         if (insertErr.code === '23505' || insertErr.message?.includes('idx_attendance_active_session')) {
-          const existingRes = await client.query(
-            `SELECT id, check_in, date, status, session_state FROM attendance 
-             WHERE employee_id = $1 AND organization_id = $2 AND check_out IS NULL LIMIT 1`,
-            [employeeId, organizationId]
-          );
           const err: any = new Error('You already have an active attendance session in progress.');
           err.code = 'ACTIVE_SESSION_EXISTS';
-          err.activeSession = existingRes.rows[0] || null;
           throw err;
         }
         throw insertErr;

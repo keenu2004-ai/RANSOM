@@ -159,9 +159,16 @@ export const Leave: React.FC = () => {
   const handleApprove = async (id: string) => {
     try {
       await apiFetch(`/leaves/${id}/approve`, { method: 'PUT' });
-      fetchLeaveData();
+      await fetchLeaveData();
     } catch (err: any) {
-      alert(err.message);
+      if (err.code === 'REQUEST_NOT_PENDING' || err.message?.includes('already')) {
+        alert('This leave request has already been processed.');
+      } else if (err.code === 'LEAVE_NOT_FOUND' || err.message?.includes('not found')) {
+        alert('Leave request no longer exists.');
+      } else {
+        alert(err.message || 'Unable to approve leave request. Please try again.');
+      }
+      await fetchLeaveData();
     }
   };
 
@@ -173,9 +180,16 @@ export const Leave: React.FC = () => {
         method: 'PUT',
         body: JSON.stringify({ rejectionReason: reason })
       });
-      fetchLeaveData();
+      await fetchLeaveData();
     } catch (err: any) {
-      alert(err.message);
+      if (err.code === 'REQUEST_NOT_PENDING' || err.message?.includes('already')) {
+        alert('This leave request has already been processed.');
+      } else if (err.code === 'LEAVE_NOT_FOUND' || err.message?.includes('not found')) {
+        alert('Leave request no longer exists.');
+      } else {
+        alert(err.message || 'Unable to reject leave request. Please try again.');
+      }
+      await fetchLeaveData();
     }
   };
 

@@ -16,7 +16,12 @@ router.post('/apply', requireEmployee, LeaveController.apply);
 // Administrative & Configuration endpoints (Do NOT require employeeId)
 router.get('/types', LeaveController.types);
 router.put('/policy', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), LeaveController.updatePolicy);
-router.get('/', LeaveController.list);
+// Administrative Approval & Rejection routes
+router.put('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.approve);
+router.post('/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.approve);
+router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.reject);
+router.post('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), LeaveController.reject);
+
 // Cancellation routes
 router.put('/:id/cancel', LeaveController.cancel);
 router.post('/:id/cancel', LeaveController.cancel);
