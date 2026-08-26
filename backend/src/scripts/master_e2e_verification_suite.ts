@@ -77,14 +77,137 @@ async function runMasterE2EVerificationSuite() {
     }
 
     // Microsoft Entra ID Token Verification Checks
-    const { MicrosoftAuthService } = require('../services/microsoftAuthService');
-    const mockPersonalToken = jwt.sign({ oid: 'oid-1', tid: '9188040d-6c67-4c5b-b112-36a304b66dad', email: 'personal@outlook.com' }, 'secret');
+    const crypto = require('crypto');
+    const { MicrosoftAuthService, setTestJwksKeyResolver } = require('../services/microsoftAuthService');
+
+    // Generate RSA key pair for testing
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    });
+
+    const testKid = 'test-rsa-kid-001';
+    setTestJwksKeyResolver((kid: string) => {
+      if (kid === testKid) return publicKey;
+      return null;
+    });
+
+    const testTenantId = 'theiakshi-tenant-id-001';
+    const testClientId = 'theiakshi-client-id-001';
+    process.env.MICROSOFT_TENANT_ID = testTenantId;
+    process.env.MICROSOFT_CLIENT_ID = testClientId;
+
+    const validHeader = { alg: 'RS256', kid: testKid };
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    // 1. Valid RS256 Token -> PASS
+    const validPayload = {
+      oid: 'ms-oid-test-123',
+      tid: testTenantId,
+      aud: testClientId,
+      iss: `https://login.microsoftonline.com/${testTenantId}/v2.0`,
+      preferred_username: 'employee@theiakshi.com',
+      name: 'Test Employee',
+      exp: nowSec + 3600
+    };
+    const validRs256Token = jwt.sign(validPayload, privateKey, { algorithm: 'RS256', header: validHeader });
+
+    const verifiedClaims = await MicrosoftAuthService.verifyMicrosoftToken(validRs256Token);
+    runStep('Cryptographic RS256 signature verification against JWKS public key succeeded', verifiedClaims.oid === 'ms-oid-test-123');
+
+    // 2. Locally fabricated HS256 / forged token -> FAIL
+    const forgedToken = jwt.sign(validPayload, 'fake-secret', { algorithm: 'HS256', header: { alg: 'HS256', kid: testKid } });
     try {
-      await MicrosoftAuthService.verifyMicrosoftToken(mockPersonalToken);
-      runStep('Personal Microsoft accounts strictly rejected with 403', false);
-    } catch (msErr: any) {
-      runStep('Personal Microsoft accounts strictly rejected with 403', msErr.code === 'PERSONAL_ACCOUNT_REJECTED' || msErr.message.includes('Personal Microsoft accounts'));
+      await MicrosoftAuthService.verifyMicrosoftToken(forgedToken);
+      runStep('Forged / HS256 token strictly rejected', false);
+    } catch (e: any) {
+      runStep('Forged / HS256 token strictly rejected with UNSUPPORTED_ALGORITHM', e.code === 'UNSUPPORTED_ALGORITHM');
     }
+
+    // 3. Forged token with invalid RSA signature -> FAIL
+    const { privateKey: fakePrivateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+    const forgedRsaToken = jwt.sign(validPayload, fakePrivateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(forgedRsaToken);
+      runStep('RSA signature mismatch strictly rejected', false);
+    } catch (e: any) {
+      runStep('RSA signature mismatch strictly rejected with SIGNATURE_VERIFICATION_FAILED', e.code === 'SIGNATURE_VERIFICATION_FAILED');
+    }
+
+    // 4. Unknown kid -> FAIL
+    const unknownKidToken = jwt.sign(validPayload, privateKey, { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(unknownKidToken);
+      runStep('Unknown kid strictly rejected', false);
+    } catch (e: any) {
+      runStep('Unknown kid strictly rejected with KEY_NOT_FOUND', e.code === 'KEY_NOT_FOUND');
+    }
+
+    // 5. Wrong Issuer -> FAIL
+    const wrongIssuerToken = jwt.sign({ ...validPayload, iss: 'https://login.microsoftonline.com/malicious-tenant/v2.0' }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(wrongIssuerToken);
+      runStep('Wrong issuer strictly rejected', false);
+    } catch (e: any) {
+      runStep('Wrong issuer strictly rejected with INVALID_ISSUER', e.code === 'INVALID_ISSUER');
+    }
+
+    // 6. Wrong Audience -> FAIL
+    const wrongAudToken = jwt.sign({ ...validPayload, aud: 'wrong-client-id' }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(wrongAudToken);
+      runStep('Wrong audience strictly rejected', false);
+    } catch (e: any) {
+      runStep('Wrong audience strictly rejected with INVALID_AUDIENCE', e.code === 'INVALID_AUDIENCE');
+    }
+
+    // 7. Missing Audience -> FAIL
+    const missingAudToken = jwt.sign({ ...validPayload, aud: undefined }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(missingAudToken);
+      runStep('Missing audience strictly rejected (fail-closed)', false);
+    } catch (e: any) {
+      runStep('Missing audience strictly rejected (fail-closed)', e.code === 'MISSING_AUDIENCE');
+    }
+
+    // 8. Wrong Tenant -> FAIL
+    const wrongTenantToken = jwt.sign({ ...validPayload, tid: 'malicious-tenant-id' }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(wrongTenantToken);
+      runStep('Unauthorized tenant directory strictly rejected', false);
+    } catch (e: any) {
+      runStep('Unauthorized tenant directory strictly rejected with UNAUTHORIZED_TENANT', e.code === 'UNAUTHORIZED_TENANT');
+    }
+
+    // 9. Personal Microsoft Account -> FAIL
+    const personalToken = jwt.sign({ ...validPayload, tid: '9188040d-6c67-4c5b-b112-36a304b66dad' }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(personalToken);
+      runStep('Personal Microsoft account strictly rejected', false);
+    } catch (e: any) {
+      runStep('Personal Microsoft account strictly rejected with PERSONAL_ACCOUNT_REJECTED', e.code === 'PERSONAL_ACCOUNT_REJECTED');
+    }
+
+    // 10. Expired Token -> FAIL
+    const expiredToken = jwt.sign({ ...validPayload, exp: nowSec - 3600 }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(expiredToken);
+      runStep('Expired token strictly rejected', false);
+    } catch (e: any) {
+      runStep('Expired token strictly rejected with TOKEN_EXPIRED', e.code === 'TOKEN_EXPIRED');
+    }
+
+    // 11. Missing OID -> FAIL
+    const missingOidToken = jwt.sign({ ...validPayload, oid: undefined, sub: undefined }, privateKey, { algorithm: 'RS256', header: validHeader });
+    try {
+      await MicrosoftAuthService.verifyMicrosoftToken(missingOidToken);
+      runStep('Missing OID claim strictly rejected', false);
+    } catch (e: any) {
+      runStep('Missing OID claim strictly rejected with MISSING_OID', e.code === 'MISSING_OID');
+    }
+
+    setTestJwksKeyResolver(null);
 
     summary['2. Authentication & RBAC'] = 'PASS';
 

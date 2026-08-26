@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { KeyRound, Building2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ensureMsalInitialized, loginRequest } from '../config/msalConfig';
 
 export const Login: React.FC = () => {
   const { user, loginWithMicrosoft, login, error } = useAuth();
@@ -9,6 +10,7 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showPasswordFallback, setShowPasswordFallback] = useState(false);
 
   if (user) {
@@ -17,27 +19,34 @@ export const Login: React.FC = () => {
 
   const handleMicrosoftSignIn = async () => {
     setLoading(true);
+    setLocalError(null);
     try {
-      // Prompt user or execute MSAL / Entra ID authentication token exchange
-      const promptEmail = prompt('Enter your company Microsoft 365 email (e.g. employee@theiakshi.com):', email || '');
-      if (!promptEmail) {
-        setLoading(false);
-        return;
+      const msalInstance = await ensureMsalInitialized();
+      let response;
+      try {
+        response = await msalInstance.loginPopup(loginRequest);
+      } catch (popupErr: any) {
+        if (popupErr.errorCode === 'user_cancelled') {
+          setLocalError('Microsoft sign in was cancelled.');
+          return;
+        }
+        if (popupErr.errorCode === 'interaction_in_progress') {
+          setLocalError('An authentication interaction is already in progress. Please complete or close the pop-up.');
+          return;
+        }
+        throw popupErr;
       }
-      
-      // Construct structured Microsoft token payload
-      const mockMsToken = jwtEncodeTokenPayload({
-        oid: 'ms-oid-' + btoa(promptEmail).replace(/=/g, ''),
-        tid: 'theiakshi-tenant-id-001',
-        preferred_username: promptEmail,
-        name: promptEmail.split('@')[0],
-        exp: Math.floor(Date.now() / 1000) + 3600
-      });
 
-      await loginWithMicrosoft(mockMsToken);
+      const idToken = response?.idToken;
+      if (!idToken) {
+        throw new Error('No Microsoft ID token returned from authentication.');
+      }
+
+      await loginWithMicrosoft(idToken);
       navigate('/dashboard', { replace: true });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Microsoft sign-in error:', err);
+      setLocalError(err.message || 'Microsoft authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -46,6 +55,7 @@ export const Login: React.FC = () => {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLocalError(null);
     try {
       await login(email, password);
       navigate('/dashboard', { replace: true });
@@ -55,13 +65,6 @@ export const Login: React.FC = () => {
       setLoading(false);
     }
   };
-
-  function jwtEncodeTokenPayload(payload: any): string {
-    const header = { alg: 'HS256', typ: 'JWT' };
-    const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
-    const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '');
-    return `${encodedHeader}.${encodedPayload}.signature_placeholder`;
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -82,12 +85,12 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        {error && (
+        {(error || localError) && (
           <div className="p-4 bg-rose-950/50 border border-rose-800/80 rounded-xl text-rose-300 text-xs flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Authentication Failure</p>
-              <p className="mt-0.5">{error}</p>
+              <p className="mt-0.5">{error || localError}</p>
             </div>
           </div>
         )}
