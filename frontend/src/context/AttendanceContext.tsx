@@ -22,14 +22,24 @@ export interface TodaySummary {
   activeSession: SessionData | null;
   sessions: SessionData[];
   totalSessions: number;
+  totalSessionCount?: number;
+  completedSessionCount?: number;
+  canCheckIn?: boolean;
+  canCheckOut?: boolean;
   totalWorkingHours: number;
   firstCheckIn: string | null;
   lastCheckOut: string | null;
   status: string;
+  leave?: any;
+  holiday?: any;
+  pendingRegularization?: any;
 }
 
 interface AttendanceContextType {
   todaySummary: TodaySummary | null;
+  activeSession: SessionData | null;
+  canCheckIn: boolean;
+  canCheckOut: boolean;
   loading: boolean;
   actionLoading: boolean;
   gpsError: string | null;
@@ -85,14 +95,27 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const todayRes = await apiFetch('/attendance/today').catch(() => null);
       const summaryData = todayRes?.summary || todayRes?.data?.summary;
       const attData = todayRes?.attendance || todayRes?.data?.attendance;
+      const activeSess = todayRes?.activeSession || todayRes?.data?.activeSession || summaryData?.activeSession;
+      const canIn = todayRes?.canCheckIn ?? todayRes?.data?.canCheckIn ?? (summaryData ? summaryData.canCheckIn : (activeSess == null));
+      const canOut = todayRes?.canCheckOut ?? todayRes?.data?.canCheckOut ?? (summaryData ? summaryData.canCheckOut : (activeSess != null));
+
       if (summaryData) {
-        setTodaySummary(summaryData);
+        setTodaySummary({
+          ...summaryData,
+          activeSession: activeSess || summaryData.activeSession || null,
+          canCheckIn: canIn,
+          canCheckOut: canOut
+        });
       } else if (attData) {
         setTodaySummary({
           date: new Date().toISOString().split('T')[0],
           activeSession: attData.check_out ? null : attData,
           sessions: [attData],
           totalSessions: 1,
+          totalSessionCount: 1,
+          completedSessionCount: attData.check_out ? 1 : 0,
+          canCheckIn: !!attData.check_out,
+          canCheckOut: !attData.check_out,
           totalWorkingHours: parseFloat(attData.working_hours || 0),
           firstCheckIn: attData.check_in,
           lastCheckOut: attData.check_out,
@@ -127,14 +150,32 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
       await refreshAttendance();
     } catch (err: any) {
-      alert(err.message || 'Attendance action failed.');
+      if (err.code === 'ACTIVE_SESSION_EXISTS' || err.message?.includes('active attendance session')) {
+        await refreshAttendance();
+      } else {
+        alert(err.message || 'Attendance action failed.');
+      }
     } finally {
       setActionLoading(false);
     }
   };
 
+  const activeSession = todaySummary?.activeSession || null;
+  const canCheckIn = todaySummary?.canCheckIn ?? (activeSession == null);
+  const canCheckOut = todaySummary?.canCheckOut ?? (activeSession != null);
+
   return (
-    <AttendanceContext.Provider value={{ todaySummary, loading, actionLoading, gpsError, refreshAttendance, handlePunch }}>
+    <AttendanceContext.Provider value={{
+      todaySummary,
+      activeSession,
+      canCheckIn,
+      canCheckOut,
+      loading,
+      actionLoading,
+      gpsError,
+      refreshAttendance,
+      handlePunch
+    }}>
       {children}
     </AttendanceContext.Provider>
   );

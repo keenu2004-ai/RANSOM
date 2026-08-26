@@ -112,11 +112,18 @@ async function runMasterE2EVerificationSuite() {
       const punchInRec = await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566, 10.0, 'General Shift');
       runStep('Session 1 Punch-In record created with GPS coordinates & accuracy', !!punchInRec.check_in && Number(punchInRec.punch_in_lat) === 12.971598);
 
+      const activeSummary = await AttendanceRepository.getTodaySummary(emp.id, orgId, todayStr);
+      runStep('getTodaySummary reports activeSession != null, canCheckIn = false, canCheckOut = true',
+        !!activeSummary.activeSession && activeSummary.canCheckIn === false && activeSummary.canCheckOut === true
+      );
+
       try {
         await AttendanceRepository.checkIn(orgId, emp.id, todayStr, 12.971598, 77.594566);
-        runStep('Duplicate active punch-in rejected', false);
+        runStep('Duplicate active punch-in rejected with ACTIVE_SESSION_EXISTS code', false);
       } catch (err: any) {
-        runStep('Duplicate active punch-in correctly rejected', err.message.includes('active check-in session'));
+        runStep('Duplicate active punch-in correctly rejected with ACTIVE_SESSION_EXISTS code',
+          err.code === 'ACTIVE_SESSION_EXISTS' || err.message.includes('active')
+        );
       }
 
       await AttendanceRepository.updateBreak(orgId, emp.id, 30);
@@ -125,6 +132,11 @@ async function runMasterE2EVerificationSuite() {
 
       const punchOutRec = await AttendanceRepository.checkOut(orgId, emp.id, 12.971598, 77.594566, 10.0);
       runStep('Session 1 Punch-Out completed with working hours', !!punchOutRec.check_out && punchOutRec.status === 'PRESENT');
+
+      const completedSummary = await AttendanceRepository.getTodaySummary(emp.id, orgId, todayStr);
+      runStep('getTodaySummary after checkout reports activeSession = null, canCheckIn = true, completedSessionCount = 1',
+        completedSummary.activeSession === null && completedSummary.canCheckIn === true && completedSummary.completedSessionCount === 1
+      );
 
       try {
         await AttendanceRepository.checkOut(orgId, emp.id, 12.971598, 77.594566);

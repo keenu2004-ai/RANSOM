@@ -89,7 +89,7 @@ export class AttendanceRepository {
   }
 
   /**
-   * Find current open active session for today's calendar date
+   * Find current open active session for an employee
    */
   static async findActiveSession(employeeId: string, organizationId: string) {
     return withTransaction(async (client) => {
@@ -107,11 +107,10 @@ export class AttendanceRepository {
         WHERE a.employee_id = $1 AND a.organization_id = $2 
           AND a.check_out IS NULL 
           AND (a.session_state IS NULL OR a.session_state = 'ACTIVE')
-          AND a.date = $3
         ORDER BY a.check_in DESC
         LIMIT 1
       `;
-      const res = await client.query(text, [employeeId, organizationId, todayStr]);
+      const res = await client.query(text, [employeeId, organizationId]);
       return res.rows[0] || null;
     });
   }
@@ -160,7 +159,23 @@ export class AttendanceRepository {
       );
       const sessions = sessionsRes.rows;
 
-      const activeSession = sessions.find(s => s.check_out === null && (s.session_state === null || s.session_state === 'ACTIVE')) || null;
+      // Authoritative global active session for employee (check_out IS NULL AND ACTIVE)
+      const globalActiveRes = await client.query(
+        `SELECT 
+          a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
+          a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+          a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
+          a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
+        FROM attendance a
+        WHERE a.employee_id = $1 AND a.organization_id = $2 
+          AND a.check_out IS NULL 
+          AND (a.session_state IS NULL OR a.session_state = 'ACTIVE')
+        ORDER BY a.check_in DESC LIMIT 1`,
+        [employeeId, organizationId]
+      );
+      const activeSession = globalActiveRes.rows[0] || null;
+
+      const completedSessions = sessions.filter((s: any) => s.check_out !== null && s.session_state !== 'ROLLOVER_TERMINATED');
 
       let totalWorkingHours = 0;
       let totalBreakMins = 0;
@@ -219,11 +234,18 @@ export class AttendanceRepository {
         dayStatus = 'PENDING_REGULARIZATION';
       }
 
+      const canCheckIn = activeSession == null && !approvedLeave;
+      const canCheckOut = activeSession != null;
+
       return {
         date: targetDateStr,
         sessions,
         activeSession,
         totalSessions: sessions.length,
+        totalSessionCount: sessions.length,
+        completedSessionCount: completedSessions.length,
+        canCheckIn,
+        canCheckOut,
         totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
         totalBreakMins,
         firstCheckIn,
@@ -257,36 +279,53 @@ export class AttendanceRepository {
       // 1. Perform rollover check to terminate yesterday's open session if any
       await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
 
-      // 2. Lock & check active session for todayStr
+      // 2. Lock & check active session for employee across ALL dates
       const activeRes = await client.query(
-        `SELECT id FROM attendance 
+        `SELECT id, check_in, date, status, session_state FROM attendance 
          WHERE employee_id = $1 AND organization_id = $2 
            AND check_out IS NULL 
            AND (session_state IS NULL OR session_state = 'ACTIVE')
-           AND date = $3
          FOR UPDATE`,
-        [employeeId, organizationId, todayStr]
+        [employeeId, organizationId]
       );
 
       if (activeRes.rows.length > 0) {
-        throw new Error('Employee has an active check-in session. Please check out before checking in again.');
+        const err: any = new Error('You already have an active attendance session in progress.');
+        err.code = 'ACTIVE_SESSION_EXISTS';
+        err.activeSession = activeRes.rows[0];
+        throw err;
       }
 
       const locationName = await reverseGeocode(latitude, longitude);
 
-      const text = `
-        INSERT INTO attendance (
-          organization_id, employee_id, date, check_in, status, session_state,
-          punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name, location_id, ip_address
-        ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', 'ACTIVE', $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id, employee_id, date, check_in, status, session_state, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name
-      `;
-      const res = await client.query(text, [
-        organizationId, employeeId, todayStr,
-        latitude || null, longitude || null, accuracy || null, locationName, shiftName, locationId || null, ipAddress || null
-      ]);
+      try {
+        const text = `
+          INSERT INTO attendance (
+            organization_id, employee_id, date, check_in, status, session_state,
+            punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name, location_id, ip_address
+          ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'PRESENT', 'ACTIVE', $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id, employee_id, date, check_in, status, session_state, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, shift_name
+        `;
+        const res = await client.query(text, [
+          organizationId, employeeId, todayStr,
+          latitude || null, longitude || null, accuracy || null, locationName, shiftName, locationId || null, ipAddress || null
+        ]);
 
-      return res.rows[0];
+        return res.rows[0];
+      } catch (insertErr: any) {
+        if (insertErr.code === '23505' || insertErr.message?.includes('idx_attendance_active_session')) {
+          const existingRes = await client.query(
+            `SELECT id, check_in, date, status, session_state FROM attendance 
+             WHERE employee_id = $1 AND organization_id = $2 AND check_out IS NULL LIMIT 1`,
+            [employeeId, organizationId]
+          );
+          const err: any = new Error('You already have an active attendance session in progress.');
+          err.code = 'ACTIVE_SESSION_EXISTS';
+          err.activeSession = existingRes.rows[0] || null;
+          throw err;
+        }
+        throw insertErr;
+      }
     });
   }
 

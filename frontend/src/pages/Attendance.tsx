@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield } from 'lucide-react';
+import { useAttendance } from '../context/AttendanceContext';
+import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2 } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 interface SessionData {
@@ -26,6 +27,10 @@ interface TodaySummary {
   activeSession: SessionData | null;
   sessions: SessionData[];
   totalSessions: number;
+  totalSessionCount?: number;
+  completedSessionCount?: number;
+  canCheckIn?: boolean;
+  canCheckOut?: boolean;
   totalWorkingHours: number;
   totalBreakMins: number;
   firstCheckIn: string | null;
@@ -132,6 +137,8 @@ export const Attendance: React.FC = () => {
     }
   }, []);
 
+  const { refreshAttendance: contextRefresh } = useAttendance();
+
   const fetchAttendance = async () => {
     setAttFetchError(null);
     try {
@@ -141,15 +148,23 @@ export const Attendance: React.FC = () => {
         });
         const summaryData = todayRes?.summary || todayRes?.data?.summary;
         const attData = todayRes?.attendance || todayRes?.data?.attendance;
+        const activeSess = todayRes?.activeSession || todayRes?.data?.activeSession || summaryData?.activeSession;
 
         if (summaryData) {
-          setTodaySummary(summaryData);
+          setTodaySummary({
+            ...summaryData,
+            activeSession: activeSess || summaryData.activeSession || null
+          });
         } else if (attData) {
           setTodaySummary({
             date: new Date().toISOString().split('T')[0],
             activeSession: attData.check_out ? null : attData,
             sessions: [attData],
             totalSessions: 1,
+            totalSessionCount: 1,
+            completedSessionCount: attData.check_out ? 1 : 0,
+            canCheckIn: !!attData.check_out,
+            canCheckOut: !attData.check_out,
             totalWorkingHours: parseFloat(attData.working_hours || 0),
             totalBreakMins: attData.break_duration_mins || 0,
             firstCheckIn: attData.check_in,
@@ -169,6 +184,10 @@ export const Attendance: React.FC = () => {
 
       const regRes = await apiFetch('/attendance/regularizations').catch(() => null);
       setRegularizations(regRes?.regularizations || regRes?.data?.regularizations || (Array.isArray(regRes) ? regRes : []));
+
+      if (contextRefresh) {
+        await contextRefresh().catch(() => null);
+      }
     } catch (err: any) {
       console.error('Error fetching attendance:', err);
       setAttFetchError(err.message || 'Unable to load attendance information.');
@@ -193,7 +212,11 @@ export const Attendance: React.FC = () => {
       await fetchAttendance();
       await fetchCalendarEvents(currentYear, currentMonth);
     } catch (err: any) {
-      alert(err.message);
+      if (err.code === 'ACTIVE_SESSION_EXISTS' || err.message?.includes('active attendance session') || err.message?.includes('active check-in session')) {
+        await fetchAttendance();
+      } else {
+        alert(err.message || 'Check-in failed.');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -210,7 +233,7 @@ export const Attendance: React.FC = () => {
       await fetchAttendance();
       await fetchCalendarEvents(currentYear, currentMonth);
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Check-out failed.');
     } finally {
       setActionLoading(false);
     }
@@ -353,9 +376,9 @@ export const Attendance: React.FC = () => {
               <h3 className="font-bold text-sm text-slate-200">Today's Attendance Control</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeSession 
-                  ? 'You have an active session in progress.' 
-                  : sessions.length > 0 
-                  ? `Completed ${sessions.length} session(s) today. Ready for next session.` 
+                  ? `Session #${sessions.findIndex((s: any) => s.id === activeSession.id) + 1 || 1} in progress. Started at ${activeSession.check_in ? new Date(activeSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.` 
+                  : (todaySummary?.completedSessionCount || 0) > 0 
+                  ? `Completed ${todaySummary?.completedSessionCount} session(s) today. Ready for next session.` 
                   : 'No active session. Click Check In to start.'}
               </p>
             </div>
@@ -365,19 +388,37 @@ export const Attendance: React.FC = () => {
                 <button
                   onClick={handleCheckOut}
                   disabled={actionLoading}
-                  className="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2"
+                  className="px-6 py-3 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2"
                 >
-                  <Square className="w-4 h-4 fill-white" />
-                  <span>Check Out Active Session</span>
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Checking Out...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Square className="w-4 h-4 fill-white" />
+                      <span>Check Out Active Session</span>
+                    </>
+                  )}
                 </button>
               ) : (
                 <button
                   onClick={handleCheckIn}
-                  disabled={actionLoading}
-                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
+                  disabled={actionLoading || todaySummary?.canCheckIn === false}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
                 >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Start New Session (Check In)</span>
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Checking In...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>Start New Session (Check In)</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

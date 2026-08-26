@@ -14,6 +14,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { todaySummary, actionLoading, handlePunch } = useAttendance();
+  const activeSession = todaySummary?.activeSession || null;
+  const hasActiveSession = !!activeSession;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -144,8 +146,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       navigate('/notifications');
     }
   };
-
-  const hasActiveSession = !!todaySummary?.activeSession;
 
   return (
     <>

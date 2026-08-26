@@ -24,7 +24,10 @@ export class AttendanceController {
         success: true,
         data: { 
           summary, 
-          attendance: summary.activeSession || summary.sessions[summary.sessions.length - 1] || null 
+          attendance: summary.activeSession || summary.sessions[summary.sessions.length - 1] || null,
+          activeSession: summary.activeSession,
+          canCheckIn: summary.canCheckIn,
+          canCheckOut: summary.canCheckOut
         }
       });
     } catch (error) {
@@ -58,6 +61,16 @@ export class AttendanceController {
         data: { attendance: record, message: 'Checked in successfully.' }
       });
     } catch (error: any) {
+      if (error.code === 'ACTIVE_SESSION_EXISTS' || error.message?.includes('active check-in session') || error.message?.includes('active attendance session')) {
+        return res.status(409).json({
+          success: false,
+          code: 'ACTIVE_SESSION_EXISTS',
+          message: 'You already have an active attendance session in progress.',
+          error: 'You already have an active attendance session in progress.',
+          data: { activeSession: error.activeSession || null }
+        });
+      }
+
       return res.status(400).json({
         success: false,
         error: error.message || 'Check-in failed.',
