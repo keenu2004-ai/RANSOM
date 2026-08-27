@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
-import { 
-  Users, CheckCircle2, CalendarDays, Receipt, 
-  CalendarCheck, Clock, ArrowRight,
-  TrendingUp, Activity, CheckSquare, Sparkles
-} from 'lucide-react';
+import { apiFetch } from '../services/api-client';
 import { getDisplayName } from '../utils/displayName';
+import { 
+  Users, CheckCircle2, CalendarDays, CheckSquare, 
+  Activity, ArrowRight, Sparkles, Clock, CalendarCheck, Loader2, RefreshCw
+} from 'lucide-react';
 
 interface KpiCardProps {
   title: string;
-  value: number | string;
+  value: string | number;
   subtitle?: string;
   path: string;
   icon: React.ElementType;
@@ -31,66 +30,59 @@ const KpiCard: React.FC<KpiCardProps> = ({
   iconBg,
   iconColor,
   trendText,
-  loading
+  loading = false
 }) => {
   const navigate = useNavigate();
 
-  if (loading) {
-    return (
-      <div className="p-5 bg-[#0A1424] border border-white/5 rounded-2xl animate-pulse space-y-3">
-        <div className="flex justify-between items-center">
-          <div className="h-3 bg-white/10 rounded w-24"></div>
-          <div className="w-10 h-10 bg-white/10 rounded-xl"></div>
-        </div>
-        <div className="h-8 bg-white/10 rounded w-16"></div>
-        <div className="h-3 bg-white/5 rounded w-32"></div>
-      </div>
-    );
-  }
+  const handleCardClick = () => {
+    if (path === '/employees') navigate('/employees');
+    else if (path === '/attendance') navigate('/attendance');
+    else if (path === '/leave') navigate('/leave');
+    else if (path === '/expenses') navigate('/expenses');
+    else navigate(path);
+  };
 
   return (
     <div
-      onClick={() => {
-        if (path === '/employees') navigate('/employees');
-        else if (path === '/attendance') navigate('/attendance');
-        else if (path === '/leave') navigate('/leave');
-        else if (path === '/expenses') navigate('/expenses');
-        else navigate(path);
-      }}
-      className="p-5 bg-[#0A1424] border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all duration-200 cursor-pointer group shadow-lg hover:shadow-cyan-500/5 relative overflow-hidden"
+      onClick={handleCardClick}
+      className="bg-[#0A1424] border border-white/10 hover:border-cyan-500/40 rounded-2xl p-5 shadow-xl transition-all hover:translate-y-[-2px] cursor-pointer relative overflow-hidden group flex flex-col justify-between"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-400 group-hover:text-slate-200 transition-colors uppercase tracking-wider">
-          {title}
-        </span>
-        <div className={`p-2.5 rounded-xl ${iconBg} ${iconColor} group-hover:scale-110 transition-transform shadow-inner`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            {title}
+          </p>
+          {loading ? (
+            <div className="h-9 w-20 bg-white/5 rounded-lg animate-pulse my-1" />
+          ) : (
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              {value ?? 0}
+            </h2>
+          )}
+        </div>
+
+        <div className={`p-3 rounded-2xl ${iconBg} ${iconColor} border border-white/10 group-hover:scale-110 transition-transform shrink-0`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-3xl font-extrabold text-white tracking-tight">
-          {value !== undefined && value !== null ? value : '--'}
-        </span>
+      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
         {trendText && (
-          <span className="text-xs font-semibold text-cyan-400 flex items-center gap-0.5">
-            <TrendingUp className="w-3 h-3" />
+          <span className="font-semibold text-emerald-400 text-[11px] inline-flex items-center gap-1">
             {trendText}
           </span>
         )}
+        {subtitle && (
+          <p className="text-xs text-slate-400 font-medium truncate">
+            {subtitle}
+          </p>
+        )}
       </div>
-
-      {subtitle && (
-        <p className="text-xs text-slate-400 mt-1 font-medium truncate">
-          {subtitle}
-        </p>
-      )}
     </div>
   );
 };
 
 export const DesktopKpiCard = KpiCard;
-
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -98,79 +90,64 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [departmentData, setDepartmentData] = useState<any[]>([]);
-  const [leaveRequestsData, setLeaveRequestsData] = useState<any[]>([]);
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [attendanceChartRange, setAttendanceChartRange] = useState('This Week');
 
-  const fetchAllDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    else setRefreshing(true);
+
     try {
-      const [dashRes, empRes, leaveRes, auditRes] = await Promise.allSettled([
-        apiFetch('/dashboard'),
-        apiFetch('/employees'),
-        apiFetch('/leave-requests'),
-        apiFetch('/audit-logs')
-      ]);
-
-      if (dashRes.status === 'fulfilled') {
-        setDashboardData(dashRes.value);
-      }
-
-      // Process Department Distribution from real employees
-      if (empRes.status === 'fulfilled' && empRes.value?.employees) {
-        const empList: any[] = empRes.value.employees;
-        const deptCounts: Record<string, number> = {};
-        empList.forEach((e) => {
-          const dept = e.department || 'General';
-          deptCounts[dept] = (deptCounts[dept] || 0) + 1;
-        });
-
-        const total = empList.length || 1;
-        const colors = ['#06B6D4', '#3B82F6', '#6366F1', '#10B981', '#F59E0B', '#EC4899'];
-        const depts = Object.entries(deptCounts).map(([name, count], index) => ({
-          name,
-          count,
-          percentage: Math.round((count / total) * 100),
-          color: colors[index % colors.length]
-        }));
-        setDepartmentData(depts);
-      }
-
-      // Process Leave Requests
-      if (leaveRes.status === 'fulfilled' && leaveRes.value?.leaveRequests) {
-        setLeaveRequestsData(leaveRes.value.leaveRequests.slice(0, 5));
-      }
-
-      // Process Audit Logs / Activities
-      if (auditRes.status === 'fulfilled' && auditRes.value?.logs) {
-        setRecentActivities(auditRes.value.logs.slice(0, 5));
-      } else if (dashRes.status === 'fulfilled' && dashRes.value?.latestWork) {
-        setRecentActivities(
-          dashRes.value.latestWork.map((w: any) => ({
-            id: w.id,
-            action: w.title,
-            timestamp: new Date(w.date).toLocaleDateString(),
-            type: w.category || 'Timesheet'
-          }))
-        );
+      const res = await apiFetch<any>(`/dashboard?period=${encodeURIComponent(attendanceChartRange)}`);
+      if (res && res.data) {
+        setDashboardData(res.data);
+      } else if (res) {
+        setDashboardData(res);
       }
     } catch (err) {
-      console.error('Error fetching dashboard endpoints:', err);
+      console.warn('Dashboard real-time fetch error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [attendanceChartRange]);
 
+  // Initial fetch and range filter change
   useEffect(() => {
-    fetchAllDashboardData();
-  }, []);
+    fetchDashboardData(false);
+  }, [fetchDashboardData]);
+
+  // React to Attendance punch actions instantly
+  useEffect(() => {
+    fetchDashboardData(true);
+  }, [todaySummary?.firstCheckIn, todaySummary?.lastCheckOut, fetchDashboardData]);
+
+  // Tab visibility refresh & 45s background polling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData(true);
+      }
+    }, 45000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [fetchDashboardData]);
 
   const summary = dashboardData?.summary || {};
   const formattedName = getDisplayName(user);
 
-  // Formatted date string (e.g., "Tuesday, 27 May 2025")
+  // Formatted date string (e.g., "Thursday, 27 August 2026")
   const todayFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     day: 'numeric',
@@ -183,16 +160,43 @@ export const Dashboard: React.FC = () => {
   const presentToday = summary.presentToday || 0;
   const attendancePct = totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0;
 
-  // Mock weekly points if real historical attendance points aren't detailed in API
-  const weeklyAttendancePoints = [
-    { day: 'Mon', pct: 82 },
-    { day: 'Tue', pct: 90 },
-    { day: 'Wed', pct: 85 },
-    { day: 'Thu', pct: 94 },
-    { day: 'Fri', pct: 88 },
-    { day: 'Sat', pct: 40 },
-    { day: 'Sun', pct: 15 }
-  ];
+  // Weekly Attendance Points
+  const weeklyAttendancePoints: Array<{ day: string; date: string; presentCount: number; pct: number }> = 
+    dashboardData?.weeklyAttendance?.points || [
+      { day: 'Mon', date: '', presentCount: 0, pct: 0 },
+      { day: 'Tue', date: '', presentCount: 0, pct: 0 },
+      { day: 'Wed', date: '', presentCount: 0, pct: 0 },
+      { day: 'Thu', date: '', presentCount: 0, pct: 0 },
+      { day: 'Fri', date: '', presentCount: 0, pct: 0 },
+      { day: 'Sat', date: '', presentCount: 0, pct: 0 },
+      { day: 'Sun', date: '', presentCount: 0, pct: 0 }
+    ];
+
+  // SVG Chart Polyline / Polygon coordinates calculation
+  const svgWidth = 700;
+  const svgHeight = 160;
+  const numPoints = weeklyAttendancePoints.length || 7;
+  const stepX = svgWidth / (numPoints - 1 || 1);
+
+  const chartCoords = weeklyAttendancePoints.map((pt, idx) => {
+    const x = Math.round(idx * stepX);
+    // Y: 100% -> y: 15, 0% -> y: 140
+    const pctClamped = Math.max(0, Math.min(100, pt.pct || 0));
+    const y = Math.round(140 - (pctClamped / 100) * 125);
+    return { x, y, val: `${pctClamped}%`, day: pt.day, count: pt.presentCount };
+  });
+
+  const polylinePointsStr = chartCoords.map(c => `${c.x},${c.y}`).join(' ');
+  const polygonPointsStr = `0,${svgHeight} ` + polylinePointsStr + ` ${svgWidth},${svgHeight}`;
+
+  // Department distribution data
+  const departmentData: any[] = dashboardData?.departments || [];
+
+  // Recent activities list
+  const recentActivities: any[] = dashboardData?.recentActivities || [];
+
+  // Recent leave requests list
+  const leaveRequestsData: any[] = dashboardData?.recentLeaveRequests || [];
 
   return (
     <div className="space-y-6 pb-8">
@@ -204,6 +208,9 @@ export const Dashboard: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Welcome back, {formattedName} 👋
             </h1>
+            {refreshing && (
+              <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-400 font-medium">
             Here's what's happening in your organization today.
@@ -222,19 +229,19 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Total Employees"
-          value={summary.totalEmployees}
+          value={summary.totalEmployees ?? 0}
           subtitle={summary.totalEmployees ? `${summary.totalEmployees} active workforce` : 'Active headcount'}
           path="/employees"
           icon={Users}
           iconBg="bg-blue-600/20"
           iconColor="text-cyan-400"
-          trendText={summary.totalEmployees ? "+12 this month" : undefined}
+          trendText={summary.totalEmployees ? `${summary.totalEmployees} active` : undefined}
           loading={loading}
         />
 
         <KpiCard
           title="Present Today"
-          value={summary.presentToday}
+          value={summary.presentToday ?? 0}
           subtitle={`${attendancePct}% overall attendance`}
           path="/attendance"
           icon={CheckCircle2}
@@ -245,8 +252,8 @@ export const Dashboard: React.FC = () => {
 
         <KpiCard
           title="On Leave"
-          value={summary.pendingLeaves}
-          subtitle="View pending leave requests"
+          value={summary.onLeaveToday ?? 0}
+          subtitle={summary.pendingLeaves > 0 ? `${summary.pendingLeaves} pending approval` : 'View leave requests'}
           path="/leave"
           icon={CalendarDays}
           iconBg="bg-amber-500/20"
@@ -256,7 +263,7 @@ export const Dashboard: React.FC = () => {
 
         <KpiCard
           title="Pending Tasks / Expenses"
-          value={summary.pendingExpenses ?? 0}
+          value={summary.totalPendingItems ?? (summary.pendingExpenses || 0) + (summary.pendingTasks || 0)}
           subtitle="Awaiting manager review"
           path="/expenses"
           icon={CheckSquare}
@@ -287,6 +294,7 @@ export const Dashboard: React.FC = () => {
               className="bg-[#050B14] border border-white/10 rounded-xl text-xs text-slate-300 font-semibold px-3 py-1.5 focus:outline-none focus:border-cyan-500 cursor-pointer"
             >
               <option value="This Week">This Week</option>
+              <option value="Last Week">Last Week</option>
               <option value="This Month">This Month</option>
             </select>
           </div>
@@ -313,7 +321,7 @@ export const Dashboard: React.FC = () => {
 
               {/* Filled Area */}
               <polygon
-                points="0,160 0,60 116,28 233,48 350,15 466,32 583,110 700,140 700,160"
+                points={polygonPointsStr}
                 fill="url(#areaGradient)"
               />
 
@@ -324,19 +332,11 @@ export const Dashboard: React.FC = () => {
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points="0,60 116,28 233,48 350,15 466,32 583,110 700,140"
+                points={polylinePointsStr}
               />
 
               {/* Data points */}
-              {[
-                { x: 0, y: 60, val: '82%' },
-                { x: 116, y: 28, val: '90%' },
-                { x: 233, y: 48, val: '85%' },
-                { x: 350, y: 15, val: '94%' },
-                { x: 466, y: 32, val: '88%' },
-                { x: 583, y: 110, val: '40%' },
-                { x: 700, y: 140, val: '15%' }
-              ].map((pt, idx) => (
+              {chartCoords.map((pt, idx) => (
                 <circle
                   key={idx}
                   cx={pt.x}
@@ -344,7 +344,7 @@ export const Dashboard: React.FC = () => {
                   r="5"
                   className="fill-[#050B14] stroke-cyan-400 stroke-[3] hover:r-7 transition-all cursor-pointer"
                 >
-                  <title>{`${weeklyAttendancePoints[idx]?.day}: ${pt.val}`}</title>
+                  <title>{`${pt.day}: ${pt.val} (${pt.count} present)`}</title>
                 </circle>
               ))}
             </svg>
@@ -384,10 +384,10 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-200 truncate">
-                      {act.action || act.description || 'System event'}
+                      {act.userName ? `${act.userName}: ${act.action}` : (act.action || act.description || 'System event')}
                     </p>
                     <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                      {act.timestamp || 'Recently'}
+                      {act.createdAt ? new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -476,14 +476,16 @@ export const Dashboard: React.FC = () => {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-lg bg-blue-600/30 text-cyan-300 font-extrabold text-xs flex items-center justify-center border border-cyan-500/30">
-                            {(req.employee_name || req.name || 'E').charAt(0)}
+                            {(req.employeeName || req.employee_name || 'E').charAt(0)}
                           </div>
-                          <span className="font-semibold text-slate-200">{req.employee_name || req.name || 'Employee'}</span>
+                          <span className="font-semibold text-slate-200">{req.employeeName || req.employee_name || 'Employee'}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-300 font-medium">{req.leave_type || 'Annual Leave'}</td>
-                      <td className="py-3 px-3 text-slate-400 font-mono">{req.days || req.duration || 1} day(s)</td>
-                      <td className="py-3 px-3 text-slate-400 font-mono">{req.start_date || 'May 28–29'}</td>
+                      <td className="py-3 px-3 text-slate-300 font-medium">{req.leaveType || req.leave_type || 'Annual Leave'}</td>
+                      <td className="py-3 px-3 text-slate-400 font-mono">{req.daysCount || req.days || 1} day(s)</td>
+                      <td className="py-3 px-3 text-slate-400 font-mono">
+                        {req.startDate ? `${new Date(req.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${new Date(req.endDate || req.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Recent'}
+                      </td>
                       <td className="py-3 px-3 text-right">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
