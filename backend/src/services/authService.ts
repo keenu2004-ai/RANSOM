@@ -114,7 +114,7 @@ export class AuthService {
     }
 
     if (userWithRole.status !== 'ACTIVE') {
-      const err: any = new Error('Your user account is suspended or inactive.');
+      const err: any = new Error('This account has been deactivated. Please sign in with your Microsoft organizational account.');
       err.statusCode = 403;
       err.code = 'ACCOUNT_INACTIVE';
       throw err;
