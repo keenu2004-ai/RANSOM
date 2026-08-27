@@ -71,6 +71,43 @@ export class UserRepository {
     );
   }
 
+  static async findByMicrosoftLoginEmail(emails: string[]): Promise<UserWithRole | null> {
+    if (!emails || emails.length === 0) return null;
+    const lowerEmails = emails.map(e => e.toLowerCase().trim()).filter(Boolean);
+    if (lowerEmails.length === 0) return null;
+
+    const text = `
+      SELECT 
+        u.id, 
+        u.organization_id, 
+        u.email, 
+        u.password_hash, 
+        u.status as user_status,
+        e.status as employee_status,
+        CASE 
+          WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
+          WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
+          ELSE 'ACTIVE'
+        END as status,
+        u.display_name,
+        COALESCE(r.name, 'EMPLOYEE') as role,
+        r.name as role_name,
+        e.id as employee_id,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        CONCAT(e.first_name, ' ', e.last_name) as employee_name
+      FROM users u
+      LEFT JOIN user_roles ur ON ur.user_id = u.id
+      LEFT JOIN roles r ON r.id = ur.role_id
+      LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
+      WHERE LOWER(u.microsoft_login_email) = ANY($1::text[])
+      LIMIT 1
+    `;
+    const res = await query<UserWithRole>(text, [lowerEmails]);
+    return res.rows[0] || null;
+  }
+
   static async findByCandidateEmails(emails: string[]): Promise<UserWithRole | null> {
     if (!emails || emails.length === 0) return null;
     const lowerEmails = emails.map(e => e.toLowerCase().trim()).filter(Boolean);

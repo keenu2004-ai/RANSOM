@@ -4,6 +4,7 @@ import jwksClient from 'jwks-rsa';
 export interface MicrosoftClaims {
   oid: string;
   tid: string;
+  aud?: string;
   email: string;
   name: string;
   preferred_username?: string;
@@ -204,6 +205,7 @@ export class MicrosoftAuthService {
     return {
       oid,
       tid: tid || configuredTenantId,
+      aud: payload.aud,
       email: primaryEmail,
       name,
       preferred_username: payload.preferred_username || primaryEmail,

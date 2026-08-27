@@ -11,10 +11,38 @@ export class AuthService {
   static async loginWithMicrosoftToken(microsoftToken: string): Promise<{ token: string; user: AuthUser }> {
     const claims = await MicrosoftAuthService.verifyMicrosoftToken(microsoftToken);
 
-    // 1. Primary Identity Lookup by Microsoft Object Identifier (oid)
+    // STEP 1 — Microsoft OID Primary Lookup
     let userWithRole = await UserRepository.findByMicrosoftOid(claims.oid);
 
-    // 2. Secondary Fallback Lookup by Candidate Emails (for first-time Microsoft identity linking)
+    const localParts = claims.candidateEmails.map(e => e.split('@')[0].toLowerCase().trim()).filter(Boolean);
+
+    console.log('AUTH_DIAGNOSTIC', {
+      oid: claims.oid,
+      tid: claims.tid,
+      aud: claims.aud || process.env.MICROSOFT_CLIENT_ID,
+      preferred_username: claims.preferred_username,
+      email: claims.email,
+      upn: claims.upn,
+      mail: claims.mail,
+      candidateEmails: claims.candidateEmails,
+      localParts
+    });
+
+    console.log('MICROSOFT_OID_LOOKUP', {
+      oid: claims.oid,
+      matchedUserId: userWithRole ? userWithRole.id : null,
+      matchedUserEmail: userWithRole ? userWithRole.email : null
+    });
+
+    // STEP 2 — Explicit Microsoft Login Email / UPN mapping lookup
+    if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
+      userWithRole = await UserRepository.findByMicrosoftLoginEmail(claims.candidateEmails);
+      if (userWithRole) {
+        await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
+      }
+    }
+
+    // STEP 3 — Candidate Email Fallback (Legacy fallback)
     if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
       userWithRole = await UserRepository.findByCandidateEmails(claims.candidateEmails);
       if (!userWithRole && claims.email) {
@@ -23,6 +51,23 @@ export class AuthService {
       if (userWithRole) {
         await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
       }
+    }
+
+    console.log('CANDIDATE_EMAIL_LOOKUP', {
+      candidateEmails: claims.candidateEmails,
+      localParts,
+      matchedUserId: userWithRole ? userWithRole.id : null,
+      matchedUserEmail: userWithRole ? userWithRole.email : null,
+      matchedEmployeeId: userWithRole ? userWithRole.employee_id : null,
+      matchedEmployeeName: userWithRole ? (userWithRole.employee_name || `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()) : null
+    });
+
+    if (userWithRole) {
+      console.log('ROLE_LOOKUP', {
+        userId: userWithRole.id,
+        organizationId: userWithRole.organization_id,
+        roles: userWithRole.role || userWithRole.role_name
+      });
     }
 
     if (process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV === 'development') {
@@ -70,6 +115,14 @@ export class AuthService {
       firstName: userWithRole.first_name || null,
       lastName: userWithRole.last_name || null
     };
+
+    console.log('FINAL_AUTH_RESULT', {
+      success: true,
+      userId: authUser.userId,
+      employeeId: authUser.employeeId,
+      employeeName: authUser.name,
+      role: authUser.role
+    });
 
     const token = jwt.sign(authUser, config.jwtSecret, { expiresIn: '24h' });
 
