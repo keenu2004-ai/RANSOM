@@ -24,23 +24,32 @@ export class AuthService {
       email: claims.email,
       upn: claims.upn,
       mail: claims.mail,
-      candidateEmails: claims.candidateEmails,
-      localParts
+      candidateEmails: claims.candidateEmails
     });
 
-    console.log('MICROSOFT_OID_LOOKUP', {
+    console.log('OID_LOOKUP', {
       oid: claims.oid,
       matchedUserId: userWithRole ? userWithRole.id : null,
       matchedUserEmail: userWithRole ? userWithRole.email : null
     });
 
     // STEP 2 — Explicit Microsoft Login Email / UPN mapping lookup
+    let loginEmailMatched = false;
     if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
       userWithRole = await UserRepository.findByMicrosoftLoginEmail(claims.candidateEmails);
       if (userWithRole) {
+        loginEmailMatched = true;
         await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
       }
     }
+
+    console.log('MICROSOFT_LOGIN_EMAIL_LOOKUP', {
+      candidateEmails: claims.candidateEmails,
+      matchedUserId: userWithRole ? userWithRole.id : null,
+      matchedUserEmail: userWithRole ? userWithRole.email : null,
+      matchedEmployeeId: userWithRole ? userWithRole.employee_id : null,
+      matchedEmployeeName: userWithRole ? (userWithRole.employee_name || `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()) : null
+    });
 
     // STEP 3 — Candidate Email Fallback (Legacy fallback)
     if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
@@ -53,35 +62,15 @@ export class AuthService {
       }
     }
 
-    console.log('CANDIDATE_EMAIL_LOOKUP', {
-      candidateEmails: claims.candidateEmails,
-      localParts,
-      matchedUserId: userWithRole ? userWithRole.id : null,
-      matchedUserEmail: userWithRole ? userWithRole.email : null,
-      matchedEmployeeId: userWithRole ? userWithRole.employee_id : null,
-      matchedEmployeeName: userWithRole ? (userWithRole.employee_name || `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()) : null
-    });
-
-    if (userWithRole) {
-      console.log('ROLE_LOOKUP', {
-        userId: userWithRole.id,
-        organizationId: userWithRole.organization_id,
-        roles: userWithRole.role || userWithRole.role_name
-      });
-    }
-
-    if (process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV === 'development') {
-      console.log('[MICROSOFT AUTH DIAGNOSTIC]', {
-        oid: claims.oid,
-        tid: claims.tid,
-        candidateEmails: claims.candidateEmails,
-        matchedUserId: userWithRole ? userWithRole.id : null,
-        matchedRole: userWithRole ? (userWithRole.role || userWithRole.role_name) : null,
-        status: userWithRole ? userWithRole.status : 'NOT_FOUND'
-      });
-    }
-
     if (!userWithRole) {
+      console.log('FINAL_AUTHORIZATION', {
+        userId: null,
+        employeeId: null,
+        organizationId: null,
+        status: null,
+        role: null,
+        failureReason: 'UNAUTHORIZED_USER (No matching OID, microsoft_login_email, or candidate email found)'
+      });
       const err: any = new Error('Your Microsoft account is authenticated, but it is not linked to an authorized THEIAKSHI account. Contact the THEIAKSHI administrator.');
       err.statusCode = 403;
       err.code = 'UNAUTHORIZED_USER';
@@ -89,6 +78,14 @@ export class AuthService {
     }
 
     if (userWithRole.status !== 'ACTIVE') {
+      console.log('FINAL_AUTHORIZATION', {
+        userId: userWithRole.id,
+        employeeId: userWithRole.employee_id || null,
+        organizationId: userWithRole.organization_id,
+        status: userWithRole.status,
+        role: userWithRole.role || userWithRole.role_name,
+        failureReason: 'ACCOUNT_INACTIVE (User or Employee account is suspended or inactive)'
+      });
       const err: any = new Error('Your user account is suspended or inactive.');
       err.statusCode = 403;
       err.code = 'ACCOUNT_INACTIVE';
@@ -116,12 +113,13 @@ export class AuthService {
       lastName: userWithRole.last_name || null
     };
 
-    console.log('FINAL_AUTH_RESULT', {
-      success: true,
+    console.log('FINAL_AUTHORIZATION', {
       userId: authUser.userId,
       employeeId: authUser.employeeId,
-      employeeName: authUser.name,
-      role: authUser.role
+      organizationId: authUser.organizationId,
+      status: userWithRole.status,
+      role: authUser.role,
+      failureReason: null
     });
 
     const token = jwt.sign(authUser, config.jwtSecret, { expiresIn: '24h' });
