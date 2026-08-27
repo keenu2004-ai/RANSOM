@@ -79,10 +79,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               to={item.path}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
+                `flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
                   isActive
-                    ? 'bg-blue-600/20 text-cyan-400 border-l-4 border-cyan-400 font-semibold shadow-md shadow-cyan-500/10'
-                    : 'text-slate-400 hover:bg-[#0D1728] hover:text-slate-200'
+                    ? 'bg-[#3B82F6] text-white shadow-lg shadow-blue-500/20'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                 } ${collapsed ? 'justify-center px-0' : ''}`
               }
             >
@@ -185,9 +185,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     to={item.path}
                     onClick={() => setMobileOpen && setMobileOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
+                      `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
                         isActive
-                          ? 'bg-blue-600/20 text-cyan-400 font-semibold border-l-4 border-cyan-400'
+                          ? 'bg-[#3B82F6] text-white shadow-lg shadow-blue-500/20'
                           : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                       }`
                     }

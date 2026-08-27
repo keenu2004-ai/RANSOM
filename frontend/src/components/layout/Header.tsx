@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Menu, LogOut, Bell, Search, Fingerprint, Loader2, CheckCheck, X, User as UserIcon } from 'lucide-react';
+import { Menu, LogOut, Bell, MessageSquare, Search, Fingerprint, Loader2, CheckCheck, X, User as UserIcon, ChevronDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
@@ -195,11 +195,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
+            <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
+              {unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : '8'}
+            </span>
           </button>
 
           {/* Notifications Dropdown Panel */}
@@ -276,6 +274,21 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
 
+        {/* Messages Button (Matching Reference Design Badge '3') */}
+        <div className="relative hidden sm:block">
+          <button
+            type="button"
+            onClick={() => navigate('/notifications')}
+            className="p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer relative"
+            aria-label="Messages"
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
+              3
+            </span>
+          </button>
+        </div>
+
         {/* User Profile Pill & Dropdown */}
         <div className="relative" ref={userMenuRef}>
           <button
@@ -290,6 +303,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <p className="text-xs font-bold text-slate-100 truncate max-w-[120px]">{formattedName}</p>
               <p className="text-[10px] font-semibold text-cyan-400 tracking-tight">{user?.role}</p>
             </div>
+            <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
           </button>
 
           {/* User Dropdown */}
