@@ -7,7 +7,10 @@ export interface MicrosoftClaims {
   email: string;
   name: string;
   preferred_username?: string;
+  upn?: string;
+  mail?: string;
   sub?: string;
+  candidateEmails: string[];
 }
 
 // Cached JWKS clients per tenant
@@ -183,15 +186,30 @@ export class MicrosoftAuthService {
       throw err;
     }
 
-    const email = (payload.preferred_username || payload.email || payload.upn || '').toLowerCase().trim();
-    const name = payload.name || email.split('@')[0] || 'Microsoft User';
+    const preferredUsername = (payload.preferred_username || '').toLowerCase().trim();
+    const emailClaim = (payload.email || '').toLowerCase().trim();
+    const upnClaim = (payload.upn || '').toLowerCase().trim();
+    const mailClaim = (payload.mail || '').toLowerCase().trim();
+
+    const candidateEmails = Array.from(new Set([
+      preferredUsername,
+      emailClaim,
+      upnClaim,
+      mailClaim
+    ].filter(Boolean)));
+
+    const primaryEmail = candidateEmails[0] || 'microsoft.user@theiakshi.com';
+    const name = payload.name || primaryEmail.split('@')[0] || 'Microsoft User';
 
     return {
       oid,
       tid: tid || configuredTenantId,
-      email,
+      email: primaryEmail,
       name,
-      preferred_username: payload.preferred_username || email
+      preferred_username: payload.preferred_username || primaryEmail,
+      upn: payload.upn,
+      mail: payload.mail,
+      candidateEmails
     };
   }
 }

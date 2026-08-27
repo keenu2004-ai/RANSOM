@@ -14,16 +14,19 @@ export class AuthService {
     // 1. Primary Identity Lookup by Microsoft Object Identifier (oid)
     let userWithRole = await UserRepository.findByMicrosoftOid(claims.oid);
 
-    // 2. Secondary Fallback Lookup by Company Email (for first-time Microsoft identity linking)
-    if (!userWithRole && claims.email) {
-      userWithRole = await UserRepository.findByEmail(claims.email);
+    // 2. Secondary Fallback Lookup by Candidate Emails (for first-time Microsoft identity linking)
+    if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
+      userWithRole = await UserRepository.findByCandidateEmails(claims.candidateEmails);
+      if (!userWithRole && claims.email) {
+        userWithRole = await UserRepository.findByEmail(claims.email);
+      }
       if (userWithRole) {
         await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
       }
     }
 
     if (!userWithRole) {
-      const err: any = new Error('Access denied. Your Microsoft account is not an authorized THEIAKSHI user.');
+      const err: any = new Error('Your Microsoft account is authenticated, but it is not linked to an authorized THEIAKSHI account. Contact the THEIAKSHI administrator.');
       err.statusCode = 403;
       err.code = 'UNAUTHORIZED_USER';
       throw err;
