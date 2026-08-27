@@ -195,9 +195,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
-              {unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : '8'}
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
 
           {/* Notifications Dropdown Panel */}
@@ -274,7 +276,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
 
-        {/* Messages Button (Matching Reference Design Badge '3') */}
+        {/* Messages Button (Dynamic Unread Messages Badge) */}
         <div className="relative hidden sm:block">
           <button
             type="button"
@@ -283,9 +285,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-label="Messages"
           >
             <MessageSquare className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
-              3
-            </span>
           </button>
         </div>
 
