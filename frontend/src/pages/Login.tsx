@@ -1,8 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
-import { executeMicrosoftPopupLogin } from '../config/msalConfig';
+import { 
+  initializeMsal, 
+  executeMicrosoftRedirectLogin, 
+  executeMicrosoftPopupLogin, 
+  getSilentIdToken 
+} from '../config/msalConfig';
 import { TheiakshiLogo } from '../components/TheiakshiLogo';
 
 export const Login: React.FC = () => {
@@ -13,6 +18,57 @@ export const Login: React.FC = () => {
 
   // Guard against concurrent clicks or rapid re-renders
   const isExecutingRef = useRef(false);
+
+  // Process MSAL redirect result or silent token on initial page load
+  useEffect(() => {
+    let isMounted = true;
+
+    const processAuthOnLoad = async () => {
+      // If user is already authenticated in App context, skip
+      if (user) return;
+
+      try {
+        // Step 1: Process redirect result if returning from Microsoft Entra ID
+        const redirectResult = await initializeMsal();
+        if (redirectResult?.idToken) {
+          if (!isMounted) return;
+          setLoading(true);
+          setLocalError(null);
+          await loginWithMicrosoft(redirectResult.idToken);
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+
+        // Step 2: Check for existing session token silently
+        const silentIdToken = await getSilentIdToken();
+        if (silentIdToken) {
+          if (!isMounted) return;
+          setLoading(true);
+          await loginWithMicrosoft(silentIdToken);
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.warn('MSAL initial auth check:', err);
+        if (err.errorCode === 'block_nested_popups' || err.message?.includes('block_nested_popups')) {
+          setLocalError('Microsoft sign-in window could not complete because another window is active. Please close any open window and click Sign in again.');
+        } else if (err.errorCode === 'interaction_in_progress' || err.message?.includes('interaction_in_progress')) {
+          setLocalError('Microsoft sign-in is already in progress. Please wait and try again.');
+        } else {
+          setLocalError(err.message || 'Microsoft authentication failed.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    processAuthOnLoad();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -28,32 +84,34 @@ export const Login: React.FC = () => {
     setLocalError(null);
 
     try {
-      let response;
-      try {
-        response = await executeMicrosoftPopupLogin();
-      } catch (popupErr: any) {
-        if (popupErr.errorCode === 'user_cancelled' || popupErr.errorCode === 'popup_window_closed' || popupErr.message?.includes('user_cancelled')) {
-          setLocalError('Microsoft sign in was cancelled or closed. Please try again.');
-          return;
-        }
-        if (popupErr.errorCode === 'interaction_in_progress' || popupErr.message?.includes('interaction_in_progress')) {
-          setLocalError('A Microsoft sign-in window is already open. Please complete or close the pop-up window and try again.');
-          return;
-        }
-        throw popupErr;
-      }
-
-      const idToken = response?.idToken;
-      if (!idToken) {
-        throw new Error('No Microsoft ID token returned from authentication.');
-      }
-
-      await loginWithMicrosoft(idToken);
-      navigate('/dashboard', { replace: true });
+      // Primary Single-Redirect Flow (Prevents popup blocking & block_nested_popups)
+      await executeMicrosoftRedirectLogin();
     } catch (err: any) {
       console.error('Microsoft sign-in error:', err);
-      setLocalError(err.message || 'Microsoft authentication failed.');
-    } finally {
+
+      // Fallback to popup login if environment prohibits top-level redirect
+      if (err.errorCode === 'redirect_error' || err.message?.includes('redirect')) {
+        try {
+          const popupRes = await executeMicrosoftPopupLogin();
+          if (popupRes?.idToken) {
+            await loginWithMicrosoft(popupRes.idToken);
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        } catch (popupErr: any) {
+          err = popupErr;
+        }
+      }
+
+      if (err.errorCode === 'user_cancelled' || err.message?.includes('user_cancelled')) {
+        setLocalError('Microsoft sign in was cancelled. Please try again.');
+      } else if (err.errorCode === 'interaction_in_progress' || err.message?.includes('interaction_in_progress')) {
+        setLocalError('Microsoft sign-in is already in progress. Please wait and try again.');
+      } else if (err.errorCode === 'block_nested_popups' || err.message?.includes('block_nested_popups')) {
+        setLocalError('Microsoft sign-in window could not complete because another window is active. Please close any open window and try again.');
+      } else {
+        setLocalError(err.message || 'Microsoft authentication failed.');
+      }
       setLoading(false);
       isExecutingRef.current = false;
     }
