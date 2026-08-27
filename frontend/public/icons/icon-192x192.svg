@@ -1,11 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="40" fill="#0f172a"/>
-  <circle cx="96" cy="96" r="70" fill="url(#grad)" />
+  <rect width="192" height="192" rx="40" fill="#020817"/>
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#06b6d4"/>
-      <stop offset="100%" stop-color="#2563eb"/>
+    <linearGradient id="ringGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A3E45" />
+      <stop offset="50%" stop-color="#181B20" />
+      <stop offset="100%" stop-color="#080A0C" />
+    </linearGradient>
+    <linearGradient id="redFill192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF383F" />
+      <stop offset="50%" stop-color="#EF1B23" />
+      <stop offset="100%" stop-color="#C51118" />
     </linearGradient>
   </defs>
-  <path d="M 60,65 L 132,65 M 96,65 L 96,135 M 65,100 L 127,100" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+
+  <ellipse cx="96" cy="96" rx="84" ry="70" fill="url(#ringGrad192)" stroke="#2D323C" stroke-width="4" />
+  <ellipse cx="96" cy="96" rx="78" ry="64" fill="none" stroke="#EF1B23" stroke-width="3" opacity="0.95" />
+  <ellipse cx="96" cy="96" rx="68" ry="54" fill="#020817" />
+
+  <!-- Correct Right-Facing 't' Mark -->
+  <path d="M 30,80 C 65,74 125,74 170,84 C 170,96 125,94 30,96 Z" fill="url(#redFill192)" />
+  <path d="M 46,38 L 63,38 L 63,110 C 63,138 86,150 118,130 C 122,120 108,115 92,115 C 71,115 63,103 63,88 L 63,38 Z" fill="url(#redFill192)" />
 </svg>

@@ -1,11 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#0f172a"/>
-  <circle cx="256" cy="256" r="180" fill="url(#grad512)" />
+  <rect width="512" height="512" rx="100" fill="#020817"/>
   <defs>
-    <linearGradient id="grad512" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#06b6d4"/>
-      <stop offset="100%" stop-color="#2563eb"/>
+    <linearGradient id="ringGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A3E45" />
+      <stop offset="50%" stop-color="#181B20" />
+      <stop offset="100%" stop-color="#080A0C" />
+    </linearGradient>
+    <linearGradient id="redFill512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF383F" />
+      <stop offset="50%" stop-color="#EF1B23" />
+      <stop offset="100%" stop-color="#C51118" />
     </linearGradient>
   </defs>
-  <path d="M 160,170 L 352,170 M 256,170 L 256,350 M 175,260 L 337,260" stroke="#ffffff" stroke-width="36" stroke-linecap="round"/>
+
+  <ellipse cx="256" cy="256" rx="224" ry="186" fill="url(#ringGrad512)" stroke="#2D323C" stroke-width="10" />
+  <ellipse cx="256" cy="256" rx="208" ry="170" fill="none" stroke="#EF1B23" stroke-width="8" opacity="0.95" />
+  <ellipse cx="256" cy="256" rx="180" ry="144" fill="#020817" />
+
+  <!-- Correct Right-Facing 't' Mark -->
+  <path d="M 80,214 C 175,198 335,198 454,224 C 454,256 335,250 80,256 Z" fill="url(#redFill512)" />
+  <path d="M 122,102 L 168,102 L 168,294 C 168,368 230,400 315,347 C 325,320 288,307 245,307 C 190,307 168,275 168,235 L 168,102 Z" fill="url(#redFill512)" />
 </svg>
