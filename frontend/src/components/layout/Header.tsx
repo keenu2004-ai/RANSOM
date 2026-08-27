@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Menu, LogOut, Bell, MessageSquare, Search, Fingerprint, Loader2, CheckCheck, X, User as UserIcon, ChevronDown } from 'lucide-react';
+import { Menu, Bell, MessageSquare, Search, Fingerprint, Loader2, CheckCheck, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
 import { apiFetch } from '../../services/api-client';
-import { getDisplayName } from '../../utils/displayName';
 import { TheiakshiLogo } from '../TheiakshiLogo';
 
 interface HeaderProps {
@@ -12,7 +11,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { todaySummary, actionLoading, handlePunch } = useAttendance();
   const activeSession = todaySummary?.activeSession || null;
   const hasActiveSession = !!activeSession;
@@ -24,16 +23,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const notifBellRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on route changes
   useEffect(() => {
     setIsNotificationsOpen(false);
-    setUserMenuOpen(false);
   }, [location.pathname]);
 
   // Handle ESC key
@@ -41,7 +37,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsNotificationsOpen(false);
-        setUserMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -61,13 +56,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       ) {
         setIsNotificationsOpen(false);
       }
-      if (
-        userMenuOpen &&
-        userMenuRef.current &&
-        !userMenuRef.current.contains(target)
-      ) {
-        setUserMenuOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
@@ -75,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isNotificationsOpen, userMenuOpen]);
+  }, [isNotificationsOpen]);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -124,9 +112,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     else navigate('/dashboard');
   };
 
-  const formattedName = getDisplayName(user);
-  const avatarLetter = formattedName.charAt(0).toUpperCase();
-
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#050B14]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 flex items-center justify-between gap-4">
       {/* Left: Mobile Hamburger & Logo */}
@@ -159,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
       </form>
 
-      {/* Right: Notifications, Punch, User Avatar & Dropdown */}
+      {/* Right: Punch Button, Notifications & Messages */}
       <div className="flex items-center gap-3 relative">
         {/* Quick Check-in/out Punch Button */}
         {user?.employeeId && (
@@ -276,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
 
-        {/* Messages Button (Dynamic Unread Messages Badge) */}
+        {/* Messages Button */}
         <div className="relative hidden sm:block">
           <button
             type="button"
@@ -286,58 +271,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           >
             <MessageSquare className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* User Profile Pill & Dropdown */}
-        <div className="relative" ref={userMenuRef}>
-          <button
-            type="button"
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-white font-extrabold text-sm flex items-center justify-center shadow-md">
-              {avatarLetter}
-            </div>
-            <div className="text-left hidden md:block">
-              <p className="text-xs font-bold text-slate-100 truncate max-w-[120px]">{formattedName}</p>
-              <p className="text-[10px] font-semibold text-cyan-400 tracking-tight">{user?.role}</p>
-            </div>
-            <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
-          </button>
-
-          {/* User Dropdown */}
-          {userMenuOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#0A1424] border border-white/10 text-slate-100 rounded-2xl shadow-2xl overflow-hidden z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-2 border-b border-white/5">
-                <p className="text-xs font-bold text-slate-100 truncate">{formattedName}</p>
-                <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  navigate('/settings');
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
-              >
-                <UserIcon className="w-4 h-4 text-cyan-400" />
-                <span>Account Settings</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  logout();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 text-rose-400" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>

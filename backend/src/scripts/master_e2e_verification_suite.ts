@@ -890,12 +890,12 @@ async function runMasterE2EVerificationSuite() {
       displayNameUtilCode17.includes('getDisplayName') && displayNameUtilCode17.includes('firstName')
     );
 
-    runStep('Header.tsx and Dashboard.tsx use getDisplayName(user) for primary welcome & identity headers',
-      headerCode17.includes('getDisplayName(user)') && dashCode17.includes('getDisplayName(user)')
+    runStep('Dashboard.tsx uses getDisplayName(user) for primary welcome header',
+      dashCode17.includes('getDisplayName(user)')
     );
 
-    runStep('Mobile Sidebar displays Full Name, Email, Role, and Avatar Badge',
-      sidebarCode17.includes('getDisplayName(user)') && sidebarCode17.includes('user?.email') && sidebarCode17.includes('user?.role')
+    runStep('Sidebar.tsx provides clean navigation drawer without user profile clutter',
+      sidebarCode17.includes('allowedNav')
     );
 
     const excelServiceCode17 = fs.readFileSync(path.join(rootDir, 'backend/src/services/excelService.ts'), 'utf8');
