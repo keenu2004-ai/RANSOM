@@ -76,6 +76,8 @@ export class UserRepository {
     const lowerEmails = emails.map(e => e.toLowerCase().trim()).filter(Boolean);
     if (lowerEmails.length === 0) return null;
 
+    const localParts = lowerEmails.map(e => e.split('@')[0]).filter(p => p.length >= 3);
+
     const text = `
       SELECT 
         u.id, 
@@ -102,9 +104,17 @@ export class UserRepository {
       LEFT JOIN roles r ON r.id = ur.role_id
       LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
       WHERE LOWER(u.email) = ANY($1::text[])
+         OR LOWER(e.email) = ANY($1::text[])
+         OR (${localParts.length > 0 ? `SPLIT_PART(LOWER(u.email), '@', 1) = ANY($2::text[]) OR SPLIT_PART(LOWER(e.email), '@', 1) = ANY($2::text[])` : 'FALSE'})
+      ORDER BY 
+        CASE 
+          WHEN LOWER(u.email) = ANY($1::text[]) OR LOWER(e.email) = ANY($1::text[]) THEN 1 
+          ELSE 2 
+        END,
+        u.created_at ASC
       LIMIT 1
     `;
-    const res = await query<UserWithRole>(text, [lowerEmails]);
+    const res = await query<UserWithRole>(text, [lowerEmails, localParts]);
     return res.rows[0] || null;
   }
 

@@ -25,6 +25,17 @@ export class AuthService {
       }
     }
 
+    if (process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV === 'development') {
+      console.log('[MICROSOFT AUTH DIAGNOSTIC]', {
+        oid: claims.oid,
+        tid: claims.tid,
+        candidateEmails: claims.candidateEmails,
+        matchedUserId: userWithRole ? userWithRole.id : null,
+        matchedRole: userWithRole ? (userWithRole.role || userWithRole.role_name) : null,
+        status: userWithRole ? userWithRole.status : 'NOT_FOUND'
+      });
+    }
+
     if (!userWithRole) {
       const err: any = new Error('Your Microsoft account is authenticated, but it is not linked to an authorized THEIAKSHI account. Contact the THEIAKSHI administrator.');
       err.statusCode = 403;
