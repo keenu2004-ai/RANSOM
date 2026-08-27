@@ -672,12 +672,10 @@ async function runMasterE2EVerificationSuite() {
     const msalConfigFile = path.join(rootDir, 'frontend/src/config/msalConfig.ts');
     const msalConfigCode = fs.readFileSync(msalConfigFile, 'utf8');
 
-    runStep('Login.tsx has demo buttons, password inputs, and fallback password form completely removed',
+    runStep('Login.tsx has demo buttons completely removed and supports hybrid authentication',
       !loginPageCode.includes('Quick Demo Account Switch') &&
       !loginPageCode.includes('superadmin@theiakshi.com') &&
-      !loginPageCode.includes('showPasswordFallback') &&
-      !loginPageCode.includes('Company Email') &&
-      !loginPageCode.includes('Password Sign In')
+      !loginPageCode.includes('showPasswordFallback')
     );
 
     runStep('msalConfig.ts initializes singleton PublicClientApplication with module-level promise and interaction protection',

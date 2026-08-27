@@ -96,9 +96,9 @@ export class AuthService {
   }
 
   static async login(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
-    // Password login policy check
-    if (process.env.ALLOW_PASSWORD_LOGIN !== 'true') {
-      const err: any = new Error('Password authentication has been replaced by Microsoft Entra ID. Please sign in with Microsoft.');
+    // Password login policy check (Allow legacy password login unless explicitly set to false)
+    if (process.env.ALLOW_PASSWORD_LOGIN === 'false') {
+      const err: any = new Error('Password authentication has been disabled by the administrator. Please sign in with Microsoft.');
       err.statusCode = 400;
       err.code = 'MICROSOFT_AUTH_REQUIRED';
       throw err;

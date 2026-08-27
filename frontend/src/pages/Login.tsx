@@ -1,20 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Loader2, KeyRound, ArrowRight, UserX, RefreshCw } from 'lucide-react';
 import { 
   initializeMsal, 
   executeMicrosoftRedirectLogin, 
   executeMicrosoftPopupLogin, 
+  executeMicrosoftSelectAccountLogin,
   getSilentIdToken 
 } from '../config/msalConfig';
 import { TheiakshiLogo } from '../components/TheiakshiLogo';
 
 export const Login: React.FC = () => {
-  const { user, loginWithMicrosoft, error } = useAuth();
+  const { user, loginWithMicrosoft, login, error, clearError } = useAuth();
   const navigate = useNavigate();
+  
+  const [activeTab, setActiveTab] = useState<'microsoft' | 'password'>('microsoft');
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  // Password form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Guard against concurrent clicks or rapid re-renders
   const isExecutingRef = useRef(false);
@@ -24,7 +32,6 @@ export const Login: React.FC = () => {
     let isMounted = true;
 
     const processAuthOnLoad = async () => {
-      // If user is already authenticated in App context, skip
       if (user) return;
 
       try {
@@ -34,6 +41,7 @@ export const Login: React.FC = () => {
           if (!isMounted) return;
           setLoading(true);
           setLocalError(null);
+          clearError();
           await loginWithMicrosoft(redirectResult.idToken);
           navigate('/dashboard', { replace: true });
           return;
@@ -82,6 +90,7 @@ export const Login: React.FC = () => {
     isExecutingRef.current = true;
     setLoading(true);
     setLocalError(null);
+    clearError();
 
     try {
       // Primary Single-Redirect Flow (Prevents popup blocking & block_nested_popups)
@@ -89,7 +98,6 @@ export const Login: React.FC = () => {
     } catch (err: any) {
       console.error('Microsoft sign-in error:', err);
 
-      // Fallback to popup login if environment prohibits top-level redirect
       if (err.errorCode === 'redirect_error' || err.message?.includes('redirect')) {
         try {
           const popupRes = await executeMicrosoftPopupLogin();
@@ -116,6 +124,40 @@ export const Login: React.FC = () => {
       isExecutingRef.current = false;
     }
   };
+
+  const handleSelectAccountSignIn = async () => {
+    setLocalError(null);
+    clearError();
+    setLoading(true);
+    try {
+      await executeMicrosoftSelectAccountLogin();
+    } catch (err: any) {
+      setLocalError(err.message || 'Failed to switch Microsoft account.');
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || passwordLoading) return;
+
+    setPasswordLoading(true);
+    setLocalError(null);
+    clearError();
+
+    try {
+      await login(email, password);
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setLocalError(err.message || 'Password authentication failed.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const currentErrorMessage = error || localError;
+  const isUnlinkedAccountError = currentErrorMessage?.includes('not linked to an authorized THEIAKSHI account') ||
+                                 currentErrorMessage?.includes('UNAUTHORIZED_USER');
 
   return (
     <div className="min-h-screen bg-[#020817] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-cyan-500 selection:text-white">
@@ -150,43 +192,175 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Messages */}
-        {(error || localError) && (
-          <div className="p-4 bg-rose-950/60 border border-rose-600/50 rounded-2xl text-rose-200 text-xs flex items-start gap-3 shadow-lg animate-in fade-in duration-200">
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-bold text-rose-100">Authentication Error</p>
-              <p className="text-rose-300/90 leading-relaxed">{error || localError}</p>
+        {/* Dedicated Unlinked Account Status Card */}
+        {isUnlinkedAccountError ? (
+          <div className="p-6 bg-rose-950/40 border border-rose-500/30 rounded-2xl space-y-5 text-left animate-in fade-in duration-200">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-900/40 border border-rose-500/40 rounded-xl shrink-0 text-rose-400">
+                <UserX className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-rose-200 uppercase tracking-wide">
+                  Microsoft Identity Not Linked
+                </h3>
+                <p className="text-xs text-rose-300/90 leading-relaxed">
+                  Your Microsoft account was authenticated successfully, but it is not currently linked to an authorized THEIAKSHI HRMS account.
+                </p>
+              </div>
             </div>
+
+            <div className="pt-2 border-t border-rose-500/20 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSelectAccountSignIn}
+                className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Use Another Microsoft Account</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalError(null);
+                  clearError();
+                  setActiveTab('password');
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 bg-white/10 hover:bg-white/15 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <KeyRound className="w-4 h-4 text-cyan-400" />
+                <span>Sign in with Password</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Standard Error Messages */
+          currentErrorMessage && (
+            <div className="p-4 bg-rose-950/60 border border-rose-600/50 rounded-2xl text-rose-200 text-xs flex items-start gap-3 shadow-lg animate-in fade-in duration-200">
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold text-rose-100">Authentication Error</p>
+                <p className="text-rose-300/90 leading-relaxed">{currentErrorMessage}</p>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Authentication Mode Tabs */}
+        <div className="flex bg-[#050B14] p-1 rounded-2xl border border-white/10">
+          <button
+            type="button"
+            onClick={() => setActiveTab('microsoft')}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'microsoft'
+                ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Microsoft Entra SSO</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('password')}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'password'
+                ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <KeyRound className="w-4 h-4" />
+            <span>Email & Password</span>
+          </button>
+        </div>
+
+        {/* TAB 1: Microsoft SSO Sign In */}
+        {activeTab === 'microsoft' && (
+          <div className="space-y-4 pt-1">
+            <button
+              type="button"
+              onClick={handleMicrosoftSignIn}
+              disabled={loading}
+              className="w-full py-4 px-6 bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 font-bold rounded-2xl text-base shadow-xl shadow-cyan-500/10 transition-all disabled:opacity-60 flex items-center justify-center gap-3 border border-white/20 cursor-pointer group"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-800" />
+                  <span className="font-extrabold text-slate-900">Signing in with Microsoft...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 23 23">
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                  </svg>
+                  <span className="font-extrabold text-slate-900 tracking-tight">Sign in with Microsoft</span>
+                </>
+              )}
+            </button>
+
+            <p className="text-center text-[11px] text-slate-400 font-medium">
+              Enterprise Single Sign-On powered by Microsoft 365 Entra ID.
+            </p>
           </div>
         )}
 
-        {/* Sign In Button Area */}
-        <div className="space-y-4 pt-2">
-          <button
-            type="button"
-            onClick={handleMicrosoftSignIn}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 font-bold rounded-2xl text-base shadow-xl shadow-cyan-500/10 transition-all disabled:opacity-60 flex items-center justify-center gap-3 border border-white/20 cursor-pointer group"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin text-slate-800" />
-                <span className="font-extrabold text-slate-900">Signing in with Microsoft...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5 shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 23 23">
-                  <path fill="#f35325" d="M1 1h10v10H1z"/>
-                  <path fill="#81bc06" d="M12 1h10v10H12z"/>
-                  <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-                  <path fill="#ffba08" d="M12 12h10v10H12z"/>
-                </svg>
-                <span className="font-extrabold text-slate-900 tracking-tight">Sign in with Microsoft</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* TAB 2: Legacy Email & Password Sign In */}
+        {activeTab === 'password' && (
+          <form onSubmit={handlePasswordSignIn} className="space-y-4 text-left">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@theiakshi.com"
+                className="w-full px-4 py-3 bg-[#050B14] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors placeholder:text-slate-600"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-[#050B14] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors placeholder:text-slate-600"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={passwordLoading || !email || !password}
+              className="w-full py-3.5 px-6 bg-cyan-600 hover:bg-cyan-500 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-lg shadow-cyan-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {passwordLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In with Password</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <p className="text-center text-[11px] text-slate-400 font-medium pt-1">
+              Legacy password login for existing THEIAKSHI HRMS accounts.
+            </p>
+          </form>
+        )}
 
         {/* Footer info */}
         <div className="text-center pt-2 border-t border-white/5 text-[11px] text-slate-500">

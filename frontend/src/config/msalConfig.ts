@@ -106,6 +106,18 @@ export async function executeMicrosoftRedirectLogin(): Promise<void> {
 }
 
 /**
+ * Triggers a Microsoft login flow requesting the account selection prompt.
+ */
+export async function executeMicrosoftSelectAccountLogin(): Promise<void> {
+  await initializeMsal();
+  isInteractionInProgress = false;
+  await msalInstance.loginRedirect({
+    ...loginRequest,
+    prompt: 'select_account'
+  });
+}
+
+/**
  * Executes a popup-based Microsoft login flow with interaction guards (Fallback Flow).
  */
 export async function executeMicrosoftPopupLogin(): Promise<AuthenticationResult> {
