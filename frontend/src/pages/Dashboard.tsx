@@ -262,7 +262,7 @@ export const Dashboard: React.FC = () => {
         />
 
         <KpiCard
-          title="Pending Tasks / Expenses"
+          title="Weekly Plan / Expenses"
           value={summary.totalPendingItems ?? (summary.pendingExpenses || 0) + (summary.pendingTasks || 0)}
           subtitle="Awaiting manager review"
           path="/expenses"
@@ -384,8 +384,13 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-200 truncate">
-                      {act.userName ? `${act.userName}: ${act.action}` : (act.action || act.description || 'System event')}
+                      {act.userName ? `${act.userName}: ${act.action}` : (act.action || act.entityName || 'System event')}
                     </p>
+                    {act.entityName && (
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {act.module ? `[${act.module}] ` : ''}{act.entityName}
+                      </p>
+                    )}
                     <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                       {act.createdAt ? new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
                     </p>
