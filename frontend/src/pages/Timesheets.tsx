@@ -466,7 +466,12 @@ export const Timesheets: React.FC = () => {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <span className="font-bold text-slate-100 block">{item.title}</span>
-                    {item.customer_name && <span className="text-amber-400 text-[11px] font-semibold">Customer: {item.customer_name}</span>}
+                    {item.assigned_employee_name && (
+                      <span className="text-cyan-400 text-[11px] font-semibold block">
+                        Employee: {item.assigned_employee_name} {item.assigned_employee_code ? `(${item.assigned_employee_code})` : ''}
+                      </span>
+                    )}
+                    {item.customer_name && <span className="text-amber-400 text-[11px] font-semibold block">Customer: {item.customer_name}</span>}
                   </div>
                   <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-950 text-amber-400 border border-amber-800">
                     {item.date}
@@ -554,7 +559,17 @@ export const Timesheets: React.FC = () => {
                 onClick={handleThisWeek}
                 className="px-3 py-1 font-semibold text-cyan-400 hover:text-cyan-300 rounded-lg transition-all"
               >
-                This Week
+                {(() => {
+                  const currentMon = getMondayOfWeekStr();
+                  const selMon = normalizeDateOnly(selectedMondayStr);
+                  if (selMon === currentMon) return 'This Week';
+                  const diffDays = Math.round((parseDateOnlyToLocal(selMon!).getTime() - parseDateOnlyToLocal(currentMon).getTime()) / (1000 * 60 * 60 * 24));
+                  const diffWeeks = Math.round(diffDays / 7);
+                  if (diffWeeks === -1) return 'Last Week';
+                  if (diffWeeks === 1) return 'Next Week';
+                  if (diffWeeks < 0) return `${Math.abs(diffWeeks)} Weeks Ago`;
+                  return `${diffWeeks} Weeks Ahead`;
+                })()}
               </button>
               <button
                 onClick={handleNextWeek}

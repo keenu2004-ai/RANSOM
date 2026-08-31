@@ -2,18 +2,19 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   Menu,
   Bell,
-  MessageSquare,
-  Search,
   Fingerprint,
   Loader2,
   CheckCheck,
   X,
   LogOut,
-  UserRound
+  UserRound,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
+import { useTheme } from '../../context/ThemeContext';
 import { apiFetch } from '../../services/api-client';
 import { TheiakshiLogo } from '../TheiakshiLogo';
 
@@ -190,6 +191,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#050B14]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 flex items-center justify-between gap-4">
       {/* Left: Mobile Hamburger & Logo */}
+      {/* Left: Mobile Hamburger & Desktop Branding */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -200,28 +202,22 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <Menu className="w-6 h-6" />
         </button>
 
-        <div className="lg:hidden">
+        <div className="lg:hidden flex items-center gap-2">
           <TheiakshiLogo variant="full" size="sm" />
+        </div>
+
+        {/* Desktop Header Left Branding */}
+        <div className="hidden lg:flex items-center gap-3">
+          <TheiakshiLogo variant="emblem" size="md" />
+          <span className="font-extrabold text-base text-white tracking-tight">
+            Theiakshi Enterprises
+          </span>
         </div>
       </div>
 
-      {/* Center: Global Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md hidden sm:block">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search employees, modules..."
-            className="w-full pl-10 pr-4 py-2 bg-[#0A1424] border border-white/10 focus:border-cyan-500/50 rounded-xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
-          />
-        </div>
-      </form>
-
-      {/* Right: Punch Button, Notifications & Messages */}
+      {/* Right Controls: Attendance, Bell, Theme Toggle, Profile */}
       <div className="flex items-center gap-2 sm:gap-3 relative">
-        {/* Quick Check-in/out Punch Button (Responsive across all screens) */}
+        {/* Quick Check-in/out Punch Button */}
         {user?.employeeId && (
           <button
             type="button"
@@ -337,17 +333,25 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
 
-        {/* Messages Button */}
-        <div className="relative hidden sm:block">
-          <button
-            type="button"
-            onClick={() => navigate('/notifications')}
-            className="p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer relative"
-            aria-label="Messages"
-          >
-            <MessageSquare className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Theme Toggle Button */}
+        {(() => {
+          const { theme, toggleTheme } = useTheme();
+          return (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer relative"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-indigo-400" />
+              )}
+            </button>
+          );
+        })()}
 
         {/* User Profile Menu */}
         <div ref={profileRef} className="relative">

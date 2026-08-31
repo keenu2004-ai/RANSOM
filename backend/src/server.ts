@@ -153,6 +153,9 @@ if (require.main === module) {
 
         const { migrateLegacyAttachments } = require('./scripts/migrate_legacy_attachments');
         await migrateLegacyAttachments();
+
+        const { AttendanceReconciliationService } = require('./services/attendanceReconciliationService');
+        AttendanceReconciliationService.startReconciliationCron();
       } catch (err: any) {
         process.stderr.write(`❌ FATAL: Database initialization failed: ${err.message}\n`);
         if (err.stack) process.stderr.write(`Stack: ${err.stack}\n`);
@@ -162,7 +165,7 @@ if (require.main === module) {
 
     app.listen(config.port, () => {
       console.log(`====================================================`);
-      console.log(`  THEIAKSHI ENTERPRISE HRMS BACKEND RUNNING`);
+      console.log(`  THEIAKSHI ENTERPRISES HRMS BACKEND RUNNING`);
       console.log(`  Port: ${config.port}`);
       console.log(`  Environment: ${config.env}`);
       console.log(`====================================================`);

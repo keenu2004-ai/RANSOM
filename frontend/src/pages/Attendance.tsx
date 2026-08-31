@@ -489,58 +489,119 @@ export const Attendance: React.FC = () => {
         subtitle="Visualizing daily attendance check-ins, multi-sessions, leave requests, company holidays, and planned tasks"
       />
 
-      {/* Workforce Attendance Log Table */}
+      {/* Workforce Attendance Sessions Log (Grouped by Employee) */}
       {attendanceList.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-2">
-          <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-300">
-            Workforce Attendance Sessions Log
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-4 p-6">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-sm text-white">Workforce Attendance Sessions Log</h3>
+              <p className="text-xs text-slate-400">Sessions organized by employee identity & session history</p>
+            </div>
+            <span className="px-2.5 py-1 text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/30">
+              {Object.keys(attendanceList.reduce((acc, a) => {
+                const key = a.employee_id || a.employee_code || a.employee_name;
+                acc[key] = true;
+                return acc;
+              }, {} as Record<string, boolean>)).length} Employees
+            </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="px-6 py-3">Employee</th>
-                  <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Check In</th>
-                  <th className="px-6 py-3">Check Out</th>
-                  <th className="px-6 py-3">Check-In GPS</th>
-                  <th className="px-6 py-3">Check-Out GPS</th>
-                  <th className="px-6 py-3">Hours</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {attendanceList.map(a => (
-                  <tr key={a.id} className="hover:bg-slate-800/40">
-                    <td className="px-6 py-3.5 font-semibold text-slate-200">{a.employee_name} ({a.employee_code})</td>
-                    <td className="px-6 py-3.5 font-mono">{a.date}</td>
-                    <td className="px-6 py-3.5 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                    <td className="px-6 py-3.5 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                    <td className="px-6 py-3.5 font-mono text-[11px] text-slate-400">
-                      {formatCoord(a.punch_in_lat) !== 'N/A' && formatCoord(a.punch_in_lng) !== 'N/A'
-                        ? `${formatCoord(a.punch_in_lat)}, ${formatCoord(a.punch_in_lng)}`
-                        : 'N/A'}
-                    </td>
-                    <td className="px-6 py-3.5 font-mono text-[11px] text-slate-400">
-                      {formatCoord(a.punch_out_lat) !== 'N/A' && formatCoord(a.punch_out_lng) !== 'N/A'
-                        ? `${formatCoord(a.punch_out_lat)}, ${formatCoord(a.punch_out_lng)}`
-                        : 'N/A'}
-                    </td>
-                    <td className="px-6 py-3.5 font-mono">{a.working_hours || 0} hrs</td>
-                    <td className="px-6 py-3.5 text-right">
-                      <button
-                        onClick={() => setSelectedSession(a)}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 ml-auto"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>GPS Details</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          {/* Grouping logic */}
+          {(() => {
+            const groupedMap = new Map<string, { empName: string; empCode: string; sessions: any[]; totalHours: number }>();
+            attendanceList.forEach(a => {
+              const key = a.employee_id || a.employee_code || a.employee_name || 'Unassigned';
+              if (!groupedMap.has(key)) {
+                groupedMap.set(key, {
+                  empName: a.employee_name || 'Employee',
+                  empCode: a.employee_code || 'EMP',
+                  sessions: [],
+                  totalHours: 0
+                });
+              }
+              const group = groupedMap.get(key)!;
+              group.sessions.push(a);
+              group.totalHours += parseFloat(a.working_hours || 0);
+            });
+
+            return Array.from(groupedMap.values()).map((group, gIdx) => (
+              <div key={gIdx} className="bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="p-4 bg-slate-900/60 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 font-extrabold text-sm flex items-center justify-center border border-cyan-500/30">
+                      {group.empName.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-100">{group.empName}</h4>
+                      <span className="text-xs font-mono text-cyan-400 font-medium">Code: {group.empCode}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs font-mono">
+                    <span className="px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700">
+                      Sessions: <strong className="text-white">{group.sessions.length}</strong>
+                    </span>
+                    <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
+                      Total Hours: <strong className="text-emerald-300">{group.totalHours.toFixed(2)} hrs</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800/80">
+                      <tr>
+                        <th className="px-4 py-2.5">Date</th>
+                        <th className="px-4 py-2.5">Check In</th>
+                        <th className="px-4 py-2.5">Check Out</th>
+                        <th className="px-4 py-2.5">Hours</th>
+                        <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/40">
+                      {group.sessions.map((a, sIdx) => {
+                        const statusLabel = a.status === 'REGULARIZATION_REQUIRED'
+                          ? 'Regularization Required'
+                          : a.check_out
+                          ? 'Completed'
+                          : 'Active';
+
+                        return (
+                          <tr key={a.id || sIdx} className="hover:bg-slate-800/30">
+                            <td className="px-4 py-3 font-mono font-medium">{a.date ? new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</td>
+                            <td className="px-4 py-3 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
+                            <td className="px-4 py-3 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
+                            <td className="px-4 py-3 font-mono font-bold text-slate-200">{a.working_hours || 0} hrs</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                a.status === 'REGULARIZATION_REQUIRED'
+                                  ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
+                                  : a.check_out
+                                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                                  : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 animate-pulse'
+                              }`}>
+                                {statusLabel}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => setSelectedSession(a)}
+                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>GPS Details</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       )}
 

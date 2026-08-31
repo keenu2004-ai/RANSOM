@@ -113,7 +113,8 @@ export class EmployeeRepository {
     };
   }
 
-  static async findById(id: string, organizationId: string) {
+  static async findById(id: string, organizationId: string, client?: any) {
+    const db = client || { query };
     const text = `
       SELECT 
         e.id,
@@ -153,7 +154,7 @@ export class EmployeeRepository {
       LEFT JOIN employees m ON e.manager_id = m.id
       WHERE e.id = $1 AND e.organization_id = $2
     `;
-    const res = await query(text, [id, organizationId]);
+    const res = await db.query(text, [id, organizationId]);
     return res.rows[0] || null;
   }
 
@@ -239,31 +240,85 @@ export class EmployeeRepository {
   }
 
   static async update(id: string, organizationId: string, data: any) {
-    const text = `
-      UPDATE employees SET
-        first_name = COALESCE($3, first_name),
-        last_name = COALESCE($4, last_name),
-        phone = COALESCE($5, phone),
-        employment_type = COALESCE($6, employment_type),
-        status = COALESCE($7, status),
-        branch_id = COALESCE($8, branch_id),
-        department_id = COALESCE($9, department_id),
-        designation_id = COALESCE($10, designation_id),
-        team_id = COALESCE($11, team_id),
-        manager_id = COALESCE($12, manager_id),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND organization_id = $2
-      RETURNING id, employee_code, first_name, last_name, status, updated_at
-    `;
+    return withTransaction(async (client) => {
+      // 1. Check existing employee
+      const empRes = await client.query(
+        `SELECT id, user_id, email, first_name, last_name FROM employees WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+        [id, organizationId]
+      );
+      if (empRes.rows.length === 0) return null;
+      const emp = empRes.rows[0];
 
-    const params = [
-      id, organizationId, data.first_name, data.last_name, data.phone,
-      data.employment_type, data.status, data.branch_id, data.department_id,
-      data.designation_id, data.team_id, data.manager_id
-    ];
+      // 2. Email duplicate check if email is changed
+      const newEmail = data.email ? data.email.trim().toLowerCase() : null;
+      if (newEmail && newEmail !== emp.email.toLowerCase()) {
+        const dupCheck = await client.query(
+          `SELECT id FROM employees WHERE organization_id = $1 AND LOWER(email) = $2 AND id != $3`,
+          [organizationId, newEmail, id]
+        );
+        if (dupCheck.rows.length > 0) {
+          const err: any = new Error(`Work email "${newEmail}" is already in use by another employee.`);
+          err.statusCode = 400;
+          err.code = 'DUPLICATE_EMAIL';
+          throw err;
+        }
 
-    const res = await query(text, params);
-    return res.rows[0] || null;
+        // Also check users table
+        const userDupCheck = await client.query(
+          `SELECT id FROM users WHERE LOWER(email) = $2 AND id != $3`,
+          [organizationId, newEmail, emp.user_id || '00000000-0000-0000-0000-000000000000']
+        );
+        if (userDupCheck.rows.length > 0) {
+          const err: any = new Error(`Email "${newEmail}" is already in use by another user account.`);
+          err.statusCode = 400;
+          err.code = 'DUPLICATE_EMAIL';
+          throw err;
+        }
+
+        // Update linked user email if present
+        if (emp.user_id) {
+          await client.query(
+            `UPDATE users SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [newEmail, emp.user_id]
+          );
+        }
+      }
+
+      // 3. Update employee fields
+      await client.query(
+        `UPDATE employees SET
+          first_name = COALESCE($3, first_name),
+          last_name = COALESCE($4, last_name),
+          email = COALESCE($5, email),
+          phone = COALESCE($6, phone),
+          employment_type = COALESCE($7, employment_type),
+          status = COALESCE($8, status),
+          branch_id = $9,
+          department_id = $10,
+          designation_id = $11,
+          team_id = $12,
+          manager_id = $13,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND organization_id = $2`,
+        [
+          id,
+          organizationId,
+          data.first_name || null,
+          data.last_name || null,
+          newEmail || null,
+          data.phone || null,
+          data.employment_type || null,
+          data.status || null,
+          data.branch_id || null,
+          data.department_id || null,
+          data.designation_id || null,
+          data.team_id || null,
+          data.manager_id || null
+        ]
+      );
+
+      return await this.findById(id, organizationId, client);
+    });
   }
 
   static async setStatus(id: string, organizationId: string, status: string, actorUserId?: string) {

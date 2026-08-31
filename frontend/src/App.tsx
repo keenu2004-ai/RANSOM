@@ -63,35 +63,39 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   return <Layout>{children}</Layout>;
 };
 
+import { ThemeProvider } from './context/ThemeContext';
+
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AttendanceProvider>
-        <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <AttendanceProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/employees" element={<ProtectedRoute requiredPermission="EMPLOYEE_VIEW_WORKFORCE"><Employees /></ProtectedRoute>} />
-          <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-          <Route path="/leave" element={<ProtectedRoute><Leave /></ProtectedRoute>} />
-          <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
-          <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-          <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
-          <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
-          <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
-          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute requiredPermission="REPORTS_WORKFORCE_VIEW"><Reports /></ProtectedRoute>} />
-          <Route path="/audit-logs" element={<ProtectedRoute requiredPermission="AUDIT_LOG_VIEW"><AuditLogs /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/employees" element={<ProtectedRoute requiredPermission="EMPLOYEE_VIEW_WORKFORCE"><Employees /></ProtectedRoute>} />
+              <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+              <Route path="/leave" element={<ProtectedRoute><Leave /></ProtectedRoute>} />
+              <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
+              <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+              <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+              <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+              <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute requiredPermission="REPORTS_WORKFORCE_VIEW"><Reports /></ProtectedRoute>} />
+              <Route path="/audit-logs" element={<ProtectedRoute requiredPermission="AUDIT_LOG_VIEW"><AuditLogs /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AttendanceProvider>
-  </AuthProvider>
-);
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AttendanceProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 };
 
 export default App;

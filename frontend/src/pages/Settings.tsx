@@ -59,73 +59,24 @@ export const Settings: React.FC = () => {
         <p className="text-xs text-slate-400">Manage account credentials, organizational parameters, and system preferences</p>
       </div>
 
-      {/* Employee Self-Service Change Password */}
+      {/* Microsoft Entra ID Account Security Status */}
       <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
         <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
           <KeyRound className="w-4 h-4 text-cyan-400" />
-          <span>Security — Change Account Password</span>
+          <span>Account Security</span>
         </h3>
 
-        {passSuccess && (
-          <div className="p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold">{passSuccess}</span>
+        <div className="p-4 bg-slate-950/80 border border-cyan-500/30 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-300 font-medium">Authentication Provider</span>
+            <span className="px-2.5 py-1 text-[10px] font-extrabold bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/40 uppercase tracking-wider">
+              Microsoft Entra ID Active
+            </span>
           </div>
-        )}
-
-        {passError && (
-          <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400" />
-            <span>{passError}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg text-xs">
-          <div>
-            <label className="block text-slate-300 mb-1 font-medium">Current Password *</label>
-            <input
-              type="password"
-              required
-              value={passData.currentPassword}
-              onChange={e => setPassData({ ...passData, currentPassword: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-              placeholder="Enter current password"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-300 mb-1 font-medium">New Password *</label>
-              <input
-                type="password"
-                required
-                value={passData.newPassword}
-                onChange={e => setPassData({ ...passData, newPassword: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                placeholder="Min 6 characters"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-300 mb-1 font-medium">Confirm New Password *</label>
-              <input
-                type="password"
-                required
-                value={passData.confirmPassword}
-                onChange={e => setPassData({ ...passData, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                placeholder="Re-type new password"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={passLoading}
-            className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
-          >
-            {passLoading ? 'Updating Password...' : 'Update Password'}
-          </button>
-        </form>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Your account is secured through Microsoft Entra ID Single Sign-On (SSO). Password management, multi-factor authentication (MFA), and credential policies are managed directly by your organization's Microsoft 365 Entra ID administrator.
+          </p>
+        </div>
       </div>
 
       {org && (
