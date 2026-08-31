@@ -178,7 +178,7 @@ export const Login: React.FC = () => {
 
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
-              THEIAKSHI ENTERPRISE
+              THEIAKSHI ENTERPRISES
             </h1>
             <p className="text-xs font-semibold text-cyan-400 uppercase tracking-[0.2em]">
               ENTERPRISE HUMAN RESOURCE SYSTEM

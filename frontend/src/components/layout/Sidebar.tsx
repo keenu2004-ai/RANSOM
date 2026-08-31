@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { label: 'Attendance', path: '/attendance', icon: Clock, perm: null },
     { label: 'Leaves', path: '/leave', icon: CalendarDays, perm: null },
     { label: 'Expenses', path: '/expenses', icon: Receipt, perm: null },
-    { label: 'Timesheets', path: '/timesheets', icon: FileText, perm: null },
+    { label: 'Weekly Plan', path: '/timesheets', icon: FileText, perm: null },
     { label: 'Assets', path: '/assets', icon: Package, perm: null },
     { label: 'Holidays', path: '/holidays', icon: CalendarCheck, perm: null },
     { label: 'Notifications', path: '/notifications', icon: Bell, perm: null },

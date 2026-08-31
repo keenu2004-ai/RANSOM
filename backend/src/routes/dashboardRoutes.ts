@@ -54,9 +54,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     );
     const pendingExpenses = expensePendingRes.rows[0]?.count || 0;
 
-    // Pending Tasks Count (Timesheets with status PENDING or DRAFT)
+    // Pending Tasks / Weekly Plan Count (Timesheets with status PLANNED, IN_PROGRESS, PENDING, or DRAFT)
     const tasksPendingRes = await query(
-      `SELECT COUNT(*)::int as count FROM timesheets WHERE organization_id = $1 AND status IN ('PENDING', 'DRAFT')`,
+      `SELECT COUNT(*)::int as count FROM timesheets WHERE organization_id = $1 AND status IN ('PLANNED', 'IN_PROGRESS', 'PENDING', 'DRAFT') AND deleted_at IS NULL`,
       [organizationId]
     );
     const pendingTasks = tasksPendingRes.rows[0]?.count || 0;
@@ -145,7 +145,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
 
     // 4. Recent Activities (from audit_logs)
     const auditRes = await query(
-      `SELECT a.id, a.action, a.entity_type, a.details, a.created_at, 
+      `SELECT a.id, a.action, a.module, a.entity_name, a.entity_id, a.created_at, 
               a.employee_name_snapshot, a.user_email_snapshot, u.display_name, u.email 
        FROM audit_logs a 
        LEFT JOIN users u ON a.user_id = u.id 
@@ -157,9 +157,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
     const recentActivities = auditRes.rows.map((row: any) => ({
       id: row.id,
       action: row.action,
-      entityType: row.entity_type,
+      module: row.module,
+      entityName: row.entity_name,
       userName: row.employee_name_snapshot || row.display_name || (row.email ? row.email.split('@')[0] : (row.user_email_snapshot ? row.user_email_snapshot.split('@')[0] : 'System')),
-      details: row.details,
       createdAt: row.created_at
     }));
 
