@@ -64,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         body: JSON.stringify({ token: msToken })
       });
+      localStorage.removeItem('theiakshi_explicit_logout');
       setToken(res.token);
       setUser(res.user);
       localStorage.setItem('theiakshi_auth_token', res.token);
@@ -81,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         body: JSON.stringify({ email, password: pass })
       });
+      localStorage.removeItem('theiakshi_explicit_logout');
       setToken(res.token);
       setUser(res.user);
       localStorage.setItem('theiakshi_auth_token', res.token);
@@ -97,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
       }
     } finally {
+      localStorage.setItem('theiakshi_explicit_logout', 'true');
       localStorage.removeItem('theiakshi_auth_token');
       localStorage.removeItem('theiakshi_auth_user');
       setUser(null);

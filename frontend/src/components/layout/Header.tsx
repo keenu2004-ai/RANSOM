@@ -220,26 +220,27 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       </form>
 
       {/* Right: Punch Button, Notifications & Messages */}
-      <div className="flex items-center gap-3 relative">
-        {/* Quick Check-in/out Punch Button */}
+      <div className="flex items-center gap-2 sm:gap-3 relative">
+        {/* Quick Check-in/out Punch Button (Responsive across all screens) */}
         {user?.employeeId && (
           <button
             type="button"
             onClick={handlePunch}
             disabled={actionLoading}
-            className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer ${
               hasActiveSession
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
             }`}
             title={hasActiveSession ? 'Active Session - Tap to Check Out' : 'Tap to Check In'}
+            aria-label={hasActiveSession ? 'Check Out Attendance' : 'Check In Attendance'}
           >
             {actionLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
             ) : (
-              <Fingerprint className="w-4 h-4" />
+              <Fingerprint className="w-4 h-4 shrink-0" />
             )}
-            <span>{hasActiveSession ? 'Check Out' : 'Check In'}</span>
+            <span className="text-[11px] sm:text-xs whitespace-nowrap">{hasActiveSession ? 'Check Out' : 'Check In'}</span>
           </button>
         )}
 

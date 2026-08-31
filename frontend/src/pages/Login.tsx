@@ -47,14 +47,17 @@ export const Login: React.FC = () => {
           return;
         }
 
-        // Step 2: Check for existing session token silently
-        const silentIdToken = await getSilentIdToken();
-        if (silentIdToken) {
-          if (!isMounted) return;
-          setLoading(true);
-          await loginWithMicrosoft(silentIdToken);
-          navigate('/dashboard', { replace: true });
-          return;
+        // Step 2: Check for existing session token silently ONLY IF user hasn't explicitly logged out
+        const isExplicitLogout = localStorage.getItem('theiakshi_explicit_logout') === 'true';
+        if (!isExplicitLogout) {
+          const silentIdToken = await getSilentIdToken();
+          if (silentIdToken) {
+            if (!isMounted) return;
+            setLoading(true);
+            await loginWithMicrosoft(silentIdToken);
+            navigate('/dashboard', { replace: true });
+            return;
+          }
         }
       } catch (err: any) {
         if (!isMounted) return;
@@ -86,6 +89,9 @@ export const Login: React.FC = () => {
     if (loading || isExecutingRef.current) {
       return;
     }
+
+    // User explicitly clicked SSO button, remove explicit logout flag
+    localStorage.removeItem('theiakshi_explicit_logout');
 
     isExecutingRef.current = true;
     setLoading(true);
