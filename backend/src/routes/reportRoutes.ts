@@ -95,7 +95,7 @@ router.post('/archives/weekly-plan', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MAN
         organization_id, report_name, report_type, period_year, period_month,
         object_path, file_size, generated_by, generated_by_name,
         storage_provider, storage_file_id, storage_folder_id
-      ) VALUES ($1, $2, 'WEEKLY_PLAN', $3, $4, $5, $6, $7, $8, 'GOOGLE_DRIVE', $9, $10)
+      ) VALUES ($1, $2, 'WEEKLY_PLAN', $3, $4, $5, $6, $7, $8, 'LOCAL', $9, $10)
       RETURNING *
     `, [
       organizationId,
@@ -160,7 +160,7 @@ router.post('/archives/monthly-report', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_
         organization_id, report_name, report_type, period_year, period_month,
         object_path, file_size, generated_by, generated_by_name,
         storage_provider, storage_file_id, storage_folder_id
-      ) VALUES ($1, $2, 'MONTHLY_REPORT', $3, $4, $5, $6, $7, $8, 'GOOGLE_DRIVE', $9, $10)
+      ) VALUES ($1, $2, 'MONTHLY_REPORT', $3, $4, $5, $6, $7, $8, 'LOCAL', $9, $10)
       RETURNING *
     `, [
       organizationId,

@@ -73,10 +73,11 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
 
     // 2. Department Distribution
     const deptRes = await query(
-      `SELECT COALESCE(NULLIF(TRIM(department), ''), 'Unassigned') as name, COUNT(*)::int as count 
-       FROM employees 
-       WHERE organization_id = $1 AND status = 'ACTIVE' 
-       GROUP BY 1 
+      `SELECT COALESCE(NULLIF(TRIM(d.name), ''), 'Unassigned') as name, COUNT(*)::int as count
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE e.organization_id = $1 AND e.status = 'ACTIVE'
+       GROUP BY 1
        ORDER BY count DESC`,
       [organizationId]
     );

@@ -56,7 +56,7 @@ export class AttachmentRepository {
       data.fileSize,
       data.checksum || null,
       data.uploadedBy || null,
-      data.storageProvider || 'GOOGLE_DRIVE',
+      data.storageProvider || 'LOCAL',
       data.storageFileId || null,
       data.storageFolderId || null,
       data.storageStatus || 'AVAILABLE'

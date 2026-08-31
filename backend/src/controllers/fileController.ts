@@ -115,7 +115,7 @@ export class FileController {
         mimeType,
         fileSize: Number(fileSize),
         uploadedBy: req.user!.userId,
-        storageProvider: 'GOOGLE_DRIVE',
+        storageProvider: 'LOCAL',
         storageFileId: storageFileId || null,
         storageFolderId: storageFolderId || null,
         storageStatus: 'AVAILABLE'
@@ -232,7 +232,7 @@ export class FileController {
     }
   }
 
-  // Direct upload handler: Uploads buffer to Google Drive
+  // Direct upload handler: Uploads buffer to configured storage
   static async uploadDirect(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const objectPath = req.query.objectPath as string;
@@ -250,7 +250,7 @@ export class FileController {
 
           return res.status(200).json({
             success: true,
-            message: 'File saved to Google Drive storage.',
+            message: 'File saved to local storage.',
             objectPath: uploadRes.objectPath,
             storageFileId: uploadRes.storageFileId,
             storageFolderId: uploadRes.storageFolderId
@@ -271,7 +271,7 @@ export class FileController {
       if (!result.success) {
         return res.status(500).json({
           success: false,
-          provider: 'GOOGLE_DRIVE',
+          provider: 'LOCAL',
           status: 'UNAVAILABLE',
           error: result.message
         });
@@ -279,7 +279,7 @@ export class FileController {
 
       return res.status(200).json({
         success: true,
-        provider: 'GOOGLE_DRIVE',
+        provider: 'LOCAL',
         status: 'HEALTHY',
         message: result.message
       });

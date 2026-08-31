@@ -1,0 +1,31 @@
+services:
+  hrms-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: theiakshi-hrms-backend:latest
+    container_name: theiakshi-hrms-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - /srv/app-data/hrms/uploads:/app/uploads
+    expose:
+      - "5000"
+    networks:
+      - hrms
+
+  hrms-frontend:
+    image: theiakshi-hrms-frontend:latest
+    container_name: theiakshi-hrms-frontend
+    restart: unless-stopped
+    depends_on:
+      - hrms-backend
+    ports:
+      - "127.0.0.1:8085:80"
+    networks:
+      - hrms
+
+networks:
+  hrms:
+    driver: bridge

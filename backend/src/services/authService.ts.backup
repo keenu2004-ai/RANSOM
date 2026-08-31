@@ -51,6 +51,16 @@ export class AuthService {
       matchedEmployeeName: userWithRole ? (userWithRole.employee_name || `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()) : null
     });
 
+    // STEP 3 — Candidate Email Fallback (Legacy fallback)
+    if (!userWithRole && claims.candidateEmails && claims.candidateEmails.length > 0) {
+      userWithRole = await UserRepository.findByCandidateEmails(claims.candidateEmails);
+      if (!userWithRole && claims.email) {
+        userWithRole = await UserRepository.findByEmail(claims.email);
+      }
+      if (userWithRole) {
+        await UserRepository.linkMicrosoftIdentity(userWithRole.id, claims.oid, claims.tid);
+      }
+    }
 
     if (!userWithRole) {
       console.log('FINAL_AUTHORIZATION', {
