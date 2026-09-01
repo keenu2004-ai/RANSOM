@@ -1,5 +1,5 @@
 -- Migration: 029_fix_duplicate_admin_and_four_role_system.sql
--- Description: Safe, idempotent system role resolution, identity cleanup & user_role assignment
+-- Description: Safe, idempotent system role resolution & production admin account alignment
 -- NOTE: Outer BEGIN/COMMIT transaction wrappers are omitted because database/scripts/migrate.js executes each migration within a transaction block.
 
 -- 1. Safely Ensure Canonical 4 System Roles Exist by Name (Reusing existing rows if present without hardcoded UUID conflicts)
@@ -84,91 +84,88 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Strictly Deduplicate ONLY User Records whose CANONICAL EMAIL is 'admin@theiakshi.onmicrosoft.com'
+-- 3. Production Admin Account Cleanup & Management Identity Creation
+-- Target 1: Create or preserve canonical management-only user with email AND microsoft_login_email equal to 'admin@theiakshi.onmicrosoft.com'
+-- Target 2: Remove legacy User A (admin@theiakshi.com) after safely reassigning foreign key references (audit_logs, user_roles)
 DO $$
 DECLARE
-    primary_id UUID;
-    dup_record RECORD;
+    mgmt_admin_id UUID;
+    legacy_admin_record RECORD;
     super_admin_role_id UUID;
     org_id UUID;
 BEGIN
     SELECT id INTO super_admin_role_id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1;
+    SELECT id INTO org_id FROM organizations LIMIT 1;
+    IF org_id IS NULL THEN org_id := '00000000-0000-0000-0000-000000000001'; END IF;
 
-    -- Find primary user record for admin@theiakshi.onmicrosoft.com based STRICTLY on canonical email
-    SELECT id INTO primary_id
+    -- A. Locate or create canonical management-only user (email = 'admin@theiakshi.onmicrosoft.com')
+    SELECT id INTO mgmt_admin_id
     FROM users
     WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com'
     ORDER BY created_at ASC, id ASC
     LIMIT 1;
 
-    IF primary_id IS NOT NULL THEN
-        -- Safely reassign relationships and clean up duplicate records whose canonical email is admin@theiakshi.onmicrosoft.com
-        FOR dup_record IN 
-            SELECT id FROM users 
-            WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com'
-              AND id != primary_id
-        LOOP
-            -- Reassign duplicate user's roles to primary_id safely using ON CONFLICT DO NOTHING
-            INSERT INTO user_roles (user_id, role_id)
-            SELECT primary_id, role_id
-            FROM user_roles
-            WHERE user_id = dup_record.id
-            ON CONFLICT (user_id, role_id) DO NOTHING;
+    IF mgmt_admin_id IS NULL THEN
+        -- Insert new management-only account dynamically using PostgreSQL gen_random_uuid() / default UUID
+        INSERT INTO users (organization_id, email, microsoft_login_email, status)
+        VALUES (org_id, 'admin@theiakshi.onmicrosoft.com', 'admin@theiakshi.onmicrosoft.com', 'ACTIVE')
+        ON CONFLICT (email) DO UPDATE SET microsoft_login_email = EXCLUDED.microsoft_login_email, status = 'ACTIVE'
+        RETURNING id INTO mgmt_admin_id;
 
-            -- Delete user_roles for duplicate
-            DELETE FROM user_roles WHERE user_id = dup_record.id;
-            
-            -- Reassign audit_logs foreign key
-            UPDATE audit_logs SET user_id = primary_id WHERE user_id = dup_record.id;
-
-            -- Unlink user_id reference from employees table for duplicate admin account (Management-only admin HAS NO EMPLOYEE PROFILE)
-            -- This preserves the employee record intact (employee code, designation, department, UUID) while setting user_id = NULL
-            UPDATE employees SET user_id = NULL WHERE user_id = dup_record.id;
-
-            -- Delete the duplicate user row
-            DELETE FROM users WHERE id = dup_record.id;
-        END LOOP;
-
-        -- Ensure primary management admin user has NO employee link (Management-only admin HAS NO EMPLOYEE PROFILE)
-        UPDATE employees SET user_id = NULL WHERE user_id = primary_id;
-
-        -- Update primary user record with exact email, login email, and status
+        IF mgmt_admin_id IS NULL THEN
+            SELECT id INTO mgmt_admin_id FROM users WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com' LIMIT 1;
+        END IF;
+    ELSE
+        -- Ensure exact canonical values on existing management-only user
         UPDATE users
         SET email = 'admin@theiakshi.onmicrosoft.com',
             microsoft_login_email = 'admin@theiakshi.onmicrosoft.com',
             status = 'ACTIVE',
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = primary_id;
+        WHERE id = mgmt_admin_id;
+    END IF;
 
-        -- Ensure primary user has SUPER_ADMIN role assigned safely
+    -- Ensure management admin has NO employee profile link (user_id = NULL)
+    IF mgmt_admin_id IS NOT NULL THEN
+        UPDATE employees SET user_id = NULL WHERE user_id = mgmt_admin_id;
+
         IF super_admin_role_id IS NOT NULL THEN
             INSERT INTO user_roles (user_id, role_id)
-            VALUES (primary_id, super_admin_role_id)
-            ON CONFLICT (user_id, role_id) DO NOTHING;
-        END IF;
-    ELSE
-        -- Insert management-only account dynamically if missing (No hardcoded users.id)
-        SELECT id INTO org_id FROM organizations LIMIT 1;
-        IF org_id IS NULL THEN org_id := '00000000-0000-0000-0000-000000000001'; END IF;
-
-        INSERT INTO users (organization_id, email, microsoft_login_email, status)
-        VALUES (org_id, 'admin@theiakshi.onmicrosoft.com', 'admin@theiakshi.onmicrosoft.com', 'ACTIVE')
-        ON CONFLICT (email) DO UPDATE SET microsoft_login_email = EXCLUDED.microsoft_login_email, status = 'ACTIVE'
-        RETURNING id INTO primary_id;
-
-        IF primary_id IS NULL THEN
-            SELECT id INTO primary_id FROM users WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com' LIMIT 1;
-        END IF;
-
-        IF primary_id IS NOT NULL AND super_admin_role_id IS NOT NULL THEN
-            INSERT INTO user_roles (user_id, role_id)
-            VALUES (primary_id, super_admin_role_id)
+            VALUES (mgmt_admin_id, super_admin_role_id)
             ON CONFLICT (user_id, role_id) DO NOTHING;
         END IF;
     END IF;
+
+    -- B. Remove legacy admin user accounts (such as admin@theiakshi.com) that mapped microsoft_login_email = 'admin@theiakshi.onmicrosoft.com'
+    -- strictly without touching vinay@theiakshi.com or any non-admin users
+    FOR legacy_admin_record IN 
+        SELECT id FROM users 
+        WHERE (LOWER(TRIM(email)) = 'admin@theiakshi.com' OR LOWER(TRIM(microsoft_login_email)) = 'admin@theiakshi.onmicrosoft.com')
+          AND id != mgmt_admin_id
+          AND LOWER(TRIM(email)) != 'vinay@theiakshi.com'
+    LOOP
+        -- Reassign duplicate user's roles to mgmt_admin_id safely
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT mgmt_admin_id, role_id
+        FROM user_roles
+        WHERE user_id = legacy_admin_record.id
+        ON CONFLICT (user_id, role_id) DO NOTHING;
+
+        -- Clean user_roles for legacy admin
+        DELETE FROM user_roles WHERE user_id = legacy_admin_record.id;
+        
+        -- Reassign audit_logs foreign keys to mgmt_admin_id
+        UPDATE audit_logs SET user_id = mgmt_admin_id WHERE user_id = legacy_admin_record.id;
+
+        -- Unlink any employee reference safely without deleting the employee profile
+        UPDATE employees SET user_id = NULL WHERE user_id = legacy_admin_record.id;
+
+        -- Delete legacy user row
+        DELETE FROM users WHERE id = legacy_admin_record.id;
+    END LOOP;
 END $$;
 
--- 4. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity, employee profile, or login email
+-- 4. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity, employee profile (EMP-007), or login email
 DO $$
 DECLARE
     vinay_user_id UUID;
