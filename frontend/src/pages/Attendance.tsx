@@ -5,6 +5,17 @@ import { useAttendance } from '../context/AttendanceContext';
 import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2, Download } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
+const formatWorkingHours = (decimalHours: number | string | null | undefined): string => {
+  const value = Number(decimalHours || 0);
+  if (!Number.isFinite(value)) return '0h 00m';
+
+  const totalMinutes = Math.round(value * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+};
+
 interface SessionData {
   id: string;
   check_in: string;
@@ -542,7 +553,7 @@ export const Attendance: React.FC = () => {
                       Sessions: <strong className="text-white">{group.sessions.length}</strong>
                     </span>
                     <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
-                      Total Hours: <strong className="text-emerald-300">{group.totalHours.toFixed(2)} hrs</strong>
+                      Total Hours: <strong className="text-emerald-300">{formatWorkingHours(group.totalHours)}</strong>
                     </span>
                     <button
                       onClick={async () => {
@@ -588,7 +599,7 @@ export const Attendance: React.FC = () => {
                             <td className="px-4 py-3 font-mono font-medium">{a.date ? new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</td>
                             <td className="px-4 py-3 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
                             <td className="px-4 py-3 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                            <td className="px-4 py-3 font-mono font-bold text-slate-200">{a.working_hours || 0} hrs</td>
+                            <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                 a.status === 'REGULARIZATION_REQUIRED'

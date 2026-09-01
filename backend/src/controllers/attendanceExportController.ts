@@ -71,12 +71,10 @@ export class AttendanceExportController {
       const attendanceRes = await query(`
         SELECT 
           a.date::text as date,
-          a.check_in_time,
-          a.check_out_time,
-          a.total_hours,
-          a.status,
-          a.attendance_type,
-          a.notes
+          a.check_in,
+          a.check_out,
+          a.working_hours,
+          a.status
         FROM attendance a
         ${dateWhere}
         ORDER BY a.date ASC
@@ -89,7 +87,7 @@ export class AttendanceExportController {
           l.end_date::text as end_date,
           lt.name as leave_type_name,
           l.reason
-        FROM leave_applications l
+        FROM leave_requests l
         LEFT JOIN leave_types lt ON lt.id = l.leave_type_id
         ${leaveWhere}
       `, dateParams);
@@ -101,11 +99,11 @@ export class AttendanceExportController {
       for (const att of attendanceRes.rows) {
         dateMap.set(att.date, {
           date: att.date,
-          checkIn: att.check_in_time ? new Date(att.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
-          checkOut: att.check_out_time ? new Date(att.check_out_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
-          totalHours: att.total_hours ? parseFloat(att.total_hours).toFixed(2) : '0.00',
+          checkIn: att.check_in ? new Date(att.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
+          checkOut: att.check_out ? new Date(att.check_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
+          totalHours: att.working_hours ? parseFloat(att.working_hours).toFixed(2) : '0.00',
           status: att.status || 'PRESENT',
-          attendanceType: att.attendance_type || 'REGULAR',
+          attendanceType: 'REGULAR',
           leaveType: '—'
         });
       }

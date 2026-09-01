@@ -40,7 +40,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
 
   if (!isOpen) return null;
 
-  const isExactMatch = inputValue.trim() === expectedValue.trim();
+  const isExactMatch = inputValue.trim().toLowerCase() === expectedValue.trim().toLowerCase();
 
   // Compute inline suggestion suffix if input matches start of expectedValue
   const isPrefix = expectedValue.toLowerCase().startsWith(inputValue.toLowerCase()) && inputValue.length > 0;
