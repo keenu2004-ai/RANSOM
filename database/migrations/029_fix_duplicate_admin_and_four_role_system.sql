@@ -46,7 +46,7 @@ BEGIN
 END $$;
 
 -- 2. Safely Update user_roles mappings for legacy role names to SUPER_ADMIN / OPERATIONAL_MANAGER
--- Use ON CONFLICT (user_id, role_id) DO NOTHING (or DELETE + INSERT) to avoid uk_user_role unique constraint violation
+-- Use ON CONFLICT (user_id, role_id) DO NOTHING to avoid uk_user_role unique constraint violation
 DO $$
 DECLARE
     super_admin_role_id UUID;
@@ -57,7 +57,6 @@ BEGIN
 
     -- Map users with legacy ADMIN / ADMINISTRATOR role names to SUPER_ADMIN
     IF super_admin_role_id IS NOT NULL THEN
-        -- Insert new SUPER_ADMIN user_roles for users who had legacy ADMIN roles
         INSERT INTO user_roles (user_id, role_id)
         SELECT DISTINCT ur.user_id, super_admin_role_id
         FROM user_roles ur
@@ -91,6 +90,7 @@ DECLARE
     primary_id UUID;
     dup_record RECORD;
     super_admin_role_id UUID;
+    org_id UUID;
 BEGIN
     SELECT id INTO super_admin_role_id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1;
 
@@ -121,12 +121,16 @@ BEGIN
             -- Reassign audit_logs foreign key
             UPDATE audit_logs SET user_id = primary_id WHERE user_id = dup_record.id;
 
-            -- Reassign or unlink employee user_id reference if any exists
-            UPDATE employees SET user_id = primary_id WHERE user_id = dup_record.id;
+            -- Unlink user_id reference from employees table for duplicate admin account (Management-only admin HAS NO EMPLOYEE PROFILE)
+            -- This preserves the employee record intact (employee code, designation, department, UUID) while setting user_id = NULL
+            UPDATE employees SET user_id = NULL WHERE user_id = dup_record.id;
 
             -- Delete the duplicate user row
             DELETE FROM users WHERE id = dup_record.id;
         END LOOP;
+
+        -- Ensure primary management admin user has NO employee link (Management-only admin HAS NO EMPLOYEE PROFILE)
+        UPDATE employees SET user_id = NULL WHERE user_id = primary_id;
 
         -- Update primary user record with exact email, login email, and status
         UPDATE users
@@ -143,20 +147,28 @@ BEGIN
             ON CONFLICT (user_id, role_id) DO NOTHING;
         END IF;
     ELSE
-        -- Insert management-only account if missing
-        INSERT INTO users (id, organization_id, email, microsoft_login_email, status)
-        VALUES ('d0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'admin@theiakshi.onmicrosoft.com', 'admin@theiakshi.onmicrosoft.com', 'ACTIVE')
-        ON CONFLICT (email) DO UPDATE SET microsoft_login_email = EXCLUDED.microsoft_login_email, status = 'ACTIVE';
+        -- Insert management-only account dynamically if missing (No hardcoded users.id)
+        SELECT id INTO org_id FROM organizations LIMIT 1;
+        IF org_id IS NULL THEN org_id := '00000000-0000-0000-0000-000000000001'; END IF;
 
-        IF super_admin_role_id IS NOT NULL THEN
+        INSERT INTO users (organization_id, email, microsoft_login_email, status)
+        VALUES (org_id, 'admin@theiakshi.onmicrosoft.com', 'admin@theiakshi.onmicrosoft.com', 'ACTIVE')
+        ON CONFLICT (email) DO UPDATE SET microsoft_login_email = EXCLUDED.microsoft_login_email, status = 'ACTIVE'
+        RETURNING id INTO primary_id;
+
+        IF primary_id IS NULL THEN
+            SELECT id INTO primary_id FROM users WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com' LIMIT 1;
+        END IF;
+
+        IF primary_id IS NOT NULL AND super_admin_role_id IS NOT NULL THEN
             INSERT INTO user_roles (user_id, role_id)
-            VALUES ('d0000000-0000-0000-0000-000000000002', super_admin_role_id)
+            VALUES (primary_id, super_admin_role_id)
             ON CONFLICT (user_id, role_id) DO NOTHING;
         END IF;
     END IF;
 END $$;
 
--- 4. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity or login email
+-- 4. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity, employee profile, or login email
 DO $$
 DECLARE
     vinay_user_id UUID;
