@@ -393,7 +393,7 @@ export const AdminControl: React.FC = () => {
                   disabled={editingUser.id === currentUser?.userId || allowedRolesForCurrentActor.length === 0}
                   className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs px-3 py-2.5 rounded-xl focus:border-cyan-500 outline-none disabled:opacity-50"
                 >
-                  {allowedRolesForCurrentActor.map(r => (
+                  {(allowedRolesForCurrentActor.length > 0 ? allowedRolesForCurrentActor : ['SUPER_ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE']).map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>

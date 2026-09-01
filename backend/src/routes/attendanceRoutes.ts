@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AttendanceController } from '../controllers/attendanceController';
+import { AttendanceExportController } from '../controllers/attendanceExportController';
 import { authenticate } from '../middleware/authMiddleware';
 import { requireEmployee } from '../middleware/requireEmployee';
 import { requireRole } from '../middleware/rbacMiddleware';
@@ -18,6 +19,9 @@ router.post('/break', requireEmployee, AttendanceController.updateBreak);
 router.post('/regularize', requireEmployee, AttendanceController.applyRegularization);
 router.get('/regularize', AttendanceController.getRegularizations);
 router.put('/regularize/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.processRegularization);
+
+// Export attendance endpoint (Protected by authentication & role authorization checks)
+router.get('/export/:employeeId', AttendanceExportController.exportEmployeeAttendance);
 
 // Administrative / Overview endpoints (Do NOT require employeeId)
 router.get('/locations', AttendanceController.locations);

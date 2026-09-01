@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission, getAllowedAssignableRoles } from '../utils/permissions';
+import { SmartDeleteConfirmationModal } from '../components/SmartDeleteConfirmationModal';
 import { 
   Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network, 
   ChevronLeft, ChevronRight, CheckCircle2, Edit3, X, Building2, Briefcase, Trash2, AlertTriangle
@@ -842,58 +843,19 @@ export const Employees: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Employee Permanently Confirmation Modal */}
+      {/* Smart Delete Confirmation Modal */}
       {deleteConfirmEmp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
-              <AlertTriangle className="w-6 h-6 shrink-0 text-rose-500" />
-              <h3 className="text-base font-bold text-white tracking-wide">DELETE EMPLOYEE PERMANENTLY?</h3>
-            </div>
-
-            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 font-mono">
-              <p><span className="text-slate-500">Employee Name:</span> <strong className="text-slate-200">{deleteConfirmEmp.first_name} {deleteConfirmEmp.last_name}</strong></p>
-              <p><span className="text-slate-500">Employee Code:</span> <strong className="text-amber-400">{deleteConfirmEmp.employee_code}</strong></p>
-              <p><span className="text-slate-500">Login Email:</span> {deleteConfirmEmp.email}</p>
-              <p><span className="text-slate-500">Current Status:</span> <span className={deleteConfirmEmp.status === 'ACTIVE' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{deleteConfirmEmp.status}</span></p>
-            </div>
-
-            <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
-              <strong>Warning:</strong> This permanently removes the employee account/profile, linked login credentials, and configured personal files. This action cannot be restored through the normal Restore workflow. Historical records (attendance, leave, expenses, timesheets) will be preserved with employee name/code snapshots.
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Type employee code <span className="font-mono text-amber-400 font-bold">{deleteConfirmEmp.employee_code}</span> exactly to confirm permanent deletion:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmCodeInput}
-                onChange={e => setDeleteConfirmCodeInput(e.target.value)}
-                placeholder={deleteConfirmEmp.employee_code}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider outline-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => { setDeleteConfirmEmp(null); setDeleteConfirmCodeInput(''); }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleteConfirmCodeInput.trim().toUpperCase() !== (deleteConfirmEmp.employee_code || '').toUpperCase() || deletingEmp}
-                onClick={handlePermanentDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
-              >
-                {deletingEmp ? 'Deleting...' : 'Delete Permanently'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SmartDeleteConfirmationModal
+          isOpen={!!deleteConfirmEmp}
+          onClose={() => setDeleteConfirmEmp(null)}
+          onConfirm={handlePermanentDelete}
+          title="Delete Employee Permanently"
+          entityName={`${deleteConfirmEmp.first_name} ${deleteConfirmEmp.last_name}`}
+          entityId={deleteConfirmEmp.employee_code}
+          expectedValue={deleteConfirmEmp.employee_code || 'DELETE'}
+          actionLabel="Delete Employee"
+          isLoading={deletingEmp}
+        />
       )}
     </div>
   );

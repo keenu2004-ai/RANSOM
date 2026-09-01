@@ -321,6 +321,25 @@ export class UserRepository {
 
       const currentRole = currentRoleRes.rows[0]?.current_role || 'EMPLOYEE';
 
+      // Protect last SUPER_ADMIN from demotion
+      if (normalizeRole(currentRole) === 'SUPER_ADMIN' && canonicalRequestedRole !== 'SUPER_ADMIN') {
+        const superAdminCountRes = await client.query(`
+          SELECT COUNT(DISTINCT u.id) as count
+          FROM users u
+          JOIN user_roles ur ON ur.user_id = u.id
+          JOIN roles r ON r.id = ur.role_id
+          WHERE r.name = 'SUPER_ADMIN' AND u.status = 'ACTIVE' AND u.organization_id = $1
+        `, [actorUser.organizationId]);
+
+        const superAdminCount = parseInt(superAdminCountRes.rows[0]?.count || '0', 10);
+        if (superAdminCount <= 1) {
+          const err: any = new Error('Operation blocked: Cannot demote the last active Super Admin in the system.');
+          err.statusCode = 403;
+          err.code = 'LAST_SUPER_ADMIN_PROTECTED';
+          throw err;
+        }
+      }
+
       // 3. Validate Role Assignment Authority & Self-Escalation Protection
       const validation = validateRoleAssignment(actorUser, {
         id: targetUser.id,

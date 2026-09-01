@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
-import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2 } from 'lucide-react';
+import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2, Download } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 interface SessionData {
@@ -537,13 +537,44 @@ export const Attendance: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs font-mono">
+                  <div className="flex items-center gap-3 text-xs font-mono">
                     <span className="px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700">
                       Sessions: <strong className="text-white">{group.sessions.length}</strong>
                     </span>
                     <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
                       Total Hours: <strong className="text-emerald-300">{group.totalHours.toFixed(2)} hrs</strong>
                     </span>
+                    <button
+                      onClick={async () => {
+                        const targetEmpId = group.sessions[0]?.employee_id;
+                        if (!targetEmpId) return;
+                        try {
+                          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                          const res = await fetch(`/api/attendance/export/${targetEmpId}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (!res.ok) {
+                            const errData = await res.json().catch(() => ({}));
+                            alert(errData.error || 'Export failed.');
+                            return;
+                          }
+                          const blob = await res.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `Attendance_${group.empCode}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                        } catch (err: any) {
+                          alert(err.message || 'Export failed.');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-sans font-semibold text-xs flex items-center gap-1.5 shadow transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Excel</span>
+                    </button>
                   </div>
                 </div>
 

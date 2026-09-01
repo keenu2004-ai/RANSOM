@@ -1,4 +1,4 @@
-export type RoleName = 'SUPER_ADMIN' | 'HR_MANAGER' | 'EMPLOYEE';
+export type RoleName = 'SUPER_ADMIN' | 'HR_MANAGER' | 'OPERATIONAL_MANAGER' | 'EMPLOYEE';
 
 export type ScopeLevel = 'SELF' | 'TEAM' | 'DEPARTMENT' | 'ORGANIZATION';
 
@@ -12,13 +12,14 @@ export interface PermissionDefinition {
 export type RolePermissionMatrix = Record<string, Record<string, ScopeLevel>>;
 
 /**
- * Normalizes role string to canonical 3-role system: SUPER_ADMIN, HR_MANAGER, EMPLOYEE
+ * Normalizes role string to canonical 4-role system: SUPER_ADMIN, HR_MANAGER, OPERATIONAL_MANAGER, EMPLOYEE
  */
 export function normalizeRole(role?: string | null): RoleName {
   if (!role) return 'EMPLOYEE';
   const upper = role.trim().toUpperCase();
   if (upper === 'SUPER_ADMIN' || upper === 'ADMIN' || upper === 'ADMINISTRATOR') return 'SUPER_ADMIN';
-  if (upper === 'HR_MANAGER' || upper === 'HR_ADMIN' || upper === 'HR_EXECUTIVE' || upper === 'MANAGER' || upper === 'OPERATIONAL_MANAGER' || upper === 'FINANCE') return 'HR_MANAGER';
+  if (upper === 'HR_MANAGER' || upper === 'HR_ADMIN' || upper === 'HR_EXECUTIVE') return 'HR_MANAGER';
+  if (upper === 'OPERATIONAL_MANAGER' || upper === 'MANAGER' || upper === 'FINANCE' || upper === 'TEAM_LEAD') return 'OPERATIONAL_MANAGER';
   return 'EMPLOYEE';
 }
 
@@ -82,6 +83,39 @@ export const ROLE_PERMISSIONS: RolePermissionMatrix = {
     NOTIFICATIONS_SELF_VIEW: 'SELF',
     NOTIFICATIONS_MANAGE: 'ORGANIZATION',
     USER_PASSWORD_RESET: 'ORGANIZATION'
+  },
+  OPERATIONAL_MANAGER: {
+    EMPLOYEE_VIEW_WORKFORCE: 'ORGANIZATION',
+    EMPLOYEE_VIEW_SELF: 'SELF',
+    ATTENDANCE_SELF_PUNCH: 'SELF',
+    ATTENDANCE_SELF_VIEW: 'SELF',
+    ATTENDANCE_WORKFORCE_VIEW: 'ORGANIZATION',
+    ATTENDANCE_GPS_VIEW: 'ORGANIZATION',
+    LEAVE_SELF_APPLY: 'SELF',
+    LEAVE_SELF_VIEW: 'SELF',
+    LEAVE_WORKFORCE_VIEW: 'ORGANIZATION',
+    LEAVE_APPROVE: 'ORGANIZATION',
+    EXPENSE_SELF_CREATE: 'SELF',
+    EXPENSE_SELF_VIEW: 'SELF',
+    EXPENSE_WORKFORCE_VIEW: 'ORGANIZATION',
+    EXPENSE_APPROVE: 'ORGANIZATION',
+    EXPENSE_REJECT: 'ORGANIZATION',
+    TRIP_EXPENSE_SELF_CREATE: 'SELF',
+    TRIP_EXPENSE_WORKFORCE_VIEW: 'ORGANIZATION',
+    TRIP_EXPENSE_APPROVE: 'ORGANIZATION',
+    TRIP_EXPENSE_REJECT: 'ORGANIZATION',
+    ASSET_SELF_VIEW: 'SELF',
+    ASSET_WORKFORCE_VIEW: 'ORGANIZATION',
+    ASSET_REQUEST_CREATE: 'SELF',
+    TASK_SELF_CREATE: 'SELF',
+    TASK_SELF_VIEW: 'SELF',
+    TASK_WORKFORCE_VIEW: 'ORGANIZATION',
+    TASK_ASSIGN: 'ORGANIZATION',
+    TASK_UPDATE: 'ORGANIZATION',
+    CALENDAR_SELF_VIEW: 'SELF',
+    CALENDAR_WORKFORCE_VIEW: 'ORGANIZATION',
+    REPORTS_WORKFORCE_VIEW: 'ORGANIZATION',
+    NOTIFICATIONS_SELF_VIEW: 'SELF'
   },
   EMPLOYEE: {
     EMPLOYEE_VIEW_SELF: 'SELF',
