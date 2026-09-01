@@ -4,6 +4,33 @@ import { query } from '../db';
 import { AuthenticatedRequest } from '../types';
 import { normalizeRole } from '../config/permissions';
 
+const formatWorkingHours = (decimalHours: number | string | null | undefined): string => {
+  const value = Number(decimalHours || 0);
+  if (!Number.isFinite(value)) return '0h 00m';
+
+  const totalMinutes = Math.round(value * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+};
+
+const formatTimeIST = (timestamp: string | Date | null | undefined): string => {
+  if (!timestamp) return '—';
+  try {
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(d);
+  } catch {
+    return '—';
+  }
+};
+
 export class AttendanceExportController {
   static async exportEmployeeAttendance(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -77,7 +104,7 @@ export class AttendanceExportController {
           a.status
         FROM attendance a
         ${dateWhere}
-        ORDER BY a.date ASC
+        ORDER BY a.date ASC, a.check_in ASC
       `, dateParams);
 
       // Fetch Approved Leaves
@@ -92,47 +119,59 @@ export class AttendanceExportController {
         ${leaveWhere}
       `, dateParams);
 
-      // Map Date Range Reconciliation
-      const dateMap = new Map<string, any>();
+      const records: any[] = [];
+      const attendanceDates = new Set<string>();
 
-      // 1. Process Attendance Sessions
+      // 1. Process EVERY Attendance Session (preserve multiple sessions on same date)
       for (const att of attendanceRes.rows) {
-        dateMap.set(att.date, {
+        attendanceDates.add(att.date);
+        records.push({
           date: att.date,
-          checkIn: att.check_in ? new Date(att.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
-          checkOut: att.check_out ? new Date(att.check_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
-          totalHours: att.working_hours ? parseFloat(att.working_hours).toFixed(2) : '0.00',
+          checkIn: formatTimeIST(att.check_in),
+          checkOut: formatTimeIST(att.check_out),
+          totalHours: formatWorkingHours(att.working_hours),
           status: att.status || 'PRESENT',
           attendanceType: 'REGULAR',
-          leaveType: '—'
+          leaveType: '—',
+          rawTime: att.check_in ? new Date(att.check_in).getTime() : new Date(att.date).getTime()
         });
       }
 
-      // 2. Override with Approved Leaves (Approved Leave -> ON_LEAVE)
+      // 2. Reconcile Approved Leaves for dates WITHOUT attendance sessions
       for (const leave of leaveRes.rows) {
-        let curr = new Date(leave.start_date);
-        const end = new Date(leave.end_date);
+        // Parse date string (YYYY-MM-DD) directly using UTC parts to avoid local timezone boundary shifts
+        const [sY, sM, sD] = leave.start_date.split('-').map(Number);
+        const [eY, eM, eD] = leave.end_date.split('-').map(Number);
+
+        let curr = new Date(Date.UTC(sY, sM - 1, sD));
+        const end = new Date(Date.UTC(eY, eM - 1, eD));
 
         while (curr <= end) {
           const dStr = curr.toISOString().split('T')[0];
           if (!startDate || !endDate || (dStr >= startDate && dStr <= endDate)) {
-            const existing = dateMap.get(dStr);
-            dateMap.set(dStr, {
-              date: dStr,
-              checkIn: existing?.checkIn || '—',
-              checkOut: existing?.checkOut || '—',
-              totalHours: existing?.totalHours || '0.00',
-              status: 'ON_LEAVE',
-              attendanceType: 'LEAVE',
-              leaveType: leave.leave_type_name || 'APPROVED LEAVE'
-            });
+            // Only add ON_LEAVE row if no attendance session exists for this date
+            if (!attendanceDates.has(dStr)) {
+              records.push({
+                date: dStr,
+                checkIn: '—',
+                checkOut: '—',
+                totalHours: '0h 00m',
+                status: 'ON_LEAVE',
+                attendanceType: 'LEAVE',
+                leaveType: leave.leave_type_name || 'APPROVED LEAVE',
+                rawTime: curr.getTime()
+              });
+            }
           }
-          curr.setDate(curr.getDate() + 1);
+          curr.setUTCDate(curr.getUTCDate() + 1);
         }
       }
 
-      // Sort all records chronologically
-      const sortedRecords = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      // Sort all records chronologically by date and session check_in time
+      const sortedRecords = records.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.rawTime - b.rawTime;
+      });
 
       // Build Excel Workbook using exceljs
       const workbook = new exceljs.Workbook();
