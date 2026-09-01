@@ -54,6 +54,8 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
         setInputValue(expectedValue);
         setValidationError(null);
       }
+      // Explicitly retain focus on the confirmation input field
+      inputRef.current?.focus();
     } else if (e.key === 'Enter') {
       e.preventDefault();
       // ENTER validates input. DOES NOT SUBMIT / DOES NOT CALL onConfirm().

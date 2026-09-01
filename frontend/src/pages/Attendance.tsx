@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '../services/api-client';
+import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
 import { Clock, LogIn, LogOut, CheckCircle, MapPin, Users, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2, Download } from 'lucide-react';
@@ -549,23 +549,8 @@ export const Attendance: React.FC = () => {
                         const targetEmpId = group.sessions[0]?.employee_id;
                         if (!targetEmpId) return;
                         try {
-                          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                          const res = await fetch(`/api/attendance/export/${targetEmpId}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          });
-                          if (!res.ok) {
-                            const errData = await res.json().catch(() => ({}));
-                            alert(errData.error || 'Export failed.');
-                            return;
-                          }
-                          const blob = await res.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `Attendance_${group.empCode}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                          document.body.appendChild(a);
-                          a.click();
-                          a.remove();
+                          const filename = `Attendance_${group.empCode}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                          await apiDownload(`/attendance/export/${targetEmpId}`, {}, filename);
                         } catch (err: any) {
                           alert(err.message || 'Export failed.');
                         }

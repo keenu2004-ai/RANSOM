@@ -155,11 +155,11 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
     }
 
     if (response.status === 403) {
-      throw new ApiError('You do not have permission to export this Weekly Plan.', 403, 'PERMISSION_DENIED');
+      throw new ApiError('You do not have permission to perform this export.', 403, 'PERMISSION_DENIED');
     }
 
     if (!response.ok) {
-      let errorMsg = 'Unable to download Weekly Plan export.';
+      let errorMsg = 'Unable to download export file.';
       try {
         const errJson = await response.json();
         errorMsg = errJson.error || errJson.message || errorMsg;

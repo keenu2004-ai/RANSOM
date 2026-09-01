@@ -224,7 +224,7 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
 
     const archive = archiveRes.rows[0];
 
-    if (archive.storage_status === 'BROKEN' || !archive.storage_file_id) {
+    if (archive.storage_status === 'BROKEN') {
       return res.status(404).json({
         success: false,
         error: 'Archived file is unavailable in storage. Please regenerate this report.',
@@ -234,7 +234,7 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
 
     const exists = await StorageService.verifyObjectExists(archive.storage_file_id, archive.object_path);
     if (!exists) {
-      await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1", [archive.id]);
+      await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1", [archive.id]).catch(() => null);
       return res.status(404).json({
         success: false,
         error: 'Archived file is unavailable in storage. Please regenerate this report.',
