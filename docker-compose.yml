@@ -16,6 +16,9 @@ services:
       - hrms
 
   hrms-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: theiakshi-hrms-frontend:latest
     container_name: theiakshi-hrms-frontend
     restart: unless-stopped

@@ -165,11 +165,22 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
 
     // 5. Recent Leave Requests
     let leaveQuery = `
-      SELECT lr.id, lr.leave_type, lr.start_date, lr.end_date, lr.days_count, lr.status, lr.created_at,
-             e.first_name, e.last_name, u.display_name
+      SELECT
+        lr.id,
+        COALESCE(lt.name, 'Leave') AS leave_type,
+        lr.start_date,
+        lr.end_date,
+        lr.total_days AS days_count,
+        lr.status,
+        lr.created_at,
+        COALESCE(
+          NULLIF(TRIM(CONCAT(e.first_name, ' ', e.last_name)), ''),
+          lr.employee_name_snapshot,
+          'Employee'
+        ) AS employee_name
       FROM leave_requests lr
       LEFT JOIN employees e ON e.id = lr.employee_id
-      LEFT JOIN users u ON u.id = lr.user_id
+      LEFT JOIN leave_types lt ON lt.id = lr.leave_type_id
       WHERE lr.organization_id = $1
     `;
     const leaveQueryParams: any[] = [organizationId];
@@ -178,16 +189,18 @@ router.get('/', async (req: AuthenticatedRequest, res: Response, next: NextFunct
       leaveQuery += ` AND lr.employee_id = $2`;
       leaveQueryParams.push(employeeId);
     }
+
     leaveQuery += ` ORDER BY lr.created_at DESC LIMIT 5`;
 
     const recentLeavesRes = await query(leaveQuery, leaveQueryParams);
+
     const recentLeaveRequests = recentLeavesRes.rows.map((r: any) => ({
       id: r.id,
-      employeeName: (r.first_name && r.last_name) ? `${r.first_name} ${r.last_name}` : (r.display_name || 'Employee'),
+      employeeName: r.employee_name || 'Employee',
       leaveType: r.leave_type,
       startDate: r.start_date,
       endDate: r.end_date,
-      daysCount: r.days_count,
+      daysCount: Number(r.days_count || 0),
       status: r.status,
       createdAt: r.created_at
     }));

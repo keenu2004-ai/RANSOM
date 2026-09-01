@@ -265,9 +265,13 @@ export class EmployeeRepository {
 
         // Also check users table
         const userDupCheck = await client.query(
-          `SELECT id FROM users WHERE LOWER(email) = $2 AND id != $3`,
-          [organizationId, newEmail, emp.user_id || '00000000-0000-0000-0000-000000000000']
-        );
+  `SELECT id
+   FROM users
+   WHERE organization_id = $1
+     AND LOWER(email) = $2
+     AND id != $3`,
+  [organizationId, newEmail, emp.user_id || '00000000-0000-0000-0000-000000000000']
+);
         if (userDupCheck.rows.length > 0) {
           const err: any = new Error(`Email "${newEmail}" is already in use by another user account.`);
           err.statusCode = 400;
