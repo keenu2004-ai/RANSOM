@@ -1,5 +1,5 @@
 -- Migration: 029_fix_duplicate_admin_and_four_role_system.sql
--- Description: Safe, idempotent system role resolution & identity cleanup
+-- Description: Safe, idempotent system role resolution, identity cleanup & user_role assignment
 -- NOTE: Outer BEGIN/COMMIT transaction wrappers are omitted because database/scripts/migrate.js executes each migration within a transaction block.
 
 -- 1. Safely Ensure Canonical 4 System Roles Exist by Name (Reusing existing rows if present without hardcoded UUID conflicts)
@@ -45,24 +45,55 @@ BEGIN
     END IF;
 END $$;
 
--- Map legacy ADMIN / ADMINISTRATOR -> SUPER_ADMIN
-UPDATE user_roles ur
-SET role_id = (SELECT id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1)
-FROM roles r
-WHERE ur.role_id = r.id AND r.name IN ('ADMIN', 'ADMINISTRATOR');
+-- 2. Safely Update user_roles mappings for legacy role names to SUPER_ADMIN / OPERATIONAL_MANAGER
+-- Use ON CONFLICT (user_id, role_id) DO NOTHING (or DELETE + INSERT) to avoid uk_user_role unique constraint violation
+DO $$
+DECLARE
+    super_admin_role_id UUID;
+    op_manager_role_id UUID;
+BEGIN
+    SELECT id INTO super_admin_role_id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1;
+    SELECT id INTO op_manager_role_id FROM roles WHERE name = 'OPERATIONAL_MANAGER' LIMIT 1;
 
--- Map legacy TEAM_LEAD -> OPERATIONAL_MANAGER if any exist
-UPDATE user_roles ur
-SET role_id = (SELECT id FROM roles WHERE name = 'OPERATIONAL_MANAGER' LIMIT 1)
-FROM roles r
-WHERE ur.role_id = r.id AND r.name = 'TEAM_LEAD';
+    -- Map users with legacy ADMIN / ADMINISTRATOR role names to SUPER_ADMIN
+    IF super_admin_role_id IS NOT NULL THEN
+        -- Insert new SUPER_ADMIN user_roles for users who had legacy ADMIN roles
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT DISTINCT ur.user_id, super_admin_role_id
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name IN ('ADMIN', 'ADMINISTRATOR')
+        ON CONFLICT (user_id, role_id) DO NOTHING;
 
--- 2. Strictly Deduplicate ONLY User Records whose CANONICAL EMAIL is 'admin@theiakshi.onmicrosoft.com'
+        -- Clean up old legacy ADMIN role entries from user_roles
+        DELETE FROM user_roles
+        WHERE role_id IN (SELECT id FROM roles WHERE name IN ('ADMIN', 'ADMINISTRATOR'));
+    END IF;
+
+    -- Map users with legacy TEAM_LEAD role names to OPERATIONAL_MANAGER
+    IF op_manager_role_id IS NOT NULL THEN
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT DISTINCT ur.user_id, op_manager_role_id
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name = 'TEAM_LEAD'
+        ON CONFLICT (user_id, role_id) DO NOTHING;
+
+        -- Clean up old legacy TEAM_LEAD role entries from user_roles
+        DELETE FROM user_roles
+        WHERE role_id IN (SELECT id FROM roles WHERE name = 'TEAM_LEAD');
+    END IF;
+END $$;
+
+-- 3. Strictly Deduplicate ONLY User Records whose CANONICAL EMAIL is 'admin@theiakshi.onmicrosoft.com'
 DO $$
 DECLARE
     primary_id UUID;
     dup_record RECORD;
+    super_admin_role_id UUID;
 BEGIN
+    SELECT id INTO super_admin_role_id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1;
+
     -- Find primary user record for admin@theiakshi.onmicrosoft.com based STRICTLY on canonical email
     SELECT id INTO primary_id
     FROM users
@@ -77,7 +108,14 @@ BEGIN
             WHERE LOWER(TRIM(email)) = 'admin@theiakshi.onmicrosoft.com'
               AND id != primary_id
         LOOP
-            -- Reassign or clean user_roles
+            -- Reassign duplicate user's roles to primary_id safely using ON CONFLICT DO NOTHING
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT primary_id, role_id
+            FROM user_roles
+            WHERE user_id = dup_record.id
+            ON CONFLICT (user_id, role_id) DO NOTHING;
+
+            -- Delete user_roles for duplicate
             DELETE FROM user_roles WHERE user_id = dup_record.id;
             
             -- Reassign audit_logs foreign key
@@ -98,39 +136,46 @@ BEGIN
             updated_at = CURRENT_TIMESTAMP
         WHERE id = primary_id;
 
-        -- Ensure primary user has SUPER_ADMIN role assigned
-        INSERT INTO user_roles (user_id, role_id)
-        VALUES (primary_id, (SELECT id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1))
-        ON CONFLICT (user_id, role_id) DO NOTHING;
+        -- Ensure primary user has SUPER_ADMIN role assigned safely
+        IF super_admin_role_id IS NOT NULL THEN
+            INSERT INTO user_roles (user_id, role_id)
+            VALUES (primary_id, super_admin_role_id)
+            ON CONFLICT (user_id, role_id) DO NOTHING;
+        END IF;
     ELSE
         -- Insert management-only account if missing
         INSERT INTO users (id, organization_id, email, microsoft_login_email, status)
         VALUES ('d0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'admin@theiakshi.onmicrosoft.com', 'admin@theiakshi.onmicrosoft.com', 'ACTIVE')
         ON CONFLICT (email) DO UPDATE SET microsoft_login_email = EXCLUDED.microsoft_login_email, status = 'ACTIVE';
 
-        INSERT INTO user_roles (user_id, role_id)
-        SELECT 'd0000000-0000-0000-0000-000000000002', id FROM roles WHERE name = 'SUPER_ADMIN'
-        ON CONFLICT (user_id, role_id) DO NOTHING;
+        IF super_admin_role_id IS NOT NULL THEN
+            INSERT INTO user_roles (user_id, role_id)
+            VALUES ('d0000000-0000-0000-0000-000000000002', super_admin_role_id)
+            ON CONFLICT (user_id, role_id) DO NOTHING;
+        END IF;
     END IF;
 END $$;
 
--- 3. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity or login email
+-- 4. Ensure vinay@theiakshi.com has SUPER_ADMIN role as a completely separate account without altering its identity or login email
 DO $$
 DECLARE
     vinay_user_id UUID;
+    super_admin_role_id UUID;
 BEGIN
     SELECT id INTO vinay_user_id
     FROM users
     WHERE LOWER(TRIM(email)) = 'vinay@theiakshi.com'
     LIMIT 1;
 
-    IF vinay_user_id IS NOT NULL THEN
+    SELECT id INTO super_admin_role_id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1;
+
+    IF vinay_user_id IS NOT NULL AND super_admin_role_id IS NOT NULL THEN
         INSERT INTO user_roles (user_id, role_id)
-        VALUES (vinay_user_id, (SELECT id FROM roles WHERE name = 'SUPER_ADMIN' LIMIT 1))
+        VALUES (vinay_user_id, super_admin_role_id)
         ON CONFLICT (user_id, role_id) DO NOTHING;
     END IF;
 END $$;
 
--- 4. Create Normalized Unique Indexes to enforce unique email identities safely
+-- 5. Create Normalized Unique Indexes to enforce unique email identities safely
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_trimmed_lower ON users (LOWER(TRIM(email)));
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_ms_login_email_trimmed_lower ON users (LOWER(TRIM(microsoft_login_email))) WHERE microsoft_login_email IS NOT NULL;
