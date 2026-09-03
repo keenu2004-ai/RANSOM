@@ -12,7 +12,7 @@ export class AttendanceExportController {
       const actor = req.user!;
       const actorRole = normalizeRole(actor.role);
       const targetEmployeeId = req.params.employeeId;
-      const { startDate: qStart, endDate: qEnd } = req.query as { startDate?: string; endDate?: string };
+      const { startDate: qStart, endDate: qEnd, year: qYear, month: qMonth } = req.query as { startDate?: string; endDate?: string; year?: string; month?: string };
 
       if (!targetEmployeeId) {
         return res.status(400).json({ success: false, error: 'Employee ID is required for export.' });
@@ -58,14 +58,20 @@ export class AttendanceExportController {
       let startDateStr = qStart;
       let endDateStr = qEnd;
 
-      if (!startDateStr || !endDateStr) {
+      if (qYear && qMonth) {
+        const y = parseInt(qYear, 10);
+        const m = parseInt(qMonth, 10);
+        const lastDay = new Date(y, m, 0).getDate();
+        startDateStr = `${y}-${String(m).padStart(2, '0')}-01`;
+        endDateStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      } else if (!startDateStr || !endDateStr) {
         // Default to current month
         const now = new Date();
         const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
-        startDateStr = `${y}-${m}-01`;
-        endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+        const m = now.getMonth() + 1;
+        const lastDay = new Date(y, m, 0).getDate();
+        startDateStr = `${y}-${String(m).padStart(2, '0')}-01`;
+        endDateStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       }
 
       // Fetch Attendance Sessions in Date Range

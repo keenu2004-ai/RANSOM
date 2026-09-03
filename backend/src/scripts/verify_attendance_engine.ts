@@ -1,5 +1,6 @@
 import { AttendanceStatusService } from '../services/attendanceStatusService';
 import { AttendanceReconciliationService } from '../services/attendanceReconciliationService';
+import { AttendanceRepository } from '../repositories/attendanceRepository';
 import { query } from '../db';
 
 async function runAttendanceVerificationSuite() {
@@ -9,16 +10,26 @@ async function runAttendanceVerificationSuite() {
 
   let passed = 0;
   let failed = 0;
+  let skipped = 0;
 
   function assert(condition: boolean, testName: string, detail?: string) {
     if (condition) {
       console.log(`✅ PASSED: ${testName}`);
       passed++;
     } else {
-      console.error(`❌ FAILED: ${testName} - ${detail || ''}`);
+      console.error(`❌ FAILED: ${testName}${detail ? ` - ${detail}` : ''}`);
       failed++;
     }
   }
+
+  function skip(testName: string, reason: string) {
+    console.log(`⚠️ SKIPPED: ${testName} (${reason})`);
+    skipped++;
+  }
+
+  // ----------------------------------------------------
+  // TESTS 1–16: CORE ATTENDANCE ENGINE & HOLIDAY RULES
+  // ----------------------------------------------------
 
   // 1. 09:00 AM Check-In Punctuality
   const lateAt0900 = AttendanceStatusService.isCheckInLate('2026-09-01T09:00:00+05:30');
@@ -50,7 +61,7 @@ async function runAttendanceVerificationSuite() {
       working_hours: 8.0
     }]
   });
-  assert(res8h.status === 'PRESENT', 'Test 5: 8.0h completed duration => PRESENT', `Got: ${res8h.status}`);
+  assert(res8h.status === 'PRESENT', 'Test 5: 8.0h completed duration => PRESENT');
 
   // 6. Completed duration < 8h => EARLY CHECKOUT
   const res7h = AttendanceStatusService.resolveDayStatus({
@@ -66,7 +77,7 @@ async function runAttendanceVerificationSuite() {
       working_hours: 7.0
     }]
   });
-  assert(res7h.status === 'EARLY CHECKOUT', 'Test 6: 7.0h completed duration => EARLY CHECKOUT', `Got: ${res7h.status}`);
+  assert(res7h.status === 'EARLY CHECKOUT', 'Test 6: 7.0h completed duration => EARLY CHECKOUT');
 
   // 7. Late check-in + < 8h => LATE PRESENT / EARLY CHECKOUT
   const resLateEarly = AttendanceStatusService.resolveDayStatus({
@@ -82,7 +93,7 @@ async function runAttendanceVerificationSuite() {
       working_hours: 7.0
     }]
   });
-  assert(resLateEarly.status === 'LATE PRESENT / EARLY CHECKOUT', 'Test 7: Late check-in + <8h => LATE PRESENT / EARLY CHECKOUT', `Got: ${resLateEarly.status}`);
+  assert(resLateEarly.status === 'LATE PRESENT / EARLY CHECKOUT', 'Test 7: Late check-in + <8h => LATE PRESENT / EARLY CHECKOUT');
 
   // 8. Multi-session accumulation (4h + 4h = 8h => PRESENT)
   const resMulti = AttendanceStatusService.resolveDayStatus({
@@ -109,9 +120,9 @@ async function runAttendanceVerificationSuite() {
       }
     ]
   });
-  assert(resMulti.status === 'PRESENT' && resMulti.totalWorkingHours === 8.0, 'Test 8: Multi-session accumulated 8.0h => PRESENT', `Got: ${resMulti.status}, totalHours: ${resMulti.totalWorkingHours}`);
+  assert(resMulti.status === 'PRESENT' && resMulti.totalWorkingHours === 8.0, 'Test 8: Multi-session accumulated 8.0h => PRESENT');
 
-  // 9. Past unclosed session (EOD reconciliation) => ABSENT + REGULARIZATION_REQUIRED, check_out = NULL
+  // 9. Past unclosed session (EOD reconciliation status) => ABSENT + REGULARIZATION_REQUIRED, check_out = NULL
   const resUnclosedPast = AttendanceStatusService.resolveDayStatus({
     dateStr: '2026-08-31',
     todayStr: '2026-09-03',
@@ -125,7 +136,7 @@ async function runAttendanceVerificationSuite() {
       working_hours: 0
     }]
   });
-  assert(resUnclosedPast.status === 'ABSENT' && resUnclosedPast.sessionState === 'REGULARIZATION_REQUIRED', 'Test 9: Unclosed past session => status ABSENT, sessionState REGULARIZATION_REQUIRED', `Got status: ${resUnclosedPast.status}, sessionState: ${resUnclosedPast.sessionState}`);
+  assert(resUnclosedPast.status === 'ABSENT' && resUnclosedPast.sessionState === 'REGULARIZATION_REQUIRED', 'Test 9: Unclosed past session => status ABSENT, sessionState REGULARIZATION_REQUIRED');
 
   // 10. Today active session => ACTIVE
   const resTodayActive = AttendanceStatusService.resolveDayStatus({
@@ -141,23 +152,23 @@ async function runAttendanceVerificationSuite() {
       working_hours: 0
     }]
   });
-  assert(resTodayActive.status === 'ACTIVE', 'Test 10: Today unclosed session => status ACTIVE', `Got: ${resTodayActive.status}`);
+  assert(resTodayActive.status === 'ACTIVE', 'Test 10: Today unclosed session => status ACTIVE');
 
   // 11. Sunday => HOLIDAY
   const holSun = AttendanceStatusService.getCalendarHolidayName('2026-09-06'); // Sept 6, 2026 is Sunday
-  assert(holSun === 'Sunday', 'Test 11: Sunday correctly identified as HOLIDAY', `Got: ${holSun}`);
+  assert(holSun === 'Sunday', 'Test 11: Sunday correctly identified as HOLIDAY');
 
   // 12. 2nd Saturday => HOLIDAY
   const hol2Sat = AttendanceStatusService.getCalendarHolidayName('2026-09-12'); // Sept 12, 2026 is 2nd Saturday
-  assert(hol2Sat === '2nd Saturday', 'Test 12: 2nd Saturday correctly identified as HOLIDAY', `Got: ${hol2Sat}`);
+  assert(hol2Sat === '2nd Saturday', 'Test 12: 2nd Saturday correctly identified as HOLIDAY');
 
   // 13. 4th Saturday => HOLIDAY
   const hol4Sat = AttendanceStatusService.getCalendarHolidayName('2026-09-26'); // Sept 26, 2026 is 4th Saturday
-  assert(hol4Sat === '4th Saturday', 'Test 13: 4th Saturday correctly identified as HOLIDAY', `Got: ${hol4Sat}`);
+  assert(hol4Sat === '4th Saturday', 'Test 13: 4th Saturday correctly identified as HOLIDAY');
 
   // 14. 1st / 3rd Saturday => Working day
   const hol1Sat = AttendanceStatusService.getCalendarHolidayName('2026-09-05'); // Sept 5, 2026 is 1st Saturday
-  assert(hol1Sat === null, 'Test 14: 1st Saturday is a working day (not holiday)', `Got: ${hol1Sat}`);
+  assert(hol1Sat === null, 'Test 14: 1st Saturday is a working day (not holiday)');
 
   // 15. Working day without attendance => ABSENT
   const resNoPunch = AttendanceStatusService.resolveDayStatus({
@@ -165,7 +176,7 @@ async function runAttendanceVerificationSuite() {
     todayStr: '2026-09-03',
     sessions: []
   });
-  assert(resNoPunch.status === 'ABSENT' && resNoPunch.canRegularize === true, 'Test 15: Working day with no punch => ABSENT + Regularize', `Got: ${resNoPunch.status}`);
+  assert(resNoPunch.status === 'ABSENT' && resNoPunch.canRegularize === true, 'Test 15: Working day with no punch => ABSENT + Regularize');
 
   // 16. Sunday without attendance => HOLIDAY (not ABSENT)
   const resSunNoPunch = AttendanceStatusService.resolveDayStatus({
@@ -173,34 +184,162 @@ async function runAttendanceVerificationSuite() {
     todayStr: '2026-09-03',
     sessions: []
   });
-  assert(resSunNoPunch.status === 'HOLIDAY', 'Test 16: Sunday without punch => HOLIDAY (not ABSENT)', `Got: ${resSunNoPunch.status}`);
+  assert(resSunNoPunch.status === 'HOLIDAY', 'Test 16: Sunday without punch => HOLIDAY (not ABSENT)');
 
-  // DB Verification
+  // ----------------------------------------------------
+  // REPOSITORY & INTEGRATION TESTS 17–25 (UNISOLATED TRY/CATCH)
+  // ----------------------------------------------------
+
+  let orgId: string | null = null;
+
   try {
     const orgRes = await query(`SELECT id FROM organizations LIMIT 1`);
     if (orgRes.rows.length > 0) {
-      const orgId = orgRes.rows[0].id;
-
-      // 17. EOD Reconciliation Job
-      const reconResult = await AttendanceReconciliationService.reconcileUnclosedSessions();
-      assert(typeof reconResult.reconciledCount === 'number', 'Test 17: EOD Reconciliation Service ran successfully');
-
-      // 18. Database active sessions with missing check_out on past date are status ABSENT & REGULARIZATION_REQUIRED
-      const checkUnclosedDb = await query(
-        `SELECT id, check_out, status, session_state FROM attendance 
-         WHERE organization_id = $1 AND date < CURRENT_DATE AND session_state = 'REGULARIZATION_REQUIRED' LIMIT 5`,
-        [orgId]
-      );
-      for (const row of checkUnclosedDb.rows) {
-        assert(row.check_out === null && row.status === 'ABSENT', `Test 18: Unclosed session ${row.id} has check_out NULL and status ABSENT`);
-      }
+      orgId = orgRes.rows[0].id;
     }
   } catch (err: any) {
-    console.warn('DB verification warning (non-fatal):', err.message);
+    orgId = null;
   }
 
+  // TEST 17: EOD RECONCILIATION JOB EXECUTION
+  try {
+    if (orgId) {
+      const reconResult = await AttendanceReconciliationService.reconcileUnclosedSessions();
+      assert(typeof reconResult.reconciledCount === 'number', 'Test 17: EOD Reconciliation Service executed successfully');
+    } else {
+      skip('Test 17: EOD Reconciliation Service', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 17: EOD Reconciliation Service', e.message);
+  }
+
+  // TEST 18: COMPLETE ABSENT GRID
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const synthAbsentRec = gridSep.attendance.find((a: any) => a.date === '2026-09-01' && (a.status === 'ABSENT' || a.status === 'ABSENT → Regularize'));
+      const isAbsentValid = synthAbsentRec && synthAbsentRec.check_in === null && synthAbsentRec.check_out === null && Number(synthAbsentRec.working_hours || 0) === 0 && synthAbsentRec.canRegularize === true;
+      assert(!!isAbsentValid, 'Test 18: Complete Absent Grid (synthesized working day record has status ABSENT, null check-in/out, 0h, canRegularize true)');
+    } else {
+      skip('Test 18: Complete Absent Grid', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 18: Complete Absent Grid', e.message);
+  }
+
+  // TEST 19: SUNDAY MISSING ATTENDANCE GENERATES HOLIDAY
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const sunRec = gridSep.attendance.find((a: any) => a.date === '2026-09-06');
+      assert(sunRec && sunRec.status === 'HOLIDAY', 'Test 19: Sunday in repository grid resolves to HOLIDAY (not ABSENT)');
+    } else {
+      skip('Test 19: Sunday Missing Attendance', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 19: Sunday Missing Attendance', e.message);
+  }
+
+  // TEST 20: 2ND SATURDAY HOLIDAY
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const sat2Rec = gridSep.attendance.find((a: any) => a.date === '2026-09-12');
+      assert(sat2Rec && sat2Rec.status === 'HOLIDAY', 'Test 20: 2nd Saturday in repository grid resolves to HOLIDAY');
+    } else {
+      skip('Test 20: 2nd Saturday Holiday', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 20: 2nd Saturday Holiday', e.message);
+  }
+
+  // TEST 21: 4TH SATURDAY HOLIDAY
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const sat4Rec = gridSep.attendance.find((a: any) => a.date === '2026-09-26');
+      assert(sat4Rec && sat4Rec.status === 'HOLIDAY', 'Test 21: 4th Saturday in repository grid resolves to HOLIDAY');
+    } else {
+      skip('Test 21: 4th Saturday Holiday', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 21: 4th Saturday Holiday', e.message);
+  }
+
+  // TEST 22: DELETED EMPLOYEE EXCLUSION
+  try {
+    if (orgId) {
+      const deletedEmpRes = await query(`SELECT id, first_name, last_name FROM employees WHERE organization_id = $1 AND deleted_at IS NOT NULL LIMIT 1`, [orgId]);
+      if (deletedEmpRes.rows.length > 0) {
+        const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+        const deletedEmpId = deletedEmpRes.rows[0].id;
+        const inGrid = gridSep.attendance.some((a: any) => a.employee_id === deletedEmpId);
+        assert(!inGrid, `Test 22: Deleted employee ${deletedEmpId} is completely excluded from AttendanceRepository grid`);
+      } else {
+        skip('Test 22: Deleted Employee Exclusion', 'no deleted employee in DB fixture');
+      }
+    } else {
+      skip('Test 22: Deleted Employee Exclusion', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 22: Deleted Employee Exclusion', e.message);
+  }
+
+  // TEST 23: SUMMARY COUNTS VERIFICATION
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      let expectedPresent = 0;
+      let expectedAbsent = 0;
+      gridSep.attendance.forEach((a: any) => {
+        if (['PRESENT', 'LATE PRESENT', 'EARLY CHECKOUT', 'LATE PRESENT / EARLY CHECKOUT', 'ACTIVE'].includes(a.status)) {
+          expectedPresent++;
+        } else if (a.status === 'ABSENT' || a.status === 'ABSENT → Regularize') {
+          expectedAbsent++;
+        }
+      });
+      const summaryMatch = gridSep.summary && gridSep.summary.totalPresentDays === expectedPresent && gridSep.summary.totalAbsentDays === expectedAbsent;
+      assert(summaryMatch, `Test 23: Summary Counts Match Grid (Expected Present: ${expectedPresent}, Got: ${gridSep.summary?.totalPresentDays}; Expected Absent: ${expectedAbsent}, Got: ${gridSep.summary?.totalAbsentDays})`);
+    } else {
+      skip('Test 23: Summary Counts Verification', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 23: Summary Counts Verification', e.message);
+  }
+
+  // TEST 24: SELECTED MONTH ISOLATION (September vs August)
+  try {
+    if (orgId) {
+      const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const sepDates = gridSep.attendance.map((a: any) => typeof a.date === 'string' ? a.date.split('T')[0] : a.date);
+      const allSepValid = sepDates.every((d: string) => d >= '2026-09-01' && d <= '2026-09-30');
+      const noAugInSep = sepDates.every((d: string) => !d.startsWith('2026-08'));
+
+      const gridAug = await AttendanceRepository.findAll(orgId, { year: 2026, month: 8 });
+      const augDates = gridAug.attendance.map((a: any) => typeof a.date === 'string' ? a.date.split('T')[0] : a.date);
+      const allAugValid = augDates.every((d: string) => d.startsWith('2026-08'));
+
+      assert(allSepValid && noAugInSep && allAugValid && sepDates.length > 0, 'Test 24: Selected Month Isolation (Sep 2026 has strictly Sep dates, Aug has strictly Aug dates)');
+    } else {
+      skip('Test 24: Selected Month Isolation', 'Database connection unavailable');
+    }
+  } catch (e: any) {
+    assert(false, 'Test 24: Selected Month Isolation', e.message);
+  }
+
+  // TEST 25: MULTI-SESSION SINGLE EMPLOYEE-DAY
+  const resMultiSingleDay = AttendanceStatusService.resolveDayStatus({
+    dateStr: '2026-09-01',
+    todayStr: '2026-09-03',
+    sessions: [
+      { id: '1', organization_id: 'o', employee_id: 'e', date: '2026-09-01', check_in: '2026-09-01T09:00:00+05:30', check_out: '2026-09-01T13:00:00+05:30', working_hours: 4.0 },
+      { id: '2', organization_id: 'o', employee_id: 'e', date: '2026-09-01', check_in: '2026-09-01T14:00:00+05:30', check_out: '2026-09-01T18:00:00+05:30', working_hours: 4.0 }
+    ]
+  });
+  assert(resMultiSingleDay.status === 'PRESENT' && resMultiSingleDay.totalWorkingHours === 8.0, 'Test 25: Multi-session on a single day resolves to 1 employee-day with 8.0h status PRESENT');
+
   console.log('\n====================================================');
-  console.log(`SUMMARY: ${passed} PASSED, ${failed} FAILED`);
+  console.log(`SUMMARY: ${passed} PASSED, ${failed} FAILED, ${skipped} SKIPPED`);
   console.log('====================================================');
 
   if (failed > 0) {

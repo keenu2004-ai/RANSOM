@@ -232,9 +232,11 @@ export class AttendanceController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { date, startDate, endDate, employeeId, departmentId, page, limit } = req.query;
+      const { year, month, date, startDate, endDate, employeeId, departmentId, page, limit } = req.query;
 
       const result = await AttendanceRepository.findAll(organizationId, {
+        year: year ? parseInt(year as string, 10) : undefined,
+        month: month ? parseInt(month as string, 10) : undefined,
         date: date as string,
         startDate: startDate as string,
         endDate: endDate as string,
@@ -246,7 +248,9 @@ export class AttendanceController {
 
       return res.status(200).json({
         success: true,
-        data: result
+        data: result,
+        summary: result.summary,
+        attendance: result.attendance
       });
     } catch (error) {
       return next(error);

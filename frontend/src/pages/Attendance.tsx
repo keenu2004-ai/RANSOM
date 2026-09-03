@@ -44,6 +44,7 @@ export const Attendance: React.FC = () => {
 
   const [workforceSummary, setWorkforceSummary] = useState<any>(null);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
+  const [monthSummary, setMonthSummary] = useState<any>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [regularizations, setRegularizations] = useState<any[]>([]);
   const [attFetchError, setAttFetchError] = useState<string | null>(null);
@@ -105,7 +106,7 @@ export const Attendance: React.FC = () => {
     }
   }, []);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async (year: number, month: number) => {
     setAttFetchError(null);
     try {
       if (contextRefresh) {
@@ -113,11 +114,15 @@ export const Attendance: React.FC = () => {
       }
 
       if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
-        const summaryRes = await apiFetch('/attendance/workforce-summary').catch(() => null);
+        const summaryRes = await apiFetch(`/attendance/workforce-summary?year=${year}&month=${month + 1}`).catch(() => null);
         setWorkforceSummary(summaryRes?.summary || summaryRes?.data?.summary || summaryRes || null);
 
-        const listRes = await apiFetch('/attendance').catch(() => null);
-        setAttendanceList(listRes?.attendance || listRes?.data?.attendance || (Array.isArray(listRes) ? listRes : []));
+        const listRes = await apiFetch(`/attendance?year=${year}&month=${month + 1}`).catch(() => null);
+        const attData = listRes?.attendance || listRes?.data?.attendance || (Array.isArray(listRes) ? listRes : []);
+        setAttendanceList(attData);
+        if (listRes?.summary || listRes?.data?.summary) {
+          setMonthSummary(listRes?.summary || listRes?.data?.summary);
+        }
       }
 
       const regRes = await apiFetch('/attendance/regularizations').catch(() => null);
@@ -126,22 +131,24 @@ export const Attendance: React.FC = () => {
       console.error('Error fetching attendance:', err);
       setAttFetchError(err.message || 'Unable to load attendance information.');
     }
-  };
+  }, [user, contextRefresh]);
 
   useEffect(() => {
-    fetchAttendance();
+    setAttendanceList([]);
+    setMonthSummary(null);
+    fetchAttendance(currentYear, currentMonth);
     fetchCalendarEvents(currentYear, currentMonth);
-  }, [currentYear, currentMonth, fetchCalendarEvents]);
+  }, [currentYear, currentMonth, fetchAttendance, fetchCalendarEvents]);
 
   const handleCheckIn = async () => {
     await contextCheckIn();
-    await fetchAttendance();
+    await fetchAttendance(currentYear, currentMonth);
     await fetchCalendarEvents(currentYear, currentMonth);
   };
 
   const handleCheckOut = async () => {
     await contextCheckOut();
-    await fetchAttendance();
+    await fetchAttendance(currentYear, currentMonth);
     await fetchCalendarEvents(currentYear, currentMonth);
   };
 
@@ -191,7 +198,7 @@ export const Attendance: React.FC = () => {
         reason: ''
       });
       setTimeout(() => setRegSuccess(null), 4000);
-      await fetchAttendance();
+      await fetchAttendance(currentYear, currentMonth);
     } catch (err: any) {
       setRegError(err.message || 'Failed to submit regularization request.');
     }
@@ -203,7 +210,7 @@ export const Attendance: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ action: 'APPROVE' })
       });
-      await fetchAttendance();
+      await fetchAttendance(currentYear, currentMonth);
     } catch (err: any) {
       alert(err.message || 'Failed to approve regularization.');
     }
@@ -217,7 +224,7 @@ export const Attendance: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ action: 'REJECT', rejectionReason: reason })
       });
-      await fetchAttendance();
+      await fetchAttendance(currentYear, currentMonth);
     } catch (err: any) {
       alert(err.message || 'Failed to reject regularization.');
     }
@@ -234,7 +241,7 @@ export const Attendance: React.FC = () => {
             <span>{attFetchError}</span>
           </div>
           <button
-            onClick={fetchAttendance}
+            onClick={() => fetchAttendance(currentYear, currentMonth)}
             className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold"
           >
             Retry
@@ -276,7 +283,7 @@ export const Attendance: React.FC = () => {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">PRESENT</p>
             <p className="text-3xl font-extrabold text-emerald-400 mt-1">
-              {workforceSummary ? workforceSummary.presentToday || 0 : (todaySummary?.firstCheckIn ? 1 : 0)}
+              {monthSummary ? monthSummary.totalPresentDays : (workforceSummary ? workforceSummary.presentToday || 0 : (todaySummary?.firstCheckIn ? 1 : 0))}
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -288,7 +295,7 @@ export const Attendance: React.FC = () => {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">ABSENT</p>
             <p className="text-3xl font-extrabold text-rose-400 mt-1">
-              {workforceSummary ? workforceSummary.absentToday || 0 : (todaySummary?.firstCheckIn ? 0 : 1)}
+              {monthSummary ? monthSummary.totalAbsentDays : (workforceSummary ? workforceSummary.absentToday || 0 : (todaySummary?.firstCheckIn ? 0 : 1))}
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
@@ -475,8 +482,8 @@ export const Attendance: React.FC = () => {
                       onClick={async () => {
                         if (!group.empId) return;
                         try {
-                          const filename = `Attendance_${group.empCode}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                          await apiDownload(`/attendance/export/${group.empId}`, {}, filename);
+                          const filename = `Attendance_${group.empCode}_${currentYear}_${currentMonth + 1}.xlsx`;
+                          await apiDownload(`/attendance/export/${group.empId}?year=${currentYear}&month=${currentMonth + 1}`, {}, filename);
                         } catch (err: any) {
                           alert(err.message || 'Export failed.');
                         }
@@ -504,30 +511,30 @@ export const Attendance: React.FC = () => {
                     <tbody className="divide-y divide-slate-800/40">
                       {group.sessions.map((a, sIdx) => {
                         const dateStr = a.date ? (typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0]) : 'N/A';
-                        const isPastUnclosed = !a.check_out && a.session_state === 'REGULARIZATION_REQUIRED';
-                        const isAbsent = a.status === 'ABSENT';
-                        
+                        const isAbsent = a.status === 'ABSENT' || a.status === 'ABSENT → Regularize';
+                        const canReg = a.canRegularize || isAbsent;
+
                         return (
                           <tr key={a.id || sIdx} className="hover:bg-slate-800/30">
                             <td className="px-4 py-3 font-mono font-medium">{dateStr}</td>
-                            <td className="px-4 py-3 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                            <td className="px-4 py-3 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
+                            <td className="px-4 py-3 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                            <td className="px-4 py-3 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                             <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                isAbsent || isPastUnclosed
+                                isAbsent
                                   ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
                                   : a.status === 'HOLIDAY'
                                   ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
-                                  : a.check_out
+                                  : a.check_out || a.status === 'PRESENT' || a.status === 'LATE PRESENT' || a.status === 'EARLY CHECKOUT' || a.status === 'LATE PRESENT / EARLY CHECKOUT'
                                   ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
                                   : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 animate-pulse'
                               }`}>
-                                {isPastUnclosed ? 'ABSENT' : (a.status || 'PRESENT')}
+                                {a.status || 'PRESENT'}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
-                              {(isAbsent || isPastUnclosed) && (
+                              {canReg && (
                                 <button
                                   onClick={() => openRegularizeForDate(dateStr)}
                                   className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
@@ -535,13 +542,15 @@ export const Attendance: React.FC = () => {
                                   <span>Regularize</span>
                                 </button>
                               )}
-                              <button
-                                onClick={() => setSelectedSession(a)}
-                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>GPS Details</span>
-                              </button>
+                              {!a.isSynthesized && (
+                                <button
+                                  onClick={() => setSelectedSession(a)}
+                                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>GPS Details</span>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );

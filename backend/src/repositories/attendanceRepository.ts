@@ -734,81 +734,214 @@ export class AttendanceRepository {
     });
   }
 
-  static async findAll(organizationId: string, filters: { date?: string; startDate?: string; endDate?: string; employeeId?: string; departmentId?: string; page?: number; limit?: number }) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 500;
-    const offset = (page - 1) * limit;
+  static async findAll(organizationId: string, filters: { year?: number; month?: number; date?: string; startDate?: string; endDate?: string; employeeId?: string; departmentId?: string; page?: number; limit?: number }) {
+    const tz = await this.getOrganizationTimeZone(organizationId);
+    const todayStr = this.getOrgDateStr(new Date(), tz);
 
-    let whereClause = `WHERE a.organization_id = $1`;
-    const params: any[] = [organizationId];
-    let paramIndex = 2;
+    let startDateStr = filters.startDate;
+    let endDateStr = filters.endDate;
 
-    if (filters.date) {
-      whereClause += ` AND a.date = $${paramIndex}`;
-      params.push(filters.date);
-      paramIndex++;
+    if (filters.year && filters.month) {
+      const y = filters.year;
+      const m = String(filters.month).padStart(2, '0');
+      const lastDay = new Date(y, filters.month, 0).getDate();
+      startDateStr = `${y}-${m}-01`;
+      endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+    } else if (filters.date) {
+      startDateStr = filters.date;
+      endDateStr = filters.date;
+    } else if (!startDateStr || !endDateStr) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+      startDateStr = `${y}-${m}-01`;
+      endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
     }
 
-    if (filters.startDate) {
-      whereClause += ` AND a.date >= $${paramIndex}`;
-      params.push(filters.startDate);
-      paramIndex++;
-    }
-
-    if (filters.endDate) {
-      whereClause += ` AND a.date <= $${paramIndex}`;
-      params.push(filters.endDate);
-      paramIndex++;
-    }
+    // 1. Fetch active/non-deleted employees
+    let empSql = `
+      SELECT e.id, e.employee_code, e.first_name, e.last_name, e.status, d.name as department_name
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      WHERE e.organization_id = $1 AND (e.deleted_at IS NULL)
+    `;
+    const empParams: any[] = [organizationId];
+    let pIdx = 2;
 
     if (filters.employeeId) {
-      whereClause += ` AND a.employee_id = $${paramIndex}`;
-      params.push(filters.employeeId);
-      paramIndex++;
+      empSql += ` AND e.id = $${pIdx}`;
+      empParams.push(filters.employeeId);
+      pIdx++;
     }
-
     if (filters.departmentId) {
-      whereClause += ` AND e.department_id = $${paramIndex}`;
-      params.push(filters.departmentId);
-      paramIndex++;
+      empSql += ` AND e.department_id = $${pIdx}`;
+      empParams.push(filters.departmentId);
+      pIdx++;
     }
+    empSql += ` ORDER BY e.first_name ASC, e.last_name ASC`;
 
-    const countSql = `
-      SELECT COUNT(*)::int as total
-      FROM attendance a
-      LEFT JOIN employees e ON a.employee_id = e.id
-      ${whereClause}
-    `;
-    const countRes = await query<{ total: number }>(countSql, params);
+    const empRes = await query(empSql, empParams);
+    const employees = empRes.rows;
 
-    const dataSql = `
-      SELECT 
-        a.id, a.organization_id, a.employee_id,
-        COALESCE(CONCAT(e.first_name, ' ', e.last_name), a.employee_name_snapshot, 'Deleted Employee') as employee_name,
-        COALESCE(e.employee_code, a.employee_code_snapshot, 'EMP') as employee_code,
-        d.name as department_name,
-        a.date, a.check_in, a.check_out, 
+    // 2. Fetch Attendance Sessions for date range
+    const attSql = `
+      SELECT
+        a.id, a.organization_id, a.employee_id, a.date::text as date, a.check_in, a.check_out,
         a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
         a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
         a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours
       FROM attendance a
-      LEFT JOIN employees e ON a.employee_id = e.id
-      LEFT JOIN departments d ON e.department_id = d.id
-      ${whereClause}
-      ORDER BY a.date DESC, a.check_in DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      JOIN employees e ON a.employee_id = e.id
+      WHERE a.organization_id = $1 AND a.date BETWEEN $2 AND $3 AND (e.deleted_at IS NULL)
+      ORDER BY a.date ASC, a.check_in ASC
     `;
+    const attRes = await query(attSql, [organizationId, startDateStr, endDateStr]);
+    const sessionsMap = new Map<string, any[]>();
+    for (const s of attRes.rows) {
+      const key = `${s.employee_id}_${s.date}`;
+      if (!sessionsMap.has(key)) sessionsMap.set(key, []);
+      sessionsMap.get(key)!.push(s);
+    }
 
-    params.push(limit, offset);
-    const dataRes = await query(dataSql, params);
+    // 3. Fetch Approved Leaves for date range
+    const leaveSql = `
+      SELECT l.employee_id, l.start_date::text as start_date, l.end_date::text as end_date, lt.name as leave_type_name
+      FROM leave_requests l
+      JOIN leave_types lt ON l.leave_type_id = lt.id
+      JOIN employees e ON l.employee_id = e.id
+      WHERE l.organization_id = $1 AND l.status = 'APPROVED'
+        AND (l.start_date <= $3 AND l.end_date >= $2) AND (e.deleted_at IS NULL)
+    `;
+    const leaveRes = await query(leaveSql, [organizationId, startDateStr, endDateStr]);
+    const leavesMap = new Map<string, { leave_type_name: string }>();
+    for (const l of leaveRes.rows) {
+      const [sY, sM, sD] = l.start_date.split('-').map(Number);
+      const [eY, eM, eD] = l.end_date.split('-').map(Number);
+      let curr = new Date(Date.UTC(sY, sM - 1, sD));
+      const end = new Date(Date.UTC(eY, eM - 1, eD));
+      while (curr <= end) {
+        const dStr = curr.toISOString().split('T')[0];
+        leavesMap.set(`${l.employee_id}_${dStr}`, { leave_type_name: l.leave_type_name || 'APPROVED LEAVE' });
+        curr.setUTCDate(curr.getUTCDate() + 1);
+      }
+    }
+
+    // 4. Fetch Holidays for date range
+    const holSql = `
+      SELECT title, date::text as date, holiday_type
+      FROM holidays
+      WHERE organization_id = $1 AND date BETWEEN $2 AND $3
+    `;
+    const holRes = await query(holSql, [organizationId, startDateStr, endDateStr]);
+    const holidaysMap = new Map<string, { title: string; holiday_type?: string }>();
+    for (const h of holRes.rows) {
+      holidaysMap.set(h.date, { title: h.title, holiday_type: h.holiday_type });
+    }
+
+    // 5. Fetch Pending Regularizations
+    const regSql = `
+      SELECT employee_id, attendance_date::text as attendance_date, status
+      FROM attendance_regularizations
+      WHERE organization_id = $1 AND status = 'PENDING' AND attendance_date BETWEEN $2 AND $3
+    `;
+    const regRes = await query(regSql, [organizationId, startDateStr, endDateStr]);
+    const regsMap = new Map<string, any>();
+    for (const r of regRes.rows) {
+      regsMap.set(`${r.employee_id}_${r.attendance_date}`, r);
+    }
+
+    // 6. Build Grid of Calendar Days
+    const gridDates: string[] = [];
+    const [sY, sM, sD] = startDateStr.split('-').map(Number);
+    const [eY, eM, eD] = endDateStr.split('-').map(Number);
+    let curr = new Date(Date.UTC(sY, sM - 1, sD));
+    const end = new Date(Date.UTC(eY, eM - 1, eD));
+    while (curr <= end) {
+      gridDates.push(curr.toISOString().split('T')[0]);
+      curr.setUTCDate(curr.getUTCDate() + 1);
+    }
+
+    // 7. Resolve status for every employee-day
+    const attendanceRecords: any[] = [];
+    let presentCount = 0;
+    let absentCount = 0;
+
+    for (const emp of employees) {
+      const fullName = `${emp.first_name} ${emp.last_name}`;
+      for (const dStr of gridDates) {
+        const empDateKey = `${emp.id}_${dStr}`;
+        const daySessions = sessionsMap.get(empDateKey) || [];
+        const dayLeave = leavesMap.get(empDateKey) || null;
+        const dayHoliday = holidaysMap.get(dStr) || null;
+        const dayReg = regsMap.get(empDateKey) || null;
+
+        const resolved = AttendanceStatusService.resolveDayStatus({
+          dateStr: dStr,
+          todayStr,
+          sessions: daySessions,
+          holiday: dayHoliday,
+          leave: dayLeave,
+          pendingRegularization: dayReg,
+          timeZone: tz
+        });
+
+        if (['PRESENT', 'LATE PRESENT', 'EARLY CHECKOUT', 'LATE PRESENT / EARLY CHECKOUT', 'ACTIVE'].includes(resolved.status)) {
+          presentCount++;
+        } else if (resolved.status === 'ABSENT') {
+          absentCount++;
+        }
+
+        if (daySessions.length > 0) {
+          // If sessions exist, emit session record(s) augmented with resolved day status
+          daySessions.forEach(s => {
+            attendanceRecords.push({
+              ...s,
+              employee_name: fullName,
+              employee_code: emp.employee_code,
+              department_name: emp.department_name,
+              status: resolved.displayStatus,
+              session_state: s.session_state || resolved.sessionState,
+              working_hours: s.working_hours,
+              canRegularize: resolved.canRegularize
+            });
+          });
+        } else {
+          // Synthesized day record for missing day / holiday / leave
+          attendanceRecords.push({
+            id: `synth_${emp.id}_${dStr}`,
+            organization_id: organizationId,
+            employee_id: emp.id,
+            employee_name: fullName,
+            employee_code: emp.employee_code,
+            department_name: emp.department_name,
+            date: dStr,
+            check_in: null,
+            check_out: null,
+            working_hours: 0,
+            status: resolved.displayStatus,
+            session_state: resolved.sessionState || (resolved.status === 'ABSENT' ? 'NO_ATTENDANCE' : undefined),
+            canRegularize: resolved.canRegularize,
+            isSynthesized: true
+          });
+        }
+      }
+    }
 
     return {
-      attendance: dataRes.rows,
+      attendance: attendanceRecords,
+      summary: {
+        totalEmployees: employees.length,
+        totalPresentDays: presentCount,
+        totalAbsentDays: absentCount,
+        startDate: startDateStr,
+        endDate: endDateStr
+      },
       pagination: {
-        total: countRes.rows[0].total,
-        page,
-        limit,
-        totalPages: Math.ceil(countRes.rows[0].total / limit)
+        total: attendanceRecords.length,
+        page: filters.page || 1,
+        limit: filters.limit || 500,
+        totalPages: 1
       }
     };
   }
