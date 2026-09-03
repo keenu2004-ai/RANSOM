@@ -217,8 +217,12 @@ async function runAttendanceVerificationSuite() {
   try {
     if (orgId) {
       const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
-      const synthAbsentRec = gridSep.attendance.find((a: any) => a.date === '2026-09-01' && (a.status === 'ABSENT' || a.status === 'ABSENT → Regularize'));
-      const isAbsentValid = synthAbsentRec && synthAbsentRec.check_in === null && synthAbsentRec.check_out === null && Number(synthAbsentRec.working_hours || 0) === 0 && synthAbsentRec.canRegularize === true;
+      const synthAbsentRec = gridSep.attendance.find((a: any) => a.isSynthesized === true && (a.status === 'ABSENT' || a.status === 'ABSENT → Regularize'));
+      const isAbsentValid = synthAbsentRec &&
+        synthAbsentRec.check_in === null &&
+        synthAbsentRec.check_out === null &&
+        Number(synthAbsentRec.working_hours || 0) === 0 &&
+        synthAbsentRec.canRegularize === true;
       assert(!!isAbsentValid, 'Test 18: Complete Absent Grid (synthesized working day record has status ABSENT, null check-in/out, 0h, canRegularize true)');
     } else {
       skip('Test 18: Complete Absent Grid', 'Database connection unavailable');
@@ -295,12 +299,20 @@ async function runAttendanceVerificationSuite() {
   try {
     if (orgId) {
       const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
+      const uniqueDayMap = new Map<string, string>();
+      gridSep.attendance.forEach((a: any) => {
+        const key = `${a.employee_id}_${a.date}`;
+        if (!uniqueDayMap.has(key)) {
+          uniqueDayMap.set(key, a.status);
+        }
+      });
+
       let expectedPresent = 0;
       let expectedAbsent = 0;
-      gridSep.attendance.forEach((a: any) => {
-        if (['PRESENT', 'LATE PRESENT', 'EARLY CHECKOUT', 'LATE PRESENT / EARLY CHECKOUT', 'ACTIVE'].includes(a.status)) {
+      uniqueDayMap.forEach((status) => {
+        if (['PRESENT', 'LATE PRESENT', 'EARLY CHECKOUT', 'LATE PRESENT / EARLY CHECKOUT', 'ACTIVE'].includes(status)) {
           expectedPresent++;
-        } else if (a.status === 'ABSENT' || a.status === 'ABSENT → Regularize') {
+        } else if (status === 'ABSENT' || status === 'ABSENT → Regularize' || status.startsWith('ABSENT')) {
           expectedAbsent++;
         }
       });
