@@ -48,15 +48,15 @@ export class AttendanceReconciliationService {
             }
           }
 
-          // Update session status to REGULARIZATION_REQUIRED while keeping check_out NULL!
+          // Update session status to ABSENT and session_state to REGULARIZATION_REQUIRED while keeping check_out NULL!
           await client.query(
             `UPDATE attendance
-             SET status = 'REGULARIZATION_REQUIRED',
+             SET status = 'ABSENT',
                  session_state = 'REGULARIZATION_REQUIRED',
-                 working_hours = $2,
+                 working_hours = 0.00,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 AND check_out IS NULL`,
-            [session.id, calcHours]
+            [session.id]
           );
 
           // Log Audit Event

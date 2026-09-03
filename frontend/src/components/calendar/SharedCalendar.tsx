@@ -24,6 +24,7 @@ export interface SharedCalendarProps {
   onEventClick?: (event: CalendarEvent) => void;
   title?: string;
   subtitle?: string;
+  attendanceOnly?: boolean;
 }
 
 export const SharedCalendar: React.FC<SharedCalendarProps> = ({
@@ -33,7 +34,8 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
   onMonthChange,
   onEventClick,
   title = "Unified Organizational Calendar",
-  subtitle = "Attendance, leave, company holidays, and weekly project tasks in one unified view"
+  subtitle = "Attendance, leave, company holidays, and weekly project tasks in one unified view",
+  attendanceOnly = false
 }) => {
   const [currentYear, setCurrentYear] = useState<number>(initialYear);
   const [currentMonth, setCurrentMonth] = useState<number>(initialMonth);
@@ -41,9 +43,9 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
   // Filters
   const [showAttendance, setShowAttendance] = useState(true);
-  const [showLeave, setShowLeave] = useState(true);
+  const [showLeave, setShowLeave] = useState(!attendanceOnly);
   const [showHolidays, setShowHolidays] = useState(true);
-  const [showTasks, setShowTasks] = useState(true);
+  const [showTasks, setShowTasks] = useState(!attendanceOnly);
 
   // Handle Month Navigation
   const handlePrevMonth = () => {

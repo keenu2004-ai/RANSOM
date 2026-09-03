@@ -3,33 +3,8 @@ import exceljs from 'exceljs';
 import { query } from '../db';
 import { AuthenticatedRequest } from '../types';
 import { normalizeRole } from '../config/permissions';
-
-const formatWorkingHours = (decimalHours: number | string | null | undefined): string => {
-  const value = Number(decimalHours || 0);
-  if (!Number.isFinite(value)) return '0h 00m';
-
-  const totalMinutes = Math.round(value * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
-};
-
-const formatTimeIST = (timestamp: string | Date | null | undefined): string => {
-  if (!timestamp) return '—';
-  try {
-    const d = new Date(timestamp);
-    if (isNaN(d.getTime())) return '—';
-    return new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(d);
-  } catch {
-    return '—';
-  }
-};
+import { AttendanceStatusService, AttendanceSessionRecord } from '../services/attendanceStatusService';
+import { AttendanceRepository } from '../repositories/attendanceRepository';
 
 export class AttendanceExportController {
   static async exportEmployeeAttendance(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -37,13 +12,13 @@ export class AttendanceExportController {
       const actor = req.user!;
       const actorRole = normalizeRole(actor.role);
       const targetEmployeeId = req.params.employeeId;
-      const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+      const { startDate: qStart, endDate: qEnd } = req.query as { startDate?: string; endDate?: string };
 
       if (!targetEmployeeId) {
         return res.status(400).json({ success: false, error: 'Employee ID is required for export.' });
       }
 
-      // Fetch Target Employee Profile & Linked User
+      // Fetch Target Employee Profile
       const empRes = await query(`
         SELECT 
           e.id, 
@@ -67,47 +42,61 @@ export class AttendanceExportController {
 
       const targetEmp = empRes.rows[0];
 
-      // Authorization Rules Check
-      if (actorRole === 'EMPLOYEE') {
-        if (actor.employeeId !== targetEmployeeId) {
-          return res.status(403).json({
-            success: false,
-            error: 'Access denied: Employees cannot export attendance for other employees.',
-            code: 'FORBIDDEN'
-          });
-        }
-      } else if (actorRole === 'OPERATIONAL_MANAGER') {
-        // If operational manager, check if target is in team/department scope or self
-        if (actor.employeeId !== targetEmployeeId) {
-          // Additional organizational scope check can be enforced here if required
-        }
+      // Authorization check
+      if (actorRole === 'EMPLOYEE' && actor.employeeId !== targetEmployeeId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: Employees cannot export attendance for other employees.',
+          code: 'FORBIDDEN'
+        });
       }
 
-      // Build date filters if provided
-      let dateWhere = `WHERE a.employee_id = $1 AND a.organization_id = $2`;
-      let leaveWhere = `WHERE l.employee_id = $1 AND l.organization_id = $2 AND l.status = 'APPROVED'`;
-      const dateParams: any[] = [targetEmployeeId, actor.organizationId];
+      const tz = await AttendanceRepository.getOrganizationTimeZone(actor.organizationId);
+      const todayStr = AttendanceRepository.getOrgDateStr(new Date(), tz);
 
-      if (startDate && endDate) {
-        dateWhere += ` AND a.date BETWEEN $3 AND $4`;
-        leaveWhere += ` AND (l.start_date <= $4 AND l.end_date >= $3)`;
-        dateParams.push(startDate, endDate);
+      // Determine Date Range for Export Grid
+      let startDateStr = qStart;
+      let endDateStr = qEnd;
+
+      if (!startDateStr || !endDateStr) {
+        // Default to current month
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+        startDateStr = `${y}-${m}-01`;
+        endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
       }
 
-      // Fetch Attendance Sessions
+      // Fetch Attendance Sessions in Date Range
       const attendanceRes = await query(`
         SELECT 
+          a.id,
+          a.organization_id,
+          a.employee_id,
           a.date::text as date,
           a.check_in,
           a.check_out,
-          a.working_hours,
-          a.status
+          a.punch_in_lat,
+          a.punch_in_lng,
+          a.punch_in_accuracy,
+          a.punch_in_location_name,
+          a.punch_out_lat,
+          a.punch_out_lng,
+          a.punch_out_accuracy,
+          a.punch_out_location_name,
+          a.break_duration_mins,
+          a.shift_name,
+          a.status,
+          a.session_state,
+          a.working_hours
         FROM attendance a
-        ${dateWhere}
+        WHERE a.employee_id = $1 AND a.organization_id = $2
+          AND a.date BETWEEN $3 AND $4
         ORDER BY a.date ASC, a.check_in ASC
-      `, dateParams);
+      `, [targetEmployeeId, actor.organizationId, startDateStr, endDateStr]);
 
-      // Fetch Approved Leaves
+      // Fetch Approved Leaves in Date Range
       const leaveRes = await query(`
         SELECT 
           l.start_date::text as start_date,
@@ -116,64 +105,120 @@ export class AttendanceExportController {
           l.reason
         FROM leave_requests l
         LEFT JOIN leave_types lt ON lt.id = l.leave_type_id
-        ${leaveWhere}
-      `, dateParams);
+        WHERE l.employee_id = $1 AND l.organization_id = $2 AND l.status = 'APPROVED'
+          AND (l.start_date <= $4 AND l.end_date >= $3)
+      `, [targetEmployeeId, actor.organizationId, startDateStr, endDateStr]);
 
-      const records: any[] = [];
-      const attendanceDates = new Set<string>();
+      // Fetch Configured Company/National Holidays
+      const holidayRes = await query(`
+        SELECT title, date::text as date, holiday_type
+        FROM holidays
+        WHERE organization_id = $1 AND date BETWEEN $2 AND $3
+      `, [actor.organizationId, startDateStr, endDateStr]);
 
-      // 1. Process EVERY Attendance Session (preserve multiple sessions on same date)
+      // Map Data by Date
+      const sessionsByDate = new Map<string, AttendanceSessionRecord[]>();
       for (const att of attendanceRes.rows) {
-        attendanceDates.add(att.date);
-        records.push({
-          date: att.date,
-          checkIn: formatTimeIST(att.check_in),
-          checkOut: formatTimeIST(att.check_out),
-          totalHours: formatWorkingHours(att.working_hours),
-          status: att.status || 'PRESENT',
-          attendanceType: 'REGULAR',
-          leaveType: '—',
-          rawTime: att.check_in ? new Date(att.check_in).getTime() : new Date(att.date).getTime()
-        });
+        const dKey = att.date;
+        if (!sessionsByDate.has(dKey)) sessionsByDate.set(dKey, []);
+        sessionsByDate.get(dKey)!.push(att);
       }
 
-      // 2. Reconcile Approved Leaves for dates WITHOUT attendance sessions
-      for (const leave of leaveRes.rows) {
-        // Parse date string (YYYY-MM-DD) directly using UTC parts to avoid local timezone boundary shifts
-        const [sY, sM, sD] = leave.start_date.split('-').map(Number);
-        const [eY, eM, eD] = leave.end_date.split('-').map(Number);
+      const holidaysByDate = new Map<string, { title: string; holiday_type?: string }>();
+      for (const h of holidayRes.rows) {
+        holidaysByDate.set(h.date, { title: h.title, holiday_type: h.holiday_type });
+      }
 
+      const leavesByDate = new Map<string, { leave_type_name: string }>();
+      for (const l of leaveRes.rows) {
+        const [sY, sM, sD] = l.start_date.split('-').map(Number);
+        const [eY, eM, eD] = l.end_date.split('-').map(Number);
         let curr = new Date(Date.UTC(sY, sM - 1, sD));
         const end = new Date(Date.UTC(eY, eM - 1, eD));
-
         while (curr <= end) {
           const dStr = curr.toISOString().split('T')[0];
-          if (!startDate || !endDate || (dStr >= startDate && dStr <= endDate)) {
-            // Only add ON_LEAVE row if no attendance session exists for this date
-            if (!attendanceDates.has(dStr)) {
-              records.push({
-                date: dStr,
-                checkIn: '—',
-                checkOut: '—',
-                totalHours: '0h 00m',
-                status: 'ON_LEAVE',
-                attendanceType: 'LEAVE',
-                leaveType: leave.leave_type_name || 'APPROVED LEAVE',
-                rawTime: curr.getTime()
-              });
-            }
-          }
+          leavesByDate.set(dStr, { leave_type_name: l.leave_type_name || 'APPROVED LEAVE' });
           curr.setUTCDate(curr.getUTCDate() + 1);
         }
       }
 
-      // Sort all records chronologically by date and session check_in time
-      const sortedRecords = records.sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return a.rawTime - b.rawTime;
-      });
+      // Build Export Grid Rows
+      const gridRows: any[] = [];
+      const [sYear, sMonth, sDay] = startDateStr.split('-').map(Number);
+      const [eYear, eMonth, eDay] = endDateStr.split('-').map(Number);
 
-      // Build Excel Workbook using exceljs
+      let currDate = new Date(Date.UTC(sYear, sMonth - 1, sDay));
+      const endDateObj = new Date(Date.UTC(eYear, eMonth - 1, eDay));
+
+      const formatLocation = (name?: string | null, lat?: any, lng?: any) => {
+        const parts: string[] = [];
+        if (name && name.trim() !== '') parts.push(name.trim());
+        if (lat !== null && lat !== undefined && lng !== null && lng !== undefined) {
+          const numLat = Number(lat);
+          const numLng = Number(lng);
+          if (!isNaN(numLat) && !isNaN(numLng)) {
+            parts.push(`${numLat.toFixed(4)}, ${numLng.toFixed(4)}`);
+          }
+        }
+        return parts.length > 0 ? parts.join('\n') : '—';
+      };
+
+      while (currDate <= endDateObj) {
+        const dStr = currDate.toISOString().split('T')[0];
+        const daySessions = sessionsByDate.get(dStr) || [];
+        const dayHoliday = holidaysByDate.get(dStr) || null;
+        const dayLeave = leavesByDate.get(dStr) || null;
+
+        const dayResult = AttendanceStatusService.resolveDayStatus({
+          dateStr: dStr,
+          todayStr,
+          sessions: daySessions,
+          holiday: dayHoliday,
+          leave: dayLeave,
+          timeZone: tz
+        });
+
+        if (daySessions.length === 0) {
+          gridRows.push({
+            date: dStr,
+            day: dayResult.dayName,
+            checkInTime: '—',
+            checkInLocation: '—',
+            checkOutTime: '—',
+            checkOutLocation: '—',
+            totalHours: dayResult.totalWorkingHoursFormatted,
+            status: dayResult.displayStatus,
+            leaveOrHoliday: dayResult.holidayTitle || dayResult.leaveTypeName || '—',
+            attendanceSession: '—'
+          });
+        } else {
+          // Multiple / Single Attendance Session Rows
+          daySessions.forEach((s, idx) => {
+            const inTimeStr = s.check_in ? AttendanceStatusService.formatTime(s.check_in, tz) : '—';
+            const outTimeStr = s.check_out ? AttendanceStatusService.formatTime(s.check_out, tz) : '—';
+            const inLocStr = formatLocation(s.punch_in_location_name, s.punch_in_lat, s.punch_in_lng);
+            const outLocStr = formatLocation(s.punch_out_location_name, s.punch_out_lat, s.punch_out_lng);
+            const sessionLabel = daySessions.length > 1 ? `Session ${idx + 1}` : 'Session 1';
+
+            gridRows.push({
+              date: dStr,
+              day: dayResult.dayName,
+              checkInTime: inTimeStr,
+              checkInLocation: inLocStr,
+              checkOutTime: outTimeStr,
+              checkOutLocation: outLocStr,
+              totalHours: dayResult.totalWorkingHoursFormatted,
+              status: dayResult.displayStatus,
+              leaveOrHoliday: dayResult.holidayTitle || dayResult.leaveTypeName || '—',
+              attendanceSession: sessionLabel
+            });
+          });
+        }
+
+        currDate.setUTCDate(currDate.getUTCDate() + 1);
+      }
+
+      // Build Excel Workbook
       const workbook = new exceljs.Workbook();
       workbook.creator = 'THEIAKSHI HRMS';
       workbook.created = new Date();
@@ -184,18 +229,21 @@ export class AttendanceExportController {
       worksheet.addRow(['THEIAKSHI HRMS — EMPLOYEE ATTENDANCE REPORT']);
       worksheet.addRow([`Employee Name: ${targetEmp.first_name} ${targetEmp.last_name}`]);
       worksheet.addRow([`Employee Code: ${targetEmp.employee_code} | Department: ${targetEmp.department_name || 'N/A'} | Designation: ${targetEmp.designation_name || 'N/A'}`]);
-      worksheet.addRow([`Export Date: ${new Date().toLocaleDateString()} | Date Range: ${startDate && endDate ? `${startDate} to ${endDate}` : 'Full Available History'}`]);
+      worksheet.addRow([`Export Date: ${new Date().toLocaleDateString()} | Period: ${startDateStr} to ${endDateStr}`]);
       worksheet.addRow([]);
 
-      // Data Headers
+      // Data Headers — Strictly 10 Columns
       const headerRow = worksheet.addRow([
         'Date',
-        'Check In',
-        'Check Out',
+        'Day',
+        'Check In (Time)',
+        'Check In (Location)',
+        'Check Out (Time)',
+        'Check Out (Location)',
         'Total Hours',
         'Status',
-        'Attendance Type',
-        'Leave Type'
+        'Leave Type / Holiday',
+        'Attendance Session'
       ]);
 
       headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -203,39 +251,60 @@ export class AttendanceExportController {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: '0F172A' } // Dark cyan/slate background
+          fgColor: { argb: '0F172A' }
         };
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       });
 
       // Data Rows
-      for (const rec of sortedRecords) {
+      for (const rec of gridRows) {
         const row = worksheet.addRow([
           rec.date,
-          rec.checkIn,
-          rec.checkOut,
+          rec.day,
+          rec.checkInTime,
+          rec.checkInLocation,
+          rec.checkOutTime,
+          rec.checkOutLocation,
           rec.totalHours,
           rec.status,
-          rec.attendanceType,
-          rec.leaveType
+          rec.leaveOrHoliday,
+          rec.attendanceSession
         ]);
 
-        if (rec.status === 'ON_LEAVE') {
-          row.getCell(5).font = { color: { argb: '38BDF8' }, bold: true }; // Cyan
-        } else if (rec.status === 'ABSENT') {
-          row.getCell(5).font = { color: { argb: 'F87171' }, bold: true }; // Red
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle', wrapText: true };
+        });
+
+        const statusCell = row.getCell(8);
+        if (rec.status.includes('PRESENT')) {
+          statusCell.font = { color: { argb: '16A34A' }, bold: true };
+        } else if (rec.status.includes('ABSENT')) {
+          statusCell.font = { color: { argb: 'DC2626' }, bold: true };
+        } else if (rec.status.includes('HOLIDAY')) {
+          statusCell.font = { color: { argb: '2563EB' }, bold: true };
+        } else if (rec.status.includes('LEAVE')) {
+          statusCell.font = { color: { argb: '0284C7' }, bold: true };
+        } else if (rec.status.includes('EARLY CHECKOUT')) {
+          statusCell.font = { color: { argb: 'EA580C' }, bold: true };
         } else {
-          row.getCell(5).font = { color: { argb: '4ADE80' }, bold: true }; // Green
+          statusCell.font = { color: { argb: '475569' }, bold: true };
         }
       }
 
-      // Auto-fit column widths
-      worksheet.columns.forEach((column) => {
-        column.width = 20;
-      });
+      // Column widths
+      worksheet.getColumn(1).width = 14; // Date
+      worksheet.getColumn(2).width = 12; // Day
+      worksheet.getColumn(3).width = 14; // Check In (Time)
+      worksheet.getColumn(4).width = 28; // Check In (Location)
+      worksheet.getColumn(5).width = 14; // Check Out (Time)
+      worksheet.getColumn(6).width = 28; // Check Out (Location)
+      worksheet.getColumn(7).width = 14; // Total Hours
+      worksheet.getColumn(8).width = 24; // Status
+      worksheet.getColumn(9).width = 22; // Leave Type / Holiday
+      worksheet.getColumn(10).width = 18; // Attendance Session
 
-      // Set Response Headers for XLSX Download
-      const fileName = `Attendance_${targetEmp.employee_code}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      // Response Headers
+      const fileName = `Attendance_${targetEmp.employee_code}_${startDateStr}_to_${endDateStr}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 

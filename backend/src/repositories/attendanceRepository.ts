@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../db';
 import { reverseGeocode } from '../utils/geocoding';
+import { AttendanceStatusService } from '../services/attendanceStatusService';
 
 export class AttendanceRepository {
   /**
@@ -412,6 +413,16 @@ export class AttendanceRepository {
     }
 
     return withTransaction(async (client) => {
+      // Prevent duplicate pending regularization requests for the same employee/date
+      const dupRes = await client.query(
+        `SELECT id FROM attendance_regularizations 
+         WHERE employee_id = $1 AND organization_id = $2 AND attendance_date = $3 AND status = 'PENDING'`,
+        [employeeId, organizationId, attendanceDate]
+      );
+      if (dupRes.rows.length > 0) {
+        throw new Error('A pending regularization request already exists for this date.');
+      }
+
       const attRes = await client.query(
         `SELECT id, check_in, check_out FROM attendance 
          WHERE employee_id = $1 AND organization_id = $2 AND date = $3 
@@ -539,6 +550,10 @@ export class AttendanceRepository {
       const reg = regRes.rows[0];
       if (!reg) {
         throw new Error('Pending regularization request not found or already processed.');
+      }
+
+      if (approverId && reg.employee_id === approverId) {
+        throw new Error('Employees cannot approve their own regularization request.');
       }
 
       await client.query(
@@ -802,23 +817,30 @@ export class AttendanceRepository {
     const tz = await this.getOrganizationTimeZone(organizationId);
     const targetDateStr = dateStr || this.getOrgDateStr(new Date(), tz);
 
+    const isHoliday = !!AttendanceStatusService.getCalendarHolidayName(targetDateStr);
+    const holRes = await query(`SELECT id FROM holidays WHERE organization_id = $1 AND date = $2 LIMIT 1`, [organizationId, targetDateStr]);
+    const dayIsHoliday = isHoliday || holRes.rows.length > 0;
+
     const text = `
       SELECT 
         (SELECT COUNT(*)::int FROM employees WHERE organization_id = $1 AND status = 'ACTIVE') as total_employees,
-        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status IN ('PRESENT', 'LATE', 'FIELD_VISIT', 'ON_DUTY', 'WORK_FROM_HOME')) as present_today,
-        (SELECT COUNT(DISTINCT employee_id)::int FROM attendance WHERE organization_id = $1 AND date = $2 AND status = 'LATE') as late_today,
-        (SELECT COUNT(*)::int FROM leave_requests WHERE organization_id = $1 AND $2 BETWEEN start_date AND end_date AND status = 'APPROVED') as on_leave_today
+        (SELECT COUNT(DISTINCT a.employee_id)::int FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.organization_id = $1 AND a.date = $2 AND e.status = 'ACTIVE') as present_today,
+        (SELECT COUNT(DISTINCT l.employee_id)::int FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.organization_id = $1 AND $2 BETWEEN l.start_date AND l.end_date AND l.status = 'APPROVED' AND e.status = 'ACTIVE') as on_leave_today
     `;
     const res = await query(text, [organizationId, targetDateStr]);
-    const row = res.rows[0] || { total_employees: 0, present_today: 0, late_today: 0, on_leave_today: 0 };
-    const absent_today = Math.max(0, row.total_employees - (row.present_today + row.on_leave_today));
+    const row = res.rows[0] || { total_employees: 0, present_today: 0, on_leave_today: 0 };
+    
+    let absent_today = 0;
+    if (!dayIsHoliday) {
+      absent_today = Math.max(0, row.total_employees - (row.present_today + row.on_leave_today));
+    }
 
     return {
       totalEmployees: row.total_employees,
       presentToday: row.present_today,
-      lateToday: row.late_today,
       onLeaveToday: row.on_leave_today,
-      absentToday: absent_today
+      absentToday: absent_today,
+      isHoliday: dayIsHoliday
     };
   }
 
