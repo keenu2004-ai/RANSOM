@@ -759,12 +759,12 @@ export class AttendanceRepository {
       endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
     }
 
-    // 1. Fetch active/non-deleted employees
+    // 1. Fetch active employees
     let empSql = `
       SELECT e.id, e.employee_code, e.first_name, e.last_name, e.status, d.name as department_name
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
-      WHERE e.organization_id = $1 AND (e.deleted_at IS NULL)
+      WHERE e.organization_id = $1
     `;
     const empParams: any[] = [organizationId];
     let pIdx = 2;
@@ -793,7 +793,7 @@ export class AttendanceRepository {
         a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
-      WHERE a.organization_id = $1 AND a.date BETWEEN $2 AND $3 AND (e.deleted_at IS NULL)
+      WHERE a.organization_id = $1 AND a.date BETWEEN $2 AND $3
       ORDER BY a.date ASC, a.check_in ASC
     `;
     const attRes = await query(attSql, [organizationId, startDateStr, endDateStr]);
@@ -811,7 +811,7 @@ export class AttendanceRepository {
       JOIN leave_types lt ON l.leave_type_id = lt.id
       JOIN employees e ON l.employee_id = e.id
       WHERE l.organization_id = $1 AND l.status = 'APPROVED'
-        AND (l.start_date <= $3 AND l.end_date >= $2) AND (e.deleted_at IS NULL)
+        AND (l.start_date <= $3 AND l.end_date >= $2)
     `;
     const leaveRes = await query(leaveSql, [organizationId, startDateStr, endDateStr]);
     const leavesMap = new Map<string, { leave_type_name: string }>();

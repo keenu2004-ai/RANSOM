@@ -266,17 +266,23 @@ async function runAttendanceVerificationSuite() {
     assert(false, 'Test 21: 4th Saturday Holiday', e.message);
   }
 
-  // TEST 22: DELETED EMPLOYEE EXCLUSION
+  // TEST 22: DELETED EMPLOYEE EXCLUSION (Hard Deletion + ON DELETE SET NULL)
   try {
     if (orgId) {
-      const deletedEmpRes = await query(`SELECT id, first_name, last_name FROM employees WHERE organization_id = $1 AND deleted_at IS NOT NULL LIMIT 1`, [orgId]);
-      if (deletedEmpRes.rows.length > 0) {
+      const deletedHistoricalAtt = await query(
+        `SELECT id, employee_name_snapshot, employee_code_snapshot
+         FROM attendance
+         WHERE organization_id = $1 AND employee_id IS NULL AND (employee_name_snapshot IS NOT NULL OR employee_code_snapshot IS NOT NULL)
+         LIMIT 1`,
+        [orgId]
+      );
+      if (deletedHistoricalAtt.rows.length > 0) {
         const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
-        const deletedEmpId = deletedEmpRes.rows[0].id;
-        const inGrid = gridSep.attendance.some((a: any) => a.employee_id === deletedEmpId);
-        assert(!inGrid, `Test 22: Deleted employee ${deletedEmpId} is completely excluded from AttendanceRepository grid`);
+        const snapshotName = deletedHistoricalAtt.rows[0].employee_name_snapshot;
+        const nullEmpInGrid = gridSep.attendance.some((a: any) => a.employee_id === null || (snapshotName && a.employee_name === snapshotName && a.employee_id === undefined));
+        assert(!nullEmpInGrid, `Test 22: Historical attendance of physically deleted employee (${snapshotName}) is excluded from current AttendanceRepository grid`);
       } else {
-        skip('Test 22: Deleted Employee Exclusion', 'no deleted employee in DB fixture');
+        skip('Test 22: Deleted Employee Exclusion', 'Deleted employee historical fixture unavailable');
       }
     } else {
       skip('Test 22: Deleted Employee Exclusion', 'Database connection unavailable');
