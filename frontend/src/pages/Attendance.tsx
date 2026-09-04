@@ -266,41 +266,22 @@ export const Attendance: React.FC = () => {
           <p className="text-xs text-slate-400">Employee attendance records, punch control, and regularization management</p>
         </div>
 
-        {user?.employeeId && (
-          <button
-            onClick={() => openRegularizeForDate(new Date().toISOString().split('T')[0])}
-            className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow flex items-center gap-2 cursor-pointer"
-          >
-            <CalendarIcon className="w-4 h-4 text-indigo-400" />
-            <span>Regularize Attendance</span>
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Legend matching reference screenshot */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-slate-300 bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Present</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Absent</span>
+          </div>
 
-      {/* Top Level Summary Cards: STRICTLY PRESENT & ABSENT ONLY */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">PRESENT</p>
-            <p className="text-3xl font-extrabold text-emerald-400 mt-1">
-              {monthSummary ? monthSummary.totalPresentDays : (workforceSummary ? workforceSummary.presentToday || 0 : (todaySummary?.firstCheckIn ? 1 : 0))}
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <CheckCircle className="w-6 h-6 text-emerald-400" />
-          </div>
-        </div>
-
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">ABSENT</p>
-            <p className="text-3xl font-extrabold text-rose-400 mt-1">
-              {monthSummary ? monthSummary.totalAbsentDays : (workforceSummary ? workforceSummary.absentToday || 0 : (todaySummary?.firstCheckIn ? 0 : 1))}
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-            <AlertCircle className="w-6 h-6 text-rose-400" />
-          </div>
+          {user?.employeeId && (
+            <button
+              onClick={() => openRegularizeForDate(new Date().toISOString().split('T')[0])}
+              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow flex items-center gap-2 cursor-pointer"
+            >
+              <CalendarIcon className="w-4 h-4 text-indigo-400" />
+              <span>Regularize Attendance</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -428,6 +409,7 @@ export const Attendance: React.FC = () => {
         title="Attendance Calendar"
         subtitle="Visualizing daily attendance check-ins, multi-sessions, and working calendar holidays"
         attendanceOnly={true}
+        summaryOverride={monthSummary ? { present: monthSummary.totalPresentDays, absent: monthSummary.totalAbsentDays } : undefined}
       />
 
       {/* Grouped Employee Attendance Logs */}

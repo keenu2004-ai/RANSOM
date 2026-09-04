@@ -25,6 +25,7 @@ export interface SharedCalendarProps {
   title?: string;
   subtitle?: string;
   attendanceOnly?: boolean;
+  summaryOverride?: { present?: number; absent?: number };
 }
 
 export const SharedCalendar: React.FC<SharedCalendarProps> = ({
@@ -35,7 +36,8 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
   onEventClick,
   title = "Unified Organizational Calendar",
   subtitle = "Attendance, leave, company holidays, and weekly project tasks in one unified view",
-  attendanceOnly = false
+  attendanceOnly = false,
+  summaryOverride
 }) => {
   const [currentYear, setCurrentYear] = useState<number>(initialYear);
   const [currentMonth, setCurrentMonth] = useState<number>(initialMonth);
@@ -155,8 +157,8 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
       if (y === currentYear && m === (currentMonth + 1)) {
         if (evt.type === 'ATTENDANCE') {
           const st = (evt.status || '').toUpperCase();
-          if (st === 'PRESENT') present++;
-          else if (st === 'ABSENT') absent++;
+          if (st === 'PRESENT' || st.includes('PRESENT')) present++;
+          else if (st === 'ABSENT' || st.includes('ABSENT')) absent++;
           else if (st === 'HALF_DAY') halfDay++;
         } else if (evt.type === 'LEAVE') {
           leave++;
@@ -198,117 +200,140 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
           <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="p-1.5 hover:bg-slate-800 text-slate-300 rounded-lg transition-all"
-              title="Previous Month"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleToday}
-              className="px-3 py-1 font-semibold text-cyan-400 hover:text-cyan-300 rounded-lg transition-all"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="p-1.5 hover:bg-slate-800 text-slate-300 rounded-lg transition-all"
-              title="Next Month"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Main Month Navigation Controls: [<] [Month Year] [>] */}
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="p-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition-all cursor-pointer"
+            title="Previous Month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="px-4 py-2 bg-slate-950 border border-cyan-500/30 text-cyan-400 font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm">
+            <span>{monthNames[currentMonth]} {currentYear}</span>
           </div>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="p-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition-all cursor-pointer"
+            title="Next Month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Monthly Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Present</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+      {attendanceOnly ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between shadow-md">
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Present</span>
+              <p className="text-2xl font-extrabold text-emerald-400 mt-0.5">
+                {summaryOverride?.present !== undefined ? summaryOverride.present : summaryStats.present}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            </div>
           </div>
-          <p className="text-lg font-extrabold text-emerald-400 mt-1">{summaryStats.present}</p>
-        </div>
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Absent</span>
-            <XCircle className="w-4 h-4 text-rose-400" />
+          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between shadow-md">
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Absent</span>
+              <p className="text-2xl font-extrabold text-rose-400 mt-0.5">
+                {summaryOverride?.absent !== undefined ? summaryOverride.absent : summaryStats.absent}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <XCircle className="w-5 h-5 text-rose-400" />
+            </div>
           </div>
-          <p className="text-lg font-extrabold text-rose-400 mt-1">{summaryStats.absent}</p>
         </div>
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Half Day</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Present</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            </div>
+            <p className="text-lg font-extrabold text-emerald-400 mt-1">{summaryStats.present}</p>
           </div>
-          <p className="text-lg font-extrabold text-amber-400 mt-1">{summaryStats.halfDay}</p>
-        </div>
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Leave</span>
-            <Palmtree className="w-4 h-4 text-indigo-400" />
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Absent</span>
+              <XCircle className="w-4 h-4 text-rose-400" />
+            </div>
+            <p className="text-lg font-extrabold text-rose-400 mt-1">{summaryStats.absent}</p>
           </div>
-          <p className="text-lg font-extrabold text-indigo-400 mt-1">{summaryStats.leave}</p>
-        </div>
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Holidays</span>
-            <Award className="w-4 h-4 text-purple-400" />
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Half Day</span>
+              <Clock className="w-4 h-4 text-amber-400" />
+            </div>
+            <p className="text-lg font-extrabold text-amber-400 mt-1">{summaryStats.halfDay}</p>
           </div>
-          <p className="text-lg font-extrabold text-purple-400 mt-1">{summaryStats.holidays}</p>
-        </div>
-        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tasks</span>
-            <Briefcase className="w-4 h-4 text-cyan-400" />
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Leave</span>
+              <Palmtree className="w-4 h-4 text-indigo-400" />
+            </div>
+            <p className="text-lg font-extrabold text-indigo-400 mt-1">{summaryStats.leave}</p>
           </div>
-          <p className="text-lg font-extrabold text-cyan-400 mt-1">{summaryStats.tasks}</p>
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Holidays</span>
+              <Award className="w-4 h-4 text-purple-400" />
+            </div>
+            <p className="text-lg font-extrabold text-purple-400 mt-1">{summaryStats.holidays}</p>
+          </div>
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tasks</span>
+              <Briefcase className="w-4 h-4 text-cyan-400" />
+            </div>
+            <p className="text-lg font-extrabold text-cyan-400 mt-1">{summaryStats.tasks}</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Filter Toggles & Accessibility Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/70 border border-slate-800 rounded-xl text-xs">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span className="font-semibold text-slate-400 flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Event Filters:</span>
-          </span>
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-            <input type="checkbox" checked={showAttendance} onChange={e => setShowAttendance(e.target.checked)} className="rounded accent-cyan-500" />
-            <span>Attendance</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-            <input type="checkbox" checked={showLeave} onChange={e => setShowLeave(e.target.checked)} className="rounded accent-indigo-500" />
-            <span>Leave</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-            <input type="checkbox" checked={showHolidays} onChange={e => setShowHolidays(e.target.checked)} className="rounded accent-purple-500" />
-            <span>Holidays</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-            <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} className="rounded accent-cyan-500" />
-            <span>Tasks / Weekly Plan</span>
-          </label>
-        </div>
+      {/* Filter Toggles & Accessibility Legend (Only shown for non-attendance calendars) */}
+      {!attendanceOnly && (
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/70 border border-slate-800 rounded-xl text-xs">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="font-semibold text-slate-400 flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Event Filters:</span>
+            </span>
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+              <input type="checkbox" checked={showAttendance} onChange={e => setShowAttendance(e.target.checked)} className="rounded accent-cyan-500" />
+              <span>Attendance</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+              <input type="checkbox" checked={showLeave} onChange={e => setShowLeave(e.target.checked)} className="rounded accent-indigo-500" />
+              <span>Leave</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+              <input type="checkbox" checked={showHolidays} onChange={e => setShowHolidays(e.target.checked)} className="rounded accent-purple-500" />
+              <span>Holidays</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
+              <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} className="rounded accent-cyan-500" />
+              <span>Tasks / Weekly Plan</span>
+            </label>
+          </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 flex-wrap">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Present</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Absent</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Half Day</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> Leave</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span> Holiday</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400"></span> Task</span>
+          {/* Legend */}
+          <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Present</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Absent</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Half Day</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> Leave</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span> Holiday</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400"></span> Task</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Month Grid */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
