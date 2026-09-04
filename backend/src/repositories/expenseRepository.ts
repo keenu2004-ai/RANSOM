@@ -576,6 +576,131 @@ export class ExpenseRepository {
     };
   }
 
+  static async getEmployeeExpenseRecords(
+    organizationId: string,
+    employeeId: string,
+    fyStart: string,
+    fyEnd: string,
+    filters: { search?: string; type?: string; category?: string; status?: string; page?: number; limit?: number }
+  ) {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const cte = this.getCombinedClaimsCTE();
+
+    let whereSql = `WHERE uc.employee_id = $2 AND uc.claim_date >= $3 AND uc.claim_date <= $4`;
+    const params: any[] = [organizationId, employeeId, fyStart, fyEnd];
+    let pIdx = 5;
+
+    if (filters.search) {
+      whereSql += ` AND (uc.description ILIKE $${pIdx} OR uc.merchant ILIKE $${pIdx} OR uc.category ILIKE $${pIdx})`;
+      params.push(`%${filters.search}%`);
+      pIdx++;
+    }
+
+    if (filters.type) {
+      if (filters.type === 'TRIP') {
+        whereSql += ` AND uc.claim_source = 'TRIP'`;
+      } else {
+        whereSql += ` AND uc.expense_type = $${pIdx}`;
+        params.push(filters.type);
+        pIdx++;
+      }
+    }
+
+    if (filters.category) {
+      whereSql += ` AND uc.category = $${pIdx}`;
+      params.push(filters.category);
+      pIdx++;
+    }
+
+    if (filters.status) {
+      whereSql += ` AND uc.status = $${pIdx}`;
+      params.push(filters.status);
+      pIdx++;
+    }
+
+    const countSql = `
+      ${cte}
+      SELECT COUNT(*)::int as total
+      FROM unified_claims uc
+      ${whereSql}
+    `;
+    const countRes = await query<{ total: number }>(countSql, params);
+    const totalRecords = countRes.rows[0]?.total || 0;
+
+    const summarySql = `
+      ${cte}
+      SELECT
+        COALESCE(SUM(CASE WHEN uc.status = 'APPROVED' THEN uc.amount ELSE 0 END), 0)::numeric as approved_amount,
+        COALESCE(SUM(CASE WHEN uc.status IN ('SUBMITTED', 'PENDING') THEN uc.amount ELSE 0 END), 0)::numeric as pending_amount,
+        COALESCE(SUM(CASE WHEN uc.status = 'REJECTED' THEN uc.amount ELSE 0 END), 0)::numeric as rejected_amount,
+        COALESCE(SUM(uc.amount), 0)::numeric as total_requested
+      FROM unified_claims uc
+      ${whereSql}
+    `;
+    const summaryRes = await query(summarySql, params);
+    const sumRow = summaryRes.rows[0] || {};
+
+    const dataSql = `
+      ${cte}
+      SELECT
+        uc.id,
+        uc.expense_type,
+        uc.claim_date,
+        uc.category,
+        uc.amount,
+        uc.status,
+        uc.merchant,
+        uc.description,
+        uc.claim_source,
+        uc.created_at as submitted_date,
+        uc.reviewed_at,
+        CONCAT(rev.first_name, ' ', rev.last_name) as reviewer_name,
+        uc.rejection_reason
+      FROM unified_claims uc
+      LEFT JOIN employees rev ON uc.reviewed_by = rev.id
+      ${whereSql}
+      ORDER BY uc.claim_date DESC, uc.created_at DESC
+      LIMIT $${pIdx} OFFSET $${pIdx + 1}
+    `;
+
+    params.push(limit, offset);
+    const dataRes = await query(dataSql, params);
+
+    return {
+      summary: {
+        totalRecords,
+        approvedAmount: parseFloat(sumRow.approved_amount || '0'),
+        pendingAmount: parseFloat(sumRow.pending_amount || '0'),
+        rejectedAmount: parseFloat(sumRow.rejected_amount || '0'),
+        totalRequested: parseFloat(sumRow.total_requested || '0')
+      },
+      records: dataRes.rows.map(r => ({
+        id: r.id,
+        expenseType: r.expense_type,
+        date: r.claim_date,
+        category: r.category,
+        amount: parseFloat(r.amount || '0'),
+        status: r.status,
+        merchant: r.merchant || '',
+        description: r.description || '',
+        claimSource: r.claim_source,
+        submittedDate: r.submitted_date,
+        reviewedDate: r.reviewed_at || '',
+        approver: r.reviewer_name || '',
+        rejectionReason: r.rejection_reason || ''
+      })),
+      pagination: {
+        total: totalRecords,
+        page,
+        limit,
+        totalPages: Math.ceil(totalRecords / limit)
+      }
+    };
+  }
+
   static async getEmployeeExpenseDetails(organizationId: string, employeeId: string, fyStart: string, fyEnd: string) {
     const cte = this.getCombinedClaimsCTE();
 

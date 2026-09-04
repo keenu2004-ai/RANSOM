@@ -760,6 +760,41 @@ router.get('/management/employees/:employeeId', requireManagementRole, async (re
   }
 });
 
+// 3b. Employee Individual Expense Records Endpoint (Paginated & Filterable)
+router.get('/management/employees/:employeeId/records', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { employeeId } = req.params;
+    const { startYear, search, type, category, status, page, limit } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const records = await ExpenseRepository.getEmployeeExpenseRecords(
+      organizationId,
+      employeeId,
+      fy.startDate,
+      fy.endDate,
+      {
+        search: search as string,
+        type: type as string,
+        category: category as string,
+        status: status as string,
+        page: page ? parseInt(page as string, 10) : 1,
+        limit: limit ? parseInt(limit as string, 10) : 10
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        ...records
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 // 4. Analytics Breakdown Endpoint (Category Donut, Monthly Trend, Top Categories, Optimization, Dept)
 router.get('/management/analytics', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

@@ -57,6 +57,21 @@ export const Expenses: React.FC = () => {
   const [empDrawerData, setEmpDrawerData] = useState<any | null>(null);
   const [loadingEmpDrawer, setLoadingEmpDrawer] = useState(false);
 
+  // Employee Individual Records State
+  const [empRecordsList, setEmpRecordsList] = useState<any[]>([]);
+  const [loadingEmpRecords, setLoadingEmpRecords] = useState(false);
+  const [empRecordPage, setEmpRecordPage] = useState(1);
+  const [empRecordTotalPages, setEmpRecordTotalPages] = useState(1);
+  const [empRecordTypeFilter, setEmpRecordTypeFilter] = useState('');
+  const [empRecordStatusFilter, setEmpRecordStatusFilter] = useState('');
+  const [empRecordSummary, setEmpRecordSummary] = useState({
+    totalRecords: 0,
+    approvedAmount: 0,
+    pendingAmount: 0,
+    rejectedAmount: 0,
+    totalRequested: 0
+  });
+
   // Loading & Error States for Management
   const [loadingMgmt, setLoadingMgmt] = useState(false);
   const [mgmtError, setMgmtError] = useState<string | null>(null);
@@ -227,11 +242,39 @@ export const Expenses: React.FC = () => {
     }
   }, []);
 
+  // Fetch Employee Individual Records
+  const fetchEmpRecordDetails = useCallback(async (empId: string, yr: number, page: number, type: string, status: string) => {
+    setLoadingEmpRecords(true);
+    try {
+      const res = await apiFetch(`/expenses/management/employees/${empId}/records`, {
+        params: {
+          startYear: yr,
+          page,
+          limit: 5,
+          type,
+          status
+        }
+      });
+      setEmpRecordsList(res?.records || []);
+      if (res?.summary) {
+        setEmpRecordSummary(res.summary);
+      }
+      if (res?.pagination) {
+        setEmpRecordTotalPages(res.pagination.totalPages || 1);
+      }
+    } catch (err: any) {
+      console.warn('Failed to load employee expense records:', err.message);
+    } finally {
+      setLoadingEmpRecords(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (selectedEmpId) {
       fetchEmpDrawerDetails(selectedEmpId, empDrawerYear);
+      fetchEmpRecordDetails(selectedEmpId, empDrawerYear, empRecordPage, empRecordTypeFilter, empRecordStatusFilter);
     }
-  }, [selectedEmpId, empDrawerYear, fetchEmpDrawerDetails]);
+  }, [selectedEmpId, empDrawerYear, empRecordPage, empRecordTypeFilter, empRecordStatusFilter, fetchEmpDrawerDetails, fetchEmpRecordDetails]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1633,8 +1676,121 @@ export const Expenses: React.FC = () => {
                         </p>
                       </div>
 
+                      {/* INDIVIDUAL EXPENSE RECORDS SECTION */}
+                      <div className="bg-[#090d16] border border-slate-800/80 rounded-lg p-3 space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                          <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">Individual Expense Records</h4>
+                          <span className="text-[10px] text-slate-400 font-mono">Total: {empRecordSummary.totalRecords}</span>
+                        </div>
+
+                        {/* Record Filters */}
+                        <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                          <select
+                            value={empRecordTypeFilter}
+                            onChange={e => { setEmpRecordTypeFilter(e.target.value); setEmpRecordPage(1); }}
+                            className="px-2 py-1 bg-[#0f172a] border border-slate-800 rounded text-slate-300"
+                          >
+                            <option value="">All Types</option>
+                            <option value="BUSINESS">Business</option>
+                            <option value="LOCAL_TRAVEL">Local Travel</option>
+                            <option value="TRIP">Trip Expense</option>
+                          </select>
+
+                          <select
+                            value={empRecordStatusFilter}
+                            onChange={e => { setEmpRecordStatusFilter(e.target.value); setEmpRecordPage(1); }}
+                            className="px-2 py-1 bg-[#0f172a] border border-slate-800 rounded text-slate-300"
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="SUBMITTED">Pending</option>
+                            <option value="REJECTED">Rejected</option>
+                            <option value="DRAFT">Draft</option>
+                          </select>
+                        </div>
+
+                        {/* Individual Record Table */}
+                        {loadingEmpRecords ? (
+                          <div className="py-6 text-center text-[10px] text-slate-400">Loading records...</div>
+                        ) : empRecordsList.length === 0 ? (
+                          <div className="py-4 text-center text-[10px] text-slate-500 italic">No records matching selected criteria.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="overflow-x-auto border border-slate-800/60 rounded">
+                              <table className="w-full text-left text-[10px]">
+                                <thead>
+                                  <tr className="bg-[#0f172a] text-slate-400 border-b border-slate-800 font-semibold uppercase">
+                                    <th className="py-1.5 px-2">Type</th>
+                                    <th className="py-1.5 px-2">Date</th>
+                                    <th className="py-1.5 px-2">Category</th>
+                                    <th className="py-1.5 px-2 text-right">Amount (₹)</th>
+                                    <th className="py-1.5 px-2 text-center">Status</th>
+                                    <th className="py-1.5 px-2 text-center">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/40">
+                                  {empRecordsList.map(rec => (
+                                    <tr key={rec.id} className="hover:bg-slate-800/20">
+                                      <td className="py-1.5 px-2 font-medium text-slate-200">{rec.expenseType}</td>
+                                      <td className="py-1.5 px-2 font-mono text-slate-400">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</td>
+                                      <td className="py-1.5 px-2 text-slate-300 truncate max-w-[80px]">{rec.category}</td>
+                                      <td className="py-1.5 px-2 text-right font-bold text-white">₹{rec.amount.toLocaleString('en-IN')}</td>
+                                      <td className="py-1.5 px-2 text-center">
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                          rec.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400' :
+                                          rec.status === 'REJECTED' ? 'bg-rose-950 text-rose-400' :
+                                          'bg-amber-950 text-amber-400'
+                                        }`}>
+                                          {rec.status}
+                                        </span>
+                                      </td>
+                                      <td className="py-1.5 px-2 text-center">
+                                        <button
+                                          onClick={() => {
+                                            if (rec.claimSource === 'TRIP') {
+                                              loadTripDetails(rec.id);
+                                            } else {
+                                              setSelectedSingleExpense(rec);
+                                            }
+                                          }}
+                                          className="p-1 text-cyan-400 hover:text-white"
+                                          title="View Claim Details"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                              <div>Page {empRecordPage} of {empRecordTotalPages}</div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  disabled={empRecordPage <= 1}
+                                  onClick={() => setEmpRecordPage(p => p - 1)}
+                                  className="px-2 py-0.5 bg-[#0f172a] border border-slate-800 disabled:opacity-40 rounded text-slate-300"
+                                >
+                                  &lt;
+                                </button>
+                                <button
+                                  disabled={empRecordPage >= empRecordTotalPages}
+                                  onClick={() => setEmpRecordPage(p => p + 1)}
+                                  className="px-2 py-0.5 bg-[#0f172a] border border-slate-800 disabled:opacity-40 rounded text-slate-300"
+                                >
+                                  &gt;
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <button onClick={() => setSelectedEmpId(null)} className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors">
-                        View All Expense Claims &rarr;
+                        Close Details
                       </button>
                     </>
                   ) : null}
