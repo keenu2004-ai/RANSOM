@@ -590,7 +590,151 @@ export async function generateWeeklyPlanXlsx(
 
   autoFitColumns(monthlySheet, 14);
 
-  // Generate ArrayBuffer and return Buffer
-  const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+  // Force buffer generation output
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+export async function generateExpenseReportXlsx(
+  summary: any,
+  employees: any[],
+  categories: any[],
+  departments: any[],
+  claims: any[],
+  fyLabel: string
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'THEIAKSHI ENTERPRISE HRMS';
+  workbook.created = new Date();
+
+  const NAVY_HEADER_FILL: ExcelJS.Fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: '1E293B' }
+  };
+  const HEADER_FONT: Partial<ExcelJS.Font> = {
+    name: 'Segoe UI',
+    size: 10,
+    bold: true,
+    color: { argb: 'FFFFFF' }
+  };
+  const THIN_BORDER: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: 'CBD5E1' } },
+    left: { style: 'thin', color: { argb: 'CBD5E1' } },
+    bottom: { style: 'thin', color: { argb: 'CBD5E1' } },
+    right: { style: 'thin', color: { argb: 'CBD5E1' } }
+  };
+
+  const autoFitColumns = (sheet: ExcelJS.Worksheet, minWidth = 14) => {
+    sheet.columns.forEach(col => {
+      let maxLen = minWidth;
+      col.eachCell?.({ includeEmpty: false }, cell => {
+        const valStr = cell.value ? String(cell.value) : '';
+        if (valStr.length > maxLen) {
+          maxLen = Math.min(valStr.length + 3, 50);
+        }
+      });
+      col.width = maxLen;
+    });
+  };
+
+  // Sheet 1: Executive Summary
+  const s1 = workbook.addWorksheet('Executive Summary');
+  s1.addRow(['THEIAKSHI ENTERPRISE HRMS — EXPENSE MANAGEMENT REPORT']);
+  s1.addRow([`Financial Period: ${fyLabel}`]);
+  s1.addRow([]);
+  s1.addRow(['KPI Metric', 'Value / Amount']);
+  s1.getRow(4).fill = NAVY_HEADER_FILL;
+  s1.getRow(4).font = HEADER_FONT;
+
+  s1.addRow(['Total Employees', summary.totalEmployees]);
+  s1.addRow(['Employees with Expenses', summary.employeesWithExpenses]);
+  s1.addRow(['Total Requested Amount', `₹${summary.totalRequestedAmount.toLocaleString('en-IN')}`]);
+  s1.addRow(['Approved Amount', `₹${summary.approvedAmount.toLocaleString('en-IN')} (${summary.approvedPct.toFixed(1)}%)`]);
+  s1.addRow(['Pending Amount', `₹${summary.pendingAmount.toLocaleString('en-IN')} (${summary.pendingPct.toFixed(1)}%)`]);
+  s1.addRow(['Rejected Amount', `₹${summary.rejectedAmount.toLocaleString('en-IN')} (${summary.rejectedPct.toFixed(1)}%)`]);
+  autoFitColumns(s1);
+
+  // Sheet 2: Employee Summary
+  const s2 = workbook.addWorksheet('Employee Summary');
+  s2.addRow(['Employee Code', 'Employee Name', 'Department', 'Approved (₹)', 'Pending (₹)', 'Rejected (₹)', 'Total Requested (₹)', 'Total Expense (₹)', 'Top Category']);
+  s2.getRow(1).fill = NAVY_HEADER_FILL;
+  s2.getRow(1).font = HEADER_FONT;
+  employees.forEach(e => {
+    s2.addRow([
+      e.employeeCode,
+      e.employeeName,
+      e.department,
+      e.approvedAmount,
+      e.pendingAmount,
+      e.rejectedAmount,
+      e.totalRequested,
+      e.totalExpense,
+      e.topCategory
+    ]);
+  });
+  autoFitColumns(s2);
+
+  // Sheet 3: Category Summary
+  const s3 = workbook.addWorksheet('Category Summary');
+  s3.addRow(['Category', 'Total Amount (₹)', 'Percentage of Total (%)']);
+  s3.getRow(1).fill = NAVY_HEADER_FILL;
+  s3.getRow(1).font = HEADER_FONT;
+  categories.forEach(c => {
+    s3.addRow([c.category, c.amount, c.percentage.toFixed(1)]);
+  });
+  autoFitColumns(s3);
+
+  // Sheet 4: Department Summary
+  const s4 = workbook.addWorksheet('Department Summary');
+  s4.addRow(['Department', 'Employees with Expenses', 'Approved (₹)', 'Pending (₹)', 'Rejected (₹)', 'Total Requested (₹)', 'Total Expense (₹)', 'Avg Expense / Employee (₹)']);
+  s4.getRow(1).fill = NAVY_HEADER_FILL;
+  s4.getRow(1).font = HEADER_FONT;
+  departments.forEach(d => {
+    s4.addRow([
+      d.department,
+      d.employeesWithExpenses,
+      d.approvedAmount,
+      d.pendingAmount,
+      d.rejectedAmount,
+      d.totalRequested,
+      d.totalExpense,
+      d.averageExpensePerEmployee
+    ]);
+  });
+  autoFitColumns(s4);
+
+  // Sheet 5: Detailed Claims
+  const s5 = workbook.addWorksheet('Detailed Claims');
+  s5.addRow([
+    'Employee Name', 'Employee Code', 'Department', 'Claim ID', 'Type', 'Category',
+    'Date', 'Amount (₹)', 'Status', 'Merchant / Route', 'Description', 'Submitted Date',
+    'Reviewed Date', 'Approver', 'Remarks'
+  ]);
+  s5.getRow(1).fill = NAVY_HEADER_FILL;
+  s5.getRow(1).font = HEADER_FONT;
+
+  claims.forEach(c => {
+    s5.addRow([
+      c.employeeName,
+      c.employeeCode,
+      c.department,
+      c.claimId,
+      c.expenseType,
+      c.category,
+      safeFormatDate(c.date),
+      c.amount,
+      c.status,
+      c.merchant,
+      c.description,
+      safeFormatDate(c.submittedDate),
+      safeFormatDate(c.reviewedDate),
+      c.approver,
+      c.remarks
+    ]);
+  });
+  autoFitColumns(s5);
+
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
 }

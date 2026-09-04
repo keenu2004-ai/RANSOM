@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/authMiddleware';
 import { requireEmployee } from '../middleware/requireEmployee';
 import { requireRole } from '../middleware/rbacMiddleware';
 import { validateExpenseApprover } from '../utils/approvalHierarchy';
+import { getFinancialYearPeriod } from '../utils/financialYear';
 import { AuthenticatedRequest } from '../types';
 
 const router = Router();
@@ -652,6 +653,204 @@ router.delete('/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedReque
       success: true,
       data: { message: 'Expense claim permanently deleted.', expense: deleted }
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ============================================================
+// EXPENSE MANAGEMENT & ANALYTICS ENDPOINTS (RBAC PROTECTED)
+// Roles: SUPER_ADMIN, ADMIN, HR_MANAGER, HR_ADMIN, HR_EXECUTIVE
+// ============================================================
+const requireManagementRole = requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR_ADMIN', 'HR_EXECUTIVE');
+
+// 1. KPI Summary Endpoint
+router.get('/management/summary', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+    const prevFy = getFinancialYearPeriod(fy.startYear - 1);
+
+    const summary = await ExpenseRepository.getManagementSummary(
+      organizationId,
+      fy.startDate,
+      fy.endDate,
+      prevFy.startDate,
+      prevFy.endDate
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        summary
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 2. Employee Expense Overview Endpoint
+router.get('/management/employees', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear, search, departmentId, status, page, limit, includeZeroExpenses } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const overview = await ExpenseRepository.getEmployeeExpenseOverview(
+      organizationId,
+      fy.startDate,
+      fy.endDate,
+      {
+        search: search as string,
+        departmentId: departmentId as string,
+        status: status as string,
+        page: page ? parseInt(page as string, 10) : 1,
+        limit: limit ? parseInt(limit as string, 10) : 10,
+        includeZeroExpenses: includeZeroExpenses === 'true'
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        ...overview
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 3. Employee Expense Details (Drawer Data) Endpoint
+router.get('/management/employees/:employeeId', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { employeeId } = req.params;
+    const { startYear } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const details = await ExpenseRepository.getEmployeeExpenseDetails(
+      organizationId,
+      employeeId,
+      fy.startDate,
+      fy.endDate
+    );
+
+    if (!details) {
+      return res.status(404).json({
+        success: false,
+        error: 'Employee expense profile not found.',
+        code: 'EMPLOYEE_NOT_FOUND'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        ...details
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 4. Analytics Breakdown Endpoint (Category Donut, Monthly Trend, Top Categories, Optimization, Dept)
+router.get('/management/analytics', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const analytics = await ExpenseRepository.getExpenseAnalytics(
+      organizationId,
+      fy.startDate,
+      fy.endDate,
+      fy.startYear
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        ...analytics
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 5. Recent Requests Endpoint
+router.get('/management/recent', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear, limit } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const requests = await ExpenseRepository.getRecentRequests(
+      organizationId,
+      fy.startDate,
+      fy.endDate,
+      limit ? parseInt(limit as string, 10) : 5
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        recentRequests: requests
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// 6. Excel/CSV Download Report Endpoint
+router.get('/management/report', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear, departmentId, status, category, format } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const summaryData = await ExpenseRepository.getManagementSummary(organizationId, fy.startDate, fy.endDate);
+    const employeeOverview = await ExpenseRepository.getEmployeeExpenseOverview(organizationId, fy.startDate, fy.endDate, { limit: 1000, includeZeroExpenses: false });
+    const analyticsData = await ExpenseRepository.getExpenseAnalytics(organizationId, fy.startDate, fy.endDate, fy.startYear);
+    const detailedClaims = await ExpenseRepository.generateExpenseReportData(organizationId, fy.startDate, fy.endDate, {
+      departmentId: departmentId as string,
+      status: status as string,
+      category: category as string
+    });
+
+    if (format === 'csv') {
+      let csv = 'Employee Name,Employee Code,Department,Claim ID,Expense Type,Category,Date,Amount,Status,Merchant,Description,Submitted Date,Reviewed Date,Approver,Remarks\n';
+      detailedClaims.forEach(c => {
+        csv += `"${c.employeeName}","${c.employeeCode}","${c.department}","${c.claimId}","${c.expenseType}","${c.category}","${c.date}","${c.amount}","${c.status}","${c.merchant}","${c.description}","${c.submittedDate}","${c.reviewedDate}","${c.approver}","${c.remarks}"\n`;
+      });
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=Theiakshi_Expense_Report_${fy.label.replace(/\s+/g, '')}.csv`);
+      return res.status(200).send(csv);
+    }
+
+    const { generateExpenseReportXlsx } = require('../services/excelService');
+    const buffer = await generateExpenseReportXlsx(
+      summaryData,
+      employeeOverview.employees,
+      analyticsData.categoryBreakdown,
+      analyticsData.departmentAnalysis,
+      detailedClaims,
+      fy.label
+    );
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Theiakshi_Expense_Report_${fy.label.replace(/\s+/g, '')}.xlsx`);
+    return res.status(200).send(buffer);
   } catch (error) {
     return next(error);
   }

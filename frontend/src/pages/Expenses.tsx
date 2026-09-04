@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
+import { apiFetch, apiDownload, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
+import { getFinancialYearPeriod } from '../utils/financialYear';
 import {
   Receipt, Plus, Check, X, FileText, MapPin, Navigation,
   Building, Calendar, Upload, Trash2, Eye, AlertTriangle,
-  ArrowRight, Edit, Hotel, Plane, Clock, ChevronRight, ShieldCheck, DollarSign
+  ArrowRight, Edit, Hotel, Plane, Clock, ChevronRight, ShieldCheck, DollarSign,
+  ChevronLeft, Download, Users, PieChart, TrendingUp, Search, Filter, RefreshCw,
+  ChevronDown, CheckCircle2, XCircle, AlertCircle
 } from 'lucide-react';
 
 const BUCKET_OPTIONS = ['Exit', 'Internal', 'Onboarding', 'Other', 'Primary'];
@@ -22,6 +25,41 @@ const OTHER_EXPENSE_CATEGORIES = ['Food', 'General Expense', 'Other', 'Courier',
 export const Expenses: React.FC = () => {
   const { user } = useAuth();
   const isManagerOrAdmin = hasPermission(user?.role, 'EXPENSE_WORKFORCE_VIEW');
+
+  // FY Management State
+  const [selectedStartYear, setSelectedStartYear] = useState<number>(() => {
+    const m = new Date().getMonth() + 1;
+    const y = new Date().getFullYear();
+    return m >= 4 ? y : y - 1;
+  });
+
+  const currentFy = getFinancialYearPeriod(selectedStartYear);
+
+  // Main Mode: MANAGEMENT vs PERSONAL
+  const [mainViewMode, setMainViewMode] = useState<'MANAGEMENT' | 'PERSONAL'>(() => {
+    return isManagerOrAdmin ? 'MANAGEMENT' : 'PERSONAL';
+  });
+
+  // Management State
+  const [mgmtSummary, setMgmtSummary] = useState<any | null>(null);
+  const [mgmtOverview, setMgmtOverview] = useState<any[]>([]);
+  const [mgmtPagination, setMgmtPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [mgmtSearch, setMgmtSearch] = useState('');
+  const [mgmtDeptFilter, setMgmtDeptFilter] = useState('');
+  const [mgmtStatusFilter, setMgmtStatusFilter] = useState('');
+  const [mgmtAnalytics, setMgmtAnalytics] = useState<any | null>(null);
+  const [mgmtRecent, setMgmtRecent] = useState<any[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<{ id: string; name: string }[]>([]);
+
+  // Employee Side Drawer State
+  const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
+  const [empDrawerYear, setEmpDrawerYear] = useState<number>(selectedStartYear);
+  const [empDrawerData, setEmpDrawerData] = useState<any | null>(null);
+  const [loadingEmpDrawer, setLoadingEmpDrawer] = useState(false);
+
+  // Loading & Error States for Management
+  const [loadingMgmt, setLoadingMgmt] = useState(false);
+  const [mgmtError, setMgmtError] = useState<string | null>(null);
 
   // Claims lists
   const [myExpenses, setMyExpenses] = useState<any[]>([]);
@@ -130,6 +168,71 @@ export const Expenses: React.FC = () => {
     purpose: ''
   });
 
+  // Fetch Departments
+  useEffect(() => {
+    apiFetch('/employees/departments')
+      .then(res => setDepartmentsList(res.departments || res || []))
+      .catch(() => {});
+  }, []);
+
+  // Fetch Management Dashboard Data
+  const fetchManagementData = useCallback(async () => {
+    if (!isManagerOrAdmin) return;
+    setLoadingMgmt(true);
+    setMgmtError(null);
+
+    try {
+      const summaryRes = await apiFetch(`/expenses/management/summary?startYear=${selectedStartYear}`);
+      setMgmtSummary(summaryRes?.summary || null);
+
+      const overviewRes = await apiFetch(`/expenses/management/employees`, {
+        params: {
+          startYear: selectedStartYear,
+          search: mgmtSearch,
+          departmentId: mgmtDeptFilter,
+          status: mgmtStatusFilter,
+          page: mgmtPagination.page,
+          limit: mgmtPagination.limit
+        }
+      });
+
+      setMgmtOverview(overviewRes?.employees || []);
+      if (overviewRes?.pagination) {
+        setMgmtPagination(overviewRes.pagination);
+      }
+
+      const analyticsRes = await apiFetch(`/expenses/management/analytics?startYear=${selectedStartYear}`);
+      setMgmtAnalytics(analyticsRes || null);
+
+      const recentRes = await apiFetch(`/expenses/management/recent?startYear=${selectedStartYear}&limit=5`);
+      setMgmtRecent(recentRes?.recentRequests || []);
+    } catch (err: any) {
+      console.error('Failed to load expense management data:', err);
+      setMgmtError(err.message || 'Unable to load expense analytics.');
+    } finally {
+      setLoadingMgmt(false);
+    }
+  }, [isManagerOrAdmin, selectedStartYear, mgmtSearch, mgmtDeptFilter, mgmtStatusFilter, mgmtPagination.page, mgmtPagination.limit]);
+
+  // Fetch Employee Drawer Details
+  const fetchEmpDrawerDetails = useCallback(async (empId: string, yr: number) => {
+    setLoadingEmpDrawer(true);
+    try {
+      const res = await apiFetch(`/expenses/management/employees/${empId}?startYear=${yr}`);
+      setEmpDrawerData(res || null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to load employee expense details.');
+    } finally {
+      setLoadingEmpDrawer(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedEmpId) {
+      fetchEmpDrawerDetails(selectedEmpId, empDrawerYear);
+    }
+  }, [selectedEmpId, empDrawerYear, fetchEmpDrawerDetails]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -156,7 +259,27 @@ export const Expenses: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    if (isManagerOrAdmin) {
+      fetchManagementData();
+    }
+  }, [fetchData, fetchManagementData, isManagerOrAdmin]);
+
+  const handleDownloadReport = async (format: 'xlsx' | 'csv' = 'xlsx') => {
+    try {
+      const fyStr = currentFy.label.replace(/\s+/g, '');
+      const filename = `Theiakshi_Expense_Report_${fyStr}.${format}`;
+      await apiDownload(`/expenses/management/report`, {
+        params: {
+          startYear: selectedStartYear,
+          departmentId: mgmtDeptFilter,
+          status: mgmtStatusFilter,
+          format
+        }
+      }, filename);
+    } catch (err: any) {
+      alert(err.message || 'Download failed.');
+    }
+  };
 
   const loadTripDetails = async (tripId: string) => {
     try {
@@ -876,43 +999,441 @@ export const Expenses: React.FC = () => {
   const grandTripTotal = Number(activeTrip?.total_amount || 0) || (travelTotal + accomTotal + otherTotal);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-6 text-slate-100 font-sans">
+      {/* SUCCESS BANNER */}
+      {successMsg && (
+        <div className="p-4 bg-emerald-950/80 border border-emerald-800/80 rounded-2xl flex items-center justify-between text-emerald-200 text-sm shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* TOP PAGE HEADER */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 backdrop-blur-md shadow-lg">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-cyan-400" />
-            <span>Expense Claims & Reimbursements</span>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <Receipt className="w-7 h-7 text-cyan-400" />
+            <span>Expense Management</span>
           </h1>
-          <p className="text-xs text-slate-400">Business Expenses, Local Travel & Complete Outstation Trip Claims</p>
+          <p className="text-xs text-slate-400 mt-1">Track, approve and analyze employee business expenses, local travel and outstation trips</p>
         </div>
 
-        {isManagerOrAdmin && (
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs">
-            <button
-              onClick={() => setActiveRoleTab('MY_CLAIMS')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                activeRoleTab === 'MY_CLAIMS' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              My Claims
-            </button>
-            <button
-              onClick={() => setActiveRoleTab('WORKFORCE')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                activeRoleTab === 'WORKFORCE' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Workforce Approvals
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Main View Mode Selector (For HR/Super Admin) */}
+          {isManagerOrAdmin && (
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <button
+                onClick={() => setMainViewMode('MANAGEMENT')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  mainViewMode === 'MANAGEMENT'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <PieChart className="w-3.5 h-3.5" />
+                <span>Analytics Dashboard</span>
+              </button>
+              <button
+                onClick={() => setMainViewMode('PERSONAL')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  mainViewMode === 'PERSONAL'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Expense Claims Panel</span>
+              </button>
+            </div>
+          )}
+
+          {/* FY Selector */}
+          {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1 text-xs">
+              <button
+                onClick={() => setSelectedStartYear(prev => prev - 1)}
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                title="Previous FY"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="px-3 text-center">
+                <div className="font-bold text-cyan-400">{currentFy.label}</div>
+                <div className="text-[10px] text-slate-400">{currentFy.displayRange}</div>
+              </div>
+              <button
+                onClick={() => setSelectedStartYear(prev => prev + 1)}
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                title="Next FY"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Download Expense Report Dropdown */}
+          {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
+            <div className="relative group">
+              <button className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer">
+                <Download className="w-4 h-4" />
+                <span>Download Expense Report</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              <div className="absolute right-0 mt-1 w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden hidden group-hover:block z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  onClick={() => handleDownloadReport('xlsx')}
+                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium"
+                >
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span>Excel Workbook (.xlsx)</span>
+                </button>
+                <button
+                  onClick={() => handleDownloadReport('csv')}
+                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800"
+                >
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  <span>CSV File (.csv)</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {successMsg && (
-        <div className="p-4 bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs rounded-xl font-semibold flex items-center gap-2 shadow-lg">
-          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{successMsg}</span>
+      {/* MANAGEMENT DASHBOARD VIEW */}
+      {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
+        <div className="space-y-6">
+          {loadingMgmt && (
+            <div className="p-12 text-center bg-slate-900/40 rounded-2xl border border-slate-800/80">
+              <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-slate-300">Loading Expense Analytics & Overview for {currentFy.label}...</p>
+            </div>
+          )}
+
+          {mgmtError && !loadingMgmt && (
+            <div className="p-6 bg-rose-950/40 border border-rose-900/60 rounded-2xl text-center space-y-3">
+              <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
+              <p className="text-sm font-semibold text-rose-200">{mgmtError}</p>
+              <button onClick={fetchManagementData} className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">Retry</button>
+            </div>
+          )}
+
+          {!loadingMgmt && !mgmtError && (
+            <>
+              {/* 5 KPI CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Employees with Expenses</span>
+                    <Users className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">{mgmtSummary?.employeesWithExpenses || 0}</div>
+                  <div className="text-[11px] text-slate-500">of {mgmtSummary?.totalEmployees || 0} total employees</div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Total Expense Amount</span>
+                    <DollarSign className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">₹{Number(mgmtSummary?.totalRequestedAmount || 0).toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-slate-500">All statuses</div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Approved Amount</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-black text-emerald-400">₹{Number(mgmtSummary?.approvedAmount || 0).toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-slate-500">{(mgmtSummary?.approvedPct || 0).toFixed(1)}% of total</div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Pending Amount</span>
+                    <Clock className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-400">₹{Number(mgmtSummary?.pendingAmount || 0).toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-slate-500">{(mgmtSummary?.pendingPct || 0).toFixed(1)}% of total</div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Rejected Amount</span>
+                    <XCircle className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <div className="text-2xl font-black text-rose-400">₹{Number(mgmtSummary?.rejectedAmount || 0).toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-slate-500">{(mgmtSummary?.rejectedPct || 0).toFixed(1)}% of total</div>
+                </div>
+              </div>
+
+              {/* EMPLOYEE OVERVIEW TABLE */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      <Users className="w-5 h-5 text-cyan-400" />
+                      <span>Employee Expense Overview</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Employee-wise summary for {currentFy.label}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={mgmtSearch}
+                        onChange={e => { setMgmtSearch(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
+                        placeholder="Search name or code..."
+                        className="pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 w-44"
+                      />
+                    </div>
+
+                    <select
+                      value={mgmtDeptFilter}
+                      onChange={e => { setMgmtDeptFilter(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
+                      className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                    >
+                      <option value="">All Departments</option>
+                      {departmentsList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+
+                    <select
+                      value={mgmtStatusFilter}
+                      onChange={e => { setMgmtStatusFilter(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
+                      className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="APPROVED">Approved Claims</option>
+                      <option value="SUBMITTED">Pending Claims</option>
+                      <option value="REJECTED">Rejected Claims</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-semibold uppercase">
+                        <th className="py-3 px-4">Employee</th>
+                        <th className="py-3 px-4">Code</th>
+                        <th className="py-3 px-4">Department</th>
+                        <th className="py-3 px-4 text-right">Approved (₹)</th>
+                        <th className="py-3 px-4 text-right">Pending (₹)</th>
+                        <th className="py-3 px-4 text-right">Rejected (₹)</th>
+                        <th className="py-3 px-4 text-right">Total Requested (₹)</th>
+                        <th className="py-3 px-4 text-right">Total Expense (₹)</th>
+                        <th className="py-3 px-4">Top Category</th>
+                        <th className="py-3 px-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {mgmtOverview.length === 0 ? (
+                        <tr><td colSpan={10} className="py-8 text-center text-slate-500">No employee expense activity in {currentFy.label}.</td></tr>
+                      ) : (
+                        mgmtOverview.map(emp => (
+                          <tr key={emp.employeeId} className="hover:bg-slate-800/40">
+                            <td className="py-3 px-4 font-bold text-white flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center text-[10px] font-bold text-white">
+                                {emp.employeeName.substring(0, 2)}
+                              </div>
+                              <span>{emp.employeeName}</span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-400">{emp.employeeCode}</td>
+                            <td className="py-3 px-4 text-slate-300">{emp.department}</td>
+                            <td className="py-3 px-4 text-right font-semibold text-emerald-400">₹{emp.approvedAmount.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-4 text-right font-semibold text-amber-400">₹{emp.pendingAmount.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-4 text-right font-semibold text-rose-400">₹{emp.rejectedAmount.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-4 text-right font-bold text-white">₹{emp.totalRequested.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-4 text-right font-black text-cyan-400">₹{emp.totalExpense.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-4 text-slate-300">{emp.topCategory}</td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => setSelectedEmpId(emp.employeeId)}
+                                className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-semibold flex items-center gap-1 mx-auto cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 text-xs text-slate-400">
+                  <div>Showing {mgmtOverview.length} of {mgmtPagination.total} employees</div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      disabled={mgmtPagination.page <= 1}
+                      onClick={() => setMgmtPagination(p => ({ ...p, page: p.page - 1 }))}
+                      className="px-2.5 py-1 bg-slate-950 border border-slate-800 disabled:opacity-40 rounded-lg text-white"
+                    >
+                      Prev
+                    </button>
+                    <span className="px-3 py-1 bg-slate-950 rounded-lg text-cyan-400 font-bold">{mgmtPagination.page} / {mgmtPagination.totalPages}</span>
+                    <button
+                      disabled={mgmtPagination.page >= mgmtPagination.totalPages}
+                      onClick={() => setMgmtPagination(p => ({ ...p, page: p.page + 1 }))}
+                      className="px-2.5 py-1 bg-slate-950 border border-slate-800 disabled:opacity-40 rounded-lg text-white"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* EXPENSE ANALYSIS SECTION */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-purple-400" />
+                    <span>Expense Analysis</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">Visual breakdown of expenses for {currentFy.label}</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Category Donut Breakdown */}
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase">Expense by Category</h3>
+                    {mgmtAnalytics?.categoryBreakdown?.map((cat: any) => (
+                      <div key={cat.category} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300">{cat.category}</span>
+                          <span className="text-slate-400 font-mono">₹{cat.amount.toLocaleString('en-IN')} ({cat.percentage.toFixed(0)}%)</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${Math.min(100, cat.percentage)}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Monthly Trend Apr -> Mar */}
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3 lg:col-span-2">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase">Monthly Expense Trend (Apr – Mar)</h3>
+                    <div className="grid grid-cols-12 gap-1.5 h-40 items-end pt-4 pb-2 border-b border-slate-800">
+                      {mgmtAnalytics?.monthlyTrend?.map((m: any) => {
+                        const maxVal = Math.max(...mgmtAnalytics.monthlyTrend.map((x: any) => x.total || 1), 1);
+                        const appH = (m.approved / maxVal) * 100;
+                        const pendH = (m.pending / maxVal) * 100;
+                        const rejH = (m.rejected / maxVal) * 100;
+                        return (
+                          <div key={m.month} className="flex flex-col items-center h-full justify-end group relative">
+                            <div className="w-full bg-slate-900 rounded flex flex-col justify-end">
+                              <div className="bg-rose-500" style={{ height: `${rejH}%` }}></div>
+                              <div className="bg-amber-500" style={{ height: `${pendH}%` }}></div>
+                              <div className="bg-emerald-500" style={{ height: `${appH}%` }}></div>
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-1">{m.month}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dept Analysis & Cost Optimization Insight */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase">Department Analysis</h3>
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-slate-800">
+                          <th className="pb-2">Department</th>
+                          <th className="pb-2 text-right">Active Emps</th>
+                          <th className="pb-2 text-right">Total Expense</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/40">
+                        {mgmtAnalytics?.departmentAnalysis?.map((d: any) => (
+                          <tr key={d.department}>
+                            <td className="py-2 text-white font-medium">{d.department}</td>
+                            <td className="py-2 text-right text-slate-400">{d.employeesWithExpenses}</td>
+                            <td className="py-2 text-right font-bold text-cyan-400">₹{d.totalExpense.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-indigo-950/40 to-slate-950/80 border border-indigo-900/60 rounded-xl p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase">
+                      <TrendingUp className="w-4 h-4" />
+                      <span>Cost Optimization Insight</span>
+                    </div>
+                    <p className="text-sm font-semibold text-white leading-relaxed">
+                      {mgmtAnalytics?.costOptimizationInsight || "No expense data available for cost optimization analysis."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* EMPLOYEE DRAWER */}
+      {selectedEmpId && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/80 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 h-full overflow-y-auto p-6 space-y-6 shadow-2xl flex flex-col justify-between">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 className="text-lg font-bold text-white">Employee Expense Details</h3>
+                <button onClick={() => setSelectedEmpId(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              </div>
+
+              {loadingEmpDrawer ? (
+                <div className="py-20 text-center text-slate-400">Loading details...</div>
+              ) : empDrawerData ? (
+                <>
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                    <div className="text-base font-extrabold text-white">{empDrawerData.employee.name}</div>
+                    <div className="text-xs text-slate-400 font-mono">{empDrawerData.employee.employeeCode} • {empDrawerData.employee.department}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-950 border border-emerald-900/60 p-3 rounded-xl">
+                      <div className="text-xs text-emerald-400 font-bold">Approved</div>
+                      <div className="text-base font-black text-white">₹{empDrawerData.summary.approvedAmount.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="bg-slate-950 border border-amber-900/60 p-3 rounded-xl">
+                      <div className="text-xs text-amber-400 font-bold">Pending</div>
+                      <div className="text-base font-black text-white">₹{empDrawerData.summary.pendingAmount.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="bg-slate-950 border border-rose-900/60 p-3 rounded-xl">
+                      <div className="text-xs text-rose-400 font-bold">Rejected</div>
+                      <div className="text-base font-black text-white">₹{empDrawerData.summary.rejectedAmount.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="bg-slate-950 border border-cyan-900/60 p-3 rounded-xl">
+                      <div className="text-xs text-cyan-400 font-bold">Total Requested</div>
+                      <div className="text-base font-black text-white">₹{empDrawerData.summary.totalRequestedAmount.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase">Categories</h4>
+                    {empDrawerData.categories.map((c: any) => (
+                      <div key={c.category} className="flex justify-between text-xs text-slate-300">
+                        <span>{c.category}</span>
+                        <span className="font-mono">₹{c.amount.toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            <button onClick={() => setSelectedEmpId(null)} className="w-full py-2 bg-slate-800 text-white rounded-xl text-xs font-bold">Close Drawer</button>
+          </div>
         </div>
       )}
 
