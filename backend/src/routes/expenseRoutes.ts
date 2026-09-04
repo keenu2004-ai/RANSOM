@@ -895,13 +895,20 @@ router.get('/management/report', requireManagementRole, async (req: Authenticate
       category: category as string
     });
 
+    const safeFyLabel = `FY_${fy.startYear}-${fy.endYear}`;
+    const ext = format === 'csv' ? 'csv' : 'xlsx';
+    const safeAsciiFilename = `Theiakshi_Expense_Report_${safeFyLabel}.${ext}`;
+    const rawFilename = `Theiakshi_Expense_Report_${fy.label}.${ext}`;
+    const encodedFilename = encodeURIComponent(rawFilename);
+    const contentDisposition = `attachment; filename="${safeAsciiFilename}"; filename*=UTF-8''${encodedFilename}`;
+
     if (format === 'csv') {
       let csv = 'Employee Name,Employee Code,Department,Claim ID,Expense Type,Category,Date,Amount,Status,Merchant,Description,Submitted Date,Reviewed Date,Approver,Remarks\n';
       detailedClaims.forEach(c => {
         csv += `"${c.employeeName}","${c.employeeCode}","${c.department}","${c.claimId}","${c.expenseType}","${c.category}","${c.date}","${c.amount}","${c.status}","${c.merchant}","${c.description}","${c.submittedDate}","${c.reviewedDate}","${c.approver}","${c.remarks}"\n`;
       });
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=Theiakshi_Expense_Report_${fy.label.replace(/\s+/g, '')}.csv`);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', contentDisposition);
       return res.status(200).send(csv);
     }
 
@@ -916,7 +923,7 @@ router.get('/management/report', requireManagementRole, async (req: Authenticate
     );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=Theiakshi_Expense_Report_${fy.label.replace(/\s+/g, '')}.xlsx`);
+    res.setHeader('Content-Disposition', contentDisposition);
     return res.status(200).send(buffer);
   } catch (error) {
     return next(error);

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { apiFetch, apiDownload, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
@@ -56,6 +57,63 @@ export const Expenses: React.FC = () => {
   const [empDrawerYear, setEmpDrawerYear] = useState<number>(selectedStartYear);
   const [empDrawerData, setEmpDrawerData] = useState<any | null>(null);
   const [loadingEmpDrawer, setLoadingEmpDrawer] = useState(false);
+
+  // Download Dropdown Portal State & Positioning
+  const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
+  const downloadBtnRef = useRef<HTMLButtonElement>(null);
+  const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const updateDropdownPosition = useCallback(() => {
+    if (downloadBtnRef.current) {
+      const rect = downloadBtnRef.current.getBoundingClientRect();
+      const dropdownWidth = 176; // w-44 = 11rem = 176px
+      let left = rect.right - dropdownWidth;
+      if (left < 10) left = 10;
+      if (left + dropdownWidth > window.innerWidth - 10) {
+        left = window.innerWidth - dropdownWidth - 10;
+      }
+      setDropdownStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 4}px`,
+        left: `${left}px`,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showDownloadDropdown) {
+      updateDropdownPosition();
+      const handleScrollOrResize = () => updateDropdownPosition();
+      const handleClickOutside = (e: MouseEvent) => {
+        if (
+          downloadBtnRef.current &&
+          !downloadBtnRef.current.contains(e.target as Node) &&
+          downloadDropdownRef.current &&
+          !downloadDropdownRef.current.contains(e.target as Node)
+        ) {
+          setShowDownloadDropdown(false);
+        }
+      };
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowDownloadDropdown(false);
+        }
+      };
+
+      window.addEventListener('scroll', handleScrollOrResize, true);
+      window.addEventListener('resize', handleScrollOrResize);
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        window.removeEventListener('scroll', handleScrollOrResize, true);
+        window.removeEventListener('resize', handleScrollOrResize);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showDownloadDropdown, updateDropdownPosition]);
 
   // Employee Individual Records State
   const [empRecordsList, setEmpRecordsList] = useState<any[]>([]);
@@ -143,6 +201,87 @@ export const Expenses: React.FC = () => {
   const [deleteInputText, setDeleteInputText] = useState('');
   const [deletingExpense, setDeletingExpense] = useState(false);
   const [deletingTrip, setDeletingTrip] = useState(false);
+
+  // Global Modal Body Scroll Lock & Escape Listener Hook
+  const isAnyModalOpen = Boolean(
+    showInitiatedAlert ||
+    showSingleModal ||
+    showCreateTripModal ||
+    showEditTripModal ||
+    showTravelModal ||
+    showAccomModal ||
+    showOtherModal ||
+    showFinalSubmitModal ||
+    selectedSingleExpense ||
+    deleteConfirmExpense ||
+    deleteConfirmTrip ||
+    showCategoryAnalyticsModal ||
+    showLedgerModal
+  );
+
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      // Auto-close dropdown when a modal opens so dropdown never interferes with active modal
+      setShowDownloadDropdown(false);
+
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleGlobalKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          // Strict priority order: Close highest z-index confirmation overlay first, then level 4 modal
+          if (deleteConfirmExpense) {
+            setDeleteConfirmExpense(null);
+          } else if (deleteConfirmTrip) {
+            setDeleteConfirmTrip(null);
+          } else if (showFinalSubmitModal) {
+            setShowFinalSubmitModal(false);
+          } else if (selectedSingleExpense) {
+            setSelectedSingleExpense(null);
+          } else if (showInitiatedAlert) {
+            setShowInitiatedAlert(false);
+          } else if (showSingleModal) {
+            setShowSingleModal(false);
+          } else if (showCreateTripModal) {
+            setShowCreateTripModal(false);
+          } else if (showEditTripModal) {
+            setShowEditTripModal(false);
+          } else if (showTravelModal) {
+            setShowTravelModal(false);
+          } else if (showAccomModal) {
+            setShowAccomModal(false);
+          } else if (showOtherModal) {
+            setShowOtherModal(false);
+          } else if (showCategoryAnalyticsModal) {
+            setShowCategoryAnalyticsModal(false);
+          } else if (showLedgerModal) {
+            setShowLedgerModal(false);
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleGlobalKeyDown);
+      return () => {
+        document.body.style.overflow = previousOverflow;
+        window.removeEventListener('keydown', handleGlobalKeyDown);
+      };
+    }
+  }, [
+    isAnyModalOpen,
+    deleteConfirmExpense,
+    deleteConfirmTrip,
+    showFinalSubmitModal,
+    selectedSingleExpense,
+    showInitiatedAlert,
+    showSingleModal,
+    showCreateTripModal,
+    showEditTripModal,
+    showTravelModal,
+    showAccomModal,
+    showOtherModal,
+    showCategoryAnalyticsModal,
+    showLedgerModal
+  ]);
 
   // Form State
   const [singleFormData, setSingleFormData] = useState({
@@ -1167,28 +1306,45 @@ export const Expenses: React.FC = () => {
 
           {/* Download Expense Report Dropdown */}
           {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
-            <div className="relative group z-30">
-              <button className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer">
+            <div className="relative">
+              <button
+                ref={downloadBtnRef}
+                onClick={() => setShowDownloadDropdown(prev => !prev)}
+                className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer"
+              >
                 <Download className="w-4 h-4" />
                 <span>Download Expense Report</span>
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
-              <div className="absolute right-0 mt-1 w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden hidden group-hover:block z-50 animate-in fade-in zoom-in-95 duration-100">
-                <button
-                  onClick={() => handleDownloadReport('xlsx')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium cursor-pointer"
+              {showDownloadDropdown && createPortal(
+                <div
+                  ref={downloadDropdownRef}
+                  style={dropdownStyle}
+                  className="w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-[1000] animate-in fade-in zoom-in-95 duration-100"
                 >
-                  <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Excel Workbook (.xlsx)</span>
-                </button>
-                <button
-                  onClick={() => handleDownloadReport('csv')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800 cursor-pointer"
-                >
-                  <FileText className="w-4 h-4 text-amber-400" />
-                  <span>CSV File (.csv)</span>
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setShowDownloadDropdown(false);
+                      handleDownloadReport('xlsx');
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Excel Workbook (.xlsx)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDownloadDropdown(false);
+                      handleDownloadReport('csv');
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800 cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-amber-400" />
+                    <span>CSV File (.csv)</span>
+                  </button>
+                </div>,
+                document.body
+              )}
             </div>
           )}
         </div>
@@ -2427,13 +2583,13 @@ export const Expenses: React.FC = () => {
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* MODALS */}
+      {/* MODALS (PORTAL RENDERED FOR ISOLATED OVERLAY STACKING) */}
       {/* ---------------------------------------------------- */}
 
       {/* ALERT MODAL: TRIP INITIATED */}
-      {showInitiatedAlert && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center">
+      {showInitiatedAlert && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center z-[5001]">
             <h3 className="font-bold text-lg text-white">Trip Expense Initiated</h3>
             <p className="text-xs text-slate-300">You can add all the trip related expenses here.</p>
             <button
@@ -2443,13 +2599,14 @@ export const Expenses: React.FC = () => {
               OKAY
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 1. SINGLE CLAIM MODAL */}
-      {showSingleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      {showSingleModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 {singleClaimType === 'BUSINESS' ? <Building className="w-5 h-5 text-cyan-400" /> : <Navigation className="w-5 h-5 text-indigo-400" />}
@@ -2525,48 +2682,59 @@ export const Expenses: React.FC = () => {
                     <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
-                  <input type="number" step="0.01" min="0.01" required value={singleFormData.amount} onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="5500.00" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Bucket *</label>
-                  <select required value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
-                    {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
+                <div className="col-span-2">
+                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={singleFormData.amount} onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Attachment</label>
-                {!attachment ? (
-                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
-                    <Upload className="w-4 h-4" />
-                    <span>Upload Receipt (PDF, JPG, PNG)</span>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-xs">
-                    <span className="text-slate-200 truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Expense Bucket *</label>
+                <select value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              {/* ATTACHMENT UPLOAD */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <label className="block text-slate-300 font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-cyan-400" />
+                  <span>Receipt / Document Attachment</span>
+                </label>
+                <input
+                  type="file"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRawFile(file);
+                      setAttachment({ name: file.name, url: URL.createObjectURL(file) });
+                    }
+                  }}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700"
+                />
+                {attachment && (
+                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                    <span className="truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowSingleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="button" disabled={submitting} onClick={() => handleSubmitSingleClaim('DRAFT')} className="px-4 py-2 bg-slate-950 border border-slate-700 text-slate-200 rounded-xl">Save Draft</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-cyan-500 text-white rounded-xl font-bold">SUBMIT</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 font-bold">
+                <button type="button" onClick={() => setShowSingleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="button" disabled={submitting} onClick={() => handleSubmitSingleClaim('DRAFT')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl">Save as Draft</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow uppercase">SUBMIT</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 2. CREATE PARENT TRIP MODAL */}
-      {showCreateTripModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+      {showCreateTripModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-400" />
@@ -2623,13 +2791,14 @@ export const Expenses: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* EDIT PARENT TRIP DETAILS MODAL */}
-      {showEditTripModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+      {showEditTripModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Edit className="w-5 h-5 text-cyan-400" />
@@ -2686,13 +2855,14 @@ export const Expenses: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 3. ADD / EDIT TRAVEL EXPENSE CHILD MODAL */}
-      {showTravelModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      {showTravelModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Plane className="w-5 h-5 text-indigo-400" />
@@ -2720,79 +2890,96 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Mode of Transport *</label>
-                  <select value={travelFormData.transportMode} onChange={e => setTravelFormData({ ...travelFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
-                    {TRANSPORT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Merchant</label>
-                  <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Air India / Uber" />
-                </div>
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Mode of Transport *</label>
+                <select value={travelFormData.transportMode} onChange={e => setTravelFormData({ ...travelFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                  {TRANSPORT_MODES.map(mode => <option key={mode} value={mode}>{mode}</option>)}
+                </select>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose of Travel *</label>
-                <input type="text" required value={travelFormData.purpose} onChange={e => setTravelFormData({ ...travelFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Travel to client office" />
+                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={travelFormData.purpose} onChange={e => setTravelFormData({ ...travelFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Flight from Delhi to Mumbai" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Start Location *</label>
-                  <input type="text" required value={travelFormData.startLocation} onChange={e => setTravelFormData({ ...travelFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Delhi Airport" />
+                  <input type="text" required value={travelFormData.startLocation} onChange={e => setTravelFormData({ ...travelFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="DEL Airport" />
                 </div>
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">End Location *</label>
-                  <input type="text" required value={travelFormData.endLocation} onChange={e => setTravelFormData({ ...travelFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Mumbai Office" />
+                  <input type="text" required value={travelFormData.endLocation} onChange={e => setTravelFormData({ ...travelFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="BOM Airport" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Distance (in kms)</label>
-                  <input type="number" step="0.1" min="0" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="1150.0" />
+                  <label className="block text-slate-300 mb-1 font-medium">Merchant / Airline</label>
+                  <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Indigo / Air India" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
-                  <input type="number" step="0.01" min="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="5000.00" />
+                  <label className="block text-slate-300 mb-1 font-medium">Distance (Km)</label>
+                  <input type="number" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="0" />
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Attachment</label>
-                {!attachment ? (
-                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
-                    <Upload className="w-4 h-4" />
-                    <span>Upload File (PDF, JPG, PNG)</span>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-xs">
-                    <span className="text-slate-200 truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                  <select value={travelFormData.currency} onChange={e => setTravelFormData({ ...travelFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                </div>
+              </div>
+
+              {/* ATTACHMENT UPLOAD */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <label className="block text-slate-300 font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-indigo-400" />
+                  <span>Ticket / Boarding Pass Attachment</span>
+                </label>
+                <input
+                  type="file"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRawFile(file);
+                      setAttachment({ name: file.name, url: URL.createObjectURL(file) });
+                    }
+                  }}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-400 hover:file:bg-slate-700"
+                />
+                {attachment && (
+                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                    <span className="truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
+                <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 4. ADD / EDIT ACCOMMODATION EXPENSE CHILD MODAL */}
-      {showAccomModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+      {showAccomModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Hotel className="w-5 h-5 text-cyan-400" />
-                <span>Trip Accommodation Expense</span>
+                <span>Accommodation Expense</span>
               </h3>
               <button type="button" onClick={() => setShowAccomModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -2807,58 +2994,76 @@ export const Expenses: React.FC = () => {
             <form onSubmit={handleSubmitAccomChild} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Check-In Date *</label>
                   <input type="date" required value={accomFormData.startDate} onChange={e => setAccomFormData({ ...accomFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Check-Out Date *</label>
                   <input type="date" required value={accomFormData.endDate} onChange={e => setAccomFormData({ ...accomFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Accommodation Detail *</label>
-                <textarea required rows={3} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Hotel Taj Mumbai stay" />
+                <label className="block text-slate-300 mb-1 font-medium">Hotel Name & Details *</label>
+                <textarea required rows={2} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Taj Hotel Mumbai - Deluxe Room" />
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
-                <input type="number" step="0.01" min="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="4000.00" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                  <select value={accomFormData.currency} onChange={e => setAccomFormData({ ...accomFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Attachment</label>
-                {!attachment ? (
-                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
-                    <Upload className="w-4 h-4" />
-                    <span>Upload Invoice (PDF, JPG, PNG)</span>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-xs">
-                    <span className="text-slate-200 truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+              {/* ATTACHMENT UPLOAD */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <label className="block text-slate-300 font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-cyan-400" />
+                  <span>Hotel Receipt Attachment</span>
+                </label>
+                <input
+                  type="file"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRawFile(file);
+                      setAttachment({ name: file.name, url: URL.createObjectURL(file) });
+                    }
+                  }}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700"
+                />
+                {attachment && (
+                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                    <span className="truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
+                <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 5. ADD / EDIT OTHER EXPENSE CHILD MODAL */}
-      {showOtherModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+      {showOtherModal && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-amber-400" />
-                <span>Trip Other Expense</span>
+                <Receipt className="w-5 h-5 text-amber-400" />
+                <span>Other Trip Expense</span>
               </h3>
               <button type="button" onClick={() => setShowOtherModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -2879,56 +3084,73 @@ export const Expenses: React.FC = () => {
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Category *</label>
                   <select value={otherFormData.category} onChange={e => setOtherFormData({ ...otherFormData, category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
-                    {OTHER_EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {OTHER_EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose / Notes *</label>
-                <input type="text" required value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client dinner" />
+                <label className="block text-slate-300 mb-1 font-medium">Merchant / Vendor</label>
+                <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant Name" />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Purpose / Note *</label>
+                <textarea required rows={2} value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client dinner expense" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Merchant</label>
-                  <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant" />
+                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
+                  <select value={otherFormData.currency} onChange={e => setOtherFormData({ ...otherFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Amount *</label>
-                  <input type="number" step="0.01" min="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="800.00" />
+                <div className="col-span-2">
+                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-slate-300 font-medium">Upload Attachment</label>
-                {!attachment ? (
-                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 rounded-xl cursor-pointer text-slate-400 hover:text-cyan-300">
-                    <Upload className="w-4 h-4" />
-                    <span>Upload Receipt (PDF, JPG, PNG)</span>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-slate-950 border border-cyan-800/60 rounded-xl text-xs">
-                    <span className="text-slate-200 truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => setAttachment(null)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+              {/* ATTACHMENT UPLOAD */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <label className="block text-slate-300 font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-amber-400" />
+                  <span>Receipt Attachment</span>
+                </label>
+                <input
+                  type="file"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRawFile(file);
+                      setAttachment({ name: file.name, url: URL.createObjectURL(file) });
+                    }
+                  }}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700"
+                />
+                {attachment && (
+                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                    <span className="truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold uppercase shadow">SUBMIT</button>
+                <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 6. FINAL SUBMIT TRIP CONFIRMATION MODAL */}
-      {showFinalSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+      {showFinalSubmitModal && createPortal(
+        <div className="fixed inset-0 z-[6000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[6001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
@@ -2969,13 +3191,14 @@ export const Expenses: React.FC = () => {
               <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl shadow uppercase">OKAY</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* SINGLE EXPENSE DETAIL VIEW MODAL */}
-      {selectedSingleExpense && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+      {selectedSingleExpense && createPortal(
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-cyan-400" />
@@ -3084,13 +3307,14 @@ export const Expenses: React.FC = () => {
               <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer">Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* SUPER ADMIN DELETE CONFIRMATION MODAL */}
-      {deleteConfirmExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+      {deleteConfirmExpense && createPortal(
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
             <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="text-base font-bold text-white">Delete Expense Permanently?</h3>
@@ -3140,13 +3364,14 @@ export const Expenses: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* SUPER ADMIN TRIP DELETE CONFIRMATION MODAL */}
-      {deleteConfirmTrip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+      {deleteConfirmTrip && createPortal(
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
             <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="text-base font-bold text-white">Delete Trip Expense Permanently?</h3>
@@ -3204,12 +3429,14 @@ export const Expenses: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
       {/* CATEGORY ANALYTICS MODAL */}
-      {showCategoryAnalyticsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+      {showCategoryAnalyticsModal && createPortal(
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[5001]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <PieChart className="w-5 h-5 text-purple-400" />
@@ -3261,13 +3488,14 @@ export const Expenses: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* DETAILED EXPENSE LEDGER / PENDING APPROVAL CENTER MODAL */}
-      {showLedgerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
+      {showLedgerModal && createPortal(
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150 z-[5001]">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
               <div>
@@ -3466,7 +3694,8 @@ export const Expenses: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
