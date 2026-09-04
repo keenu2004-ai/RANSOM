@@ -3197,11 +3197,11 @@ export const Expenses: React.FC = () => {
 
       {/* SINGLE EXPENSE DETAIL VIEW MODAL */}
       {selectedSingleExpense && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl z-[5001]">
+        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl w-[min(calc(100vw-24px),500px)] space-y-4 shadow-2xl z-[5001] max-h-[calc(100vh-24px)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-cyan-400" />
+              <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-cyan-400 shrink-0" />
                 <span>Expense Claim Details</span>
               </h3>
               <button type="button" onClick={() => setSelectedSingleExpense(null)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
@@ -3260,30 +3260,30 @@ export const Expenses: React.FC = () => {
               )}
 
               {selectedSingleExpense.receipt_url && (
-                <div className="p-3 bg-slate-950 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan-400" />
+                <div className="p-3 bg-slate-950 rounded-xl flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
                     <span className="font-semibold text-slate-200 truncate">{selectedSingleExpense.attachment_name || 'Receipt Document'}</span>
                   </div>
-                  <a href={getSecureFileUrl(selectedSingleExpense.receipt_url)} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded text-[10px] font-bold">View File</a>
+                  <a href={getSecureFileUrl(selectedSingleExpense.receipt_url)} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded text-[10px] font-bold shrink-0">View File</a>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-800">
               {isManagerOrAdmin && user?.employeeId !== selectedSingleExpense.employee_id && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
                 <>
                   <button
                     type="button"
                     onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleApproveSingle(id); }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     Approve Claim
                   </button>
                   <button
                     type="button"
                     onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleRejectSingle(id); }}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     Reject Claim
                   </button>
@@ -3298,13 +3298,13 @@ export const Expenses: React.FC = () => {
                     setDeleteConfirmExpense(exp);
                     setDeleteInputText('');
                   }}
-                  className="px-3 py-2 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3 py-2.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete Expense</span>
                 </button>
               )}
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer">Close</button>
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer text-center">Close</button>
             </div>
           </div>
         </div>,

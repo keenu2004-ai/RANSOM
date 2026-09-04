@@ -342,8 +342,8 @@ export const Holidays: React.FC = () => {
         )}
       </div>
 
-      {/* KPI Cards (4 Cards Only - Holiday Specific) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards (Role-Based: Employees see Total & Upcoming; Management sees All 4) */}
+      <div className={`grid grid-cols-1 ${isManagement ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2'} gap-4`}>
         {/* TOTAL HOLIDAYS */}
         <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
           <div className="space-y-1">
@@ -356,29 +356,33 @@ export const Holidays: React.FC = () => {
           </div>
         </div>
 
-        {/* NORTH REGION */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">North Region</span>
-            <div className="text-2xl font-extrabold text-white">{kpis.northHolidays}</div>
-            <div className="text-[11px] text-slate-400">Assigned holidays</div>
+        {/* NORTH REGION - Management Only */}
+        {isManagement && (
+          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">North Region</span>
+              <div className="text-2xl font-extrabold text-white">{kpis.northHolidays}</div>
+              <div className="text-[11px] text-slate-400">Assigned holidays</div>
+            </div>
+            <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+              <Globe className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
-            <Globe className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
-        {/* SOUTH REGION */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">South Region</span>
-            <div className="text-2xl font-extrabold text-white">{kpis.southHolidays}</div>
-            <div className="text-[11px] text-slate-400">Assigned holidays</div>
+        {/* SOUTH REGION - Management Only */}
+        {isManagement && (
+          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">South Region</span>
+              <div className="text-2xl font-extrabold text-white">{kpis.southHolidays}</div>
+              <div className="text-[11px] text-slate-400">Assigned holidays</div>
+            </div>
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+              <Users className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
         {/* UPCOMING HOLIDAYS */}
         <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
@@ -556,22 +560,26 @@ export const Holidays: React.FC = () => {
               >
                 Upcoming
               </button>
-              <button
-                onClick={() => setListRegionFilter('NORTH')}
-                className={`px-3 py-1 rounded-xl transition-all ${
-                  listRegionFilter === 'NORTH' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                }`}
-              >
-                North Region
-              </button>
-              <button
-                onClick={() => setListRegionFilter('SOUTH')}
-                className={`px-3 py-1 rounded-xl transition-all ${
-                  listRegionFilter === 'SOUTH' ? 'bg-emerald-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                }`}
-              >
-                South Region
-              </button>
+              {isManagement && (
+                <>
+                  <button
+                    onClick={() => setListRegionFilter('NORTH')}
+                    className={`px-3 py-1 rounded-xl transition-all ${
+                      listRegionFilter === 'NORTH' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    North Region
+                  </button>
+                  <button
+                    onClick={() => setListRegionFilter('SOUTH')}
+                    className={`px-3 py-1 rounded-xl transition-all ${
+                      listRegionFilter === 'SOUTH' ? 'bg-emerald-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    South Region
+                  </button>
+                </>
+              )}
             </div>
 
             {/* List Cards */}
@@ -602,14 +610,20 @@ export const Holidays: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                          isNorth ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
-                          isSouth ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                          isAll ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' :
-                          'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
-                        }`}>
-                          {isNorth ? 'North Region' : isSouth ? 'South Region' : isAll ? 'All Employees' : `${h.assigned_employee_count || 0} Employees`}
-                        </span>
+                        {isManagement ? (
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                            isNorth ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
+                            isSouth ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
+                            isAll ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' :
+                            'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                          }`}>
+                            {isNorth ? 'North Region' : isSouth ? 'South Region' : isAll ? 'All Employees' : `${h.assigned_employee_count || 0} Employees`}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-purple-500/10 text-purple-300 border-purple-500/30">
+                            Company Holiday
+                          </span>
+                        )}
 
                         {isManagement && (
                           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -624,7 +638,7 @@ export const Holidays: React.FC = () => {
                       </div>
                     </div>
 
-                    {h.description && (
+                    {isManagement && h.description && (
                       <p className="text-[11px] text-slate-400 pl-9 line-clamp-2">{h.description}</p>
                     )}
                   </div>
