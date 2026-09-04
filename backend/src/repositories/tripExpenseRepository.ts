@@ -525,17 +525,18 @@ export class TripExpenseRepository {
         const action = status === 'APPROVED' ? 'TRIP_EXPENSE_APPROVED' : 'TRIP_EXPENSE_REJECTED';
         await query(`
           INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-          VALUES ($1, $2, $3, 'expenses', 'TripExpense', $4, $5)
-        `, [organizationId, reviewerEmployeeId || null, action, id, JSON.stringify({ status, rejectionReason })]);
+          VALUES ($1, $2::text, $3, 'expenses', 'TripExpense', $4::text, $5)
+        `, [organizationId, reviewerEmployeeId ? String(reviewerEmployeeId) : null, action, id, JSON.stringify({ status, rejectionReason })]);
 
         const empUserRes = await query('SELECT user_id FROM employees WHERE id = $1', [row.employee_id]);
-        if (empUserRes.rows.length > 0 && empUserRes.rows[0].user_id) {
+        if (empUserRes.rows.length > 0) {
           await query(`
-            INSERT INTO notifications (organization_id, user_id, title, message)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO notifications (organization_id, employee_id, user_id, title, message)
+            VALUES ($1, $2, $3, $4, $5)
           `, [
             organizationId,
-            empUserRes.rows[0].user_id,
+            row.employee_id,
+            empUserRes.rows[0].user_id || null,
             `Trip Expense ${status}`,
             status === 'APPROVED'
               ? `Your trip claim "${row.purpose}" (₹${row.total_amount}) has been approved.`
@@ -579,7 +580,7 @@ export class TripExpenseRepository {
       const travelChildIds = travelRes.rows.map(r => r.id);
       const accomChildIds = accomRes.rows.map(r => r.id);
       const otherChildIds = otherRes.rows.map(r => r.id);
-      const allChildIds = [...travelChildIds, ...accomChildIds, ...otherChildIds];
+      const allChildIds = [...travelChildIds, ...accomChildIds, ...otherChildIds].map(String);
 
       // 3. Find attachments in attachments table
       const attQuery = `
@@ -587,10 +588,10 @@ export class TripExpenseRepository {
         WHERE organization_id = $1 
         AND (
           (entity_type = 'TRIP_EXPENSE' AND entity_id = $2)
-          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3::uuid[]))
+          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3))
         )
       `;
-      const attRes = await client.query(attQuery, [organizationId, id, allChildIds.length > 0 ? allChildIds : ['00000000-0000-0000-0000-000000000000']]);
+      const attRes = await client.query(attQuery, [organizationId, String(id), allChildIds.length > 0 ? allChildIds : ['0']]);
 
       for (const att of attRes.rows) {
         try {
@@ -621,9 +622,9 @@ export class TripExpenseRepository {
         WHERE organization_id = $1 
         AND (
           (entity_type = 'TRIP_EXPENSE' AND entity_id = $2)
-          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3::uuid[]))
+          OR (entity_type IN ('TRIP_TRAVEL_EXPENSE', 'TRIP_ACCOMMODATION_EXPENSE', 'TRIP_OTHER_EXPENSE') AND entity_id = ANY($3))
         )
-      `, [organizationId, id, allChildIds.length > 0 ? allChildIds : ['00000000-0000-0000-0000-000000000000']]);
+      `, [organizationId, String(id), allChildIds.length > 0 ? allChildIds : ['0']]);
 
       // 5. Delete child expenses
       await client.query('DELETE FROM trip_travel_expenses WHERE trip_expense_id = $1', [id]);
@@ -658,7 +659,7 @@ export class TripExpenseRepository {
 
       await client.query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
-        VALUES ($1, $2, 'TRIP_EXPENSE_DELETED', 'expenses', 'TripExpense', $3, $4)
+        VALUES ($1, $2, 'TRIP_EXPENSE_DELETED', 'expenses', 'TripExpense', $3::text, $4)
       `, [organizationId, userId, id, JSON.stringify(oldValuesSnapshot)]);
 
       return {

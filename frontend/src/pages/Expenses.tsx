@@ -76,6 +76,20 @@ export const Expenses: React.FC = () => {
   const [loadingMgmt, setLoadingMgmt] = useState(false);
   const [mgmtError, setMgmtError] = useState<string | null>(null);
 
+  // Management Ledger Modal State (ALL, APPROVED, PENDING, REJECTED)
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [ledgerType, setLedgerType] = useState<'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED'>('ALL');
+  const [ledgerRecords, setLedgerRecords] = useState<any[]>([]);
+  const [ledgerTotalAmount, setLedgerTotalAmount] = useState(0);
+  const [ledgerTotalRecords, setLedgerTotalRecords] = useState(0);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerTotalPages, setLedgerTotalPages] = useState(1);
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [loadingLedger, setLoadingLedger] = useState(false);
+
+  // Category Analytics Modal State
+  const [showCategoryAnalyticsModal, setShowCategoryAnalyticsModal] = useState(false);
+
   // Claims lists
   const [myExpenses, setMyExpenses] = useState<any[]>([]);
   const [allExpenses, setAllExpenses] = useState<any[]>([]);
@@ -268,6 +282,40 @@ export const Expenses: React.FC = () => {
       setLoadingEmpRecords(false);
     }
   }, []);
+
+  // Fetch Management Ledger Data
+  const fetchLedgerData = useCallback(async (type: string, page: number, search: string) => {
+    setLoadingLedger(true);
+    try {
+      const statusParam = type === 'ALL' ? '' : type;
+      const res = await apiFetch('/expenses/management/ledger', {
+        params: {
+          startYear: selectedStartYear,
+          status: statusParam,
+          search,
+          page,
+          limit: 10
+        }
+      });
+      setLedgerRecords(res?.records || []);
+      setLedgerTotalAmount(res?.totalAmount || 0);
+      setLedgerTotalRecords(res?.totalRecords || 0);
+      setLedgerPage(res?.pagination?.page || 1);
+      setLedgerTotalPages(res?.pagination?.totalPages || 1);
+    } catch (err: any) {
+      console.error('Failed to load ledger records:', err.message);
+    } finally {
+      setLoadingLedger(false);
+    }
+  }, [selectedStartYear]);
+
+  const handleOpenLedgerModal = (type: 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED') => {
+    setLedgerType(type);
+    setLedgerPage(1);
+    setLedgerSearch('');
+    setShowLedgerModal(true);
+    fetchLedgerData(type, 1, '');
+  };
 
   useEffect(() => {
     if (selectedEmpId) {
@@ -1119,7 +1167,7 @@ export const Expenses: React.FC = () => {
 
           {/* Download Expense Report Dropdown */}
           {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
-            <div className="relative group">
+            <div className="relative group z-30">
               <button className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer">
                 <Download className="w-4 h-4" />
                 <span>Download Expense Report</span>
@@ -1128,14 +1176,14 @@ export const Expenses: React.FC = () => {
               <div className="absolute right-0 mt-1 w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden hidden group-hover:block z-50 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   onClick={() => handleDownloadReport('xlsx')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium"
+                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-emerald-400" />
                   <span>Excel Workbook (.xlsx)</span>
                 </button>
                 <button
                   onClick={() => handleDownloadReport('csv')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800"
+                  className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800 cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-amber-400" />
                   <span>CSV File (.csv)</span>
@@ -1160,7 +1208,7 @@ export const Expenses: React.FC = () => {
             <div className="p-6 bg-rose-950/40 border border-rose-900/60 rounded-xl text-center space-y-3">
               <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
               <p className="text-xs font-semibold text-rose-200">{mgmtError}</p>
-              <button onClick={fetchManagementData} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold">Retry</button>
+              <button onClick={fetchManagementData} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold cursor-pointer">Retry</button>
             </div>
           )}
 
@@ -1168,10 +1216,19 @@ export const Expenses: React.FC = () => {
             <div className="flex gap-4 items-start relative">
               {/* MAIN CONTENT AREA */}
               <div className="flex-1 space-y-4 min-w-0">
-                {/* 5 KPI CARDS IN ONE ROW */}
+                {/* 5 KPI CARDS IN ONE ROW (CLICKABLE NAVIGATION) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   {/* Card 1: Employees with Expenses */}
-                  <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-3.5 space-y-1.5 shadow-md">
+                  <div
+                    onClick={() => {
+                      setMgmtStatusFilter('');
+                      const el = document.getElementById('employee-overview-table');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`bg-[#0f172a]/90 border rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                      mgmtStatusFilter === '' ? 'border-cyan-500/70 ring-1 ring-cyan-500/30' : 'border-slate-800/90 hover:border-cyan-500/40'
+                    }`}
+                  >
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-cyan-950/60 border border-cyan-800/50 rounded-lg text-cyan-400">
@@ -1179,14 +1236,23 @@ export const Expenses: React.FC = () => {
                         </div>
                         <span className="font-medium text-slate-300">Employees with Expenses</span>
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-800/40">+12%</span>
+                      {mgmtSummary?.yoyEmployeesPct !== null && mgmtSummary?.yoyEmployeesPct !== undefined && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          mgmtSummary.yoyEmployeesPct >= 0 ? 'text-emerald-400 bg-emerald-950/50 border-emerald-800/40' : 'text-rose-400 bg-rose-950/50 border-rose-800/40'
+                        }`}>
+                          {mgmtSummary.yoyEmployeesPct >= 0 ? '+' : ''}{mgmtSummary.yoyEmployeesPct.toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                     <div className="text-xl font-black text-white pt-1">{mgmtSummary?.employeesWithExpenses || 0}</div>
                     <div className="text-[10px] text-slate-500">of {mgmtSummary?.totalEmployees || 0} total employees</div>
                   </div>
 
                   {/* Card 2: Total Expense Amount */}
-                  <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-3.5 space-y-1.5 shadow-md">
+                  <div
+                    onClick={() => handleOpenLedgerModal('ALL')}
+                    className="bg-[#0f172a]/90 border border-purple-500/30 hover:border-purple-500/70 ring-1 ring-purple-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-purple-950/60 border border-purple-800/50 rounded-lg text-purple-400">
@@ -1194,14 +1260,26 @@ export const Expenses: React.FC = () => {
                         </div>
                         <span className="font-medium text-slate-300">Total Expense Amount</span>
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-800/40">+8%</span>
+                      {mgmtSummary?.yoyTotalAmountPct !== null && mgmtSummary?.yoyTotalAmountPct !== undefined && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          mgmtSummary.yoyTotalAmountPct >= 0 ? 'text-emerald-400 bg-emerald-950/50 border-emerald-800/40' : 'text-rose-400 bg-rose-950/50 border-rose-800/40'
+                        }`}>
+                          {mgmtSummary.yoyTotalAmountPct >= 0 ? '+' : ''}{mgmtSummary.yoyTotalAmountPct.toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.totalRequestedAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-slate-500">All statuses</div>
+                    <div className="text-[10px] text-purple-400 font-medium flex items-center justify-between">
+                      <span>Click to view ALL Ledger</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
 
                   {/* Card 3: Approved Amount */}
-                  <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-3.5 space-y-1.5 shadow-md">
+                  <div
+                    onClick={() => handleOpenLedgerModal('APPROVED')}
+                    className="bg-[#0f172a]/90 border border-emerald-500/30 hover:border-emerald-500/70 ring-1 ring-emerald-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-emerald-950/60 border border-emerald-800/50 rounded-lg text-emerald-400">
@@ -1209,14 +1287,19 @@ export const Expenses: React.FC = () => {
                         </div>
                         <span className="font-medium text-slate-300">Approved Amount</span>
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-800/40">+14%</span>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.approvedAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-slate-500">{(mgmtSummary?.approvedPct || 0).toFixed(1)}% of total</div>
+                    <div className="text-[10px] text-emerald-400 font-medium flex items-center justify-between">
+                      <span>Click for Approved Ledger</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
 
                   {/* Card 4: Pending Amount */}
-                  <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-3.5 space-y-1.5 shadow-md">
+                  <div
+                    onClick={() => handleOpenLedgerModal('PENDING')}
+                    className="bg-[#0f172a]/90 border border-amber-500/30 hover:border-amber-500/70 ring-1 ring-amber-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-amber-950/60 border border-amber-800/50 rounded-lg text-amber-400">
@@ -1226,11 +1309,17 @@ export const Expenses: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.pendingAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-slate-500">{(mgmtSummary?.pendingPct || 0).toFixed(1)}% of total</div>
+                    <div className="text-[10px] text-amber-400 font-medium flex items-center justify-between">
+                      <span>Pending Approval Center</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
 
                   {/* Card 5: Rejected Amount */}
-                  <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-3.5 space-y-1.5 shadow-md">
+                  <div
+                    onClick={() => handleOpenLedgerModal('REJECTED')}
+                    className="bg-[#0f172a]/90 border border-rose-500/30 hover:border-rose-500/70 ring-1 ring-rose-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-rose-950/60 border border-rose-800/50 rounded-lg text-rose-400">
@@ -1240,12 +1329,15 @@ export const Expenses: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.rejectedAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-slate-500">{(mgmtSummary?.rejectedPct || 0).toFixed(1)}% of total</div>
+                    <div className="text-[10px] text-rose-400 font-medium flex items-center justify-between">
+                      <span>Click for Rejected Ledger</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
                 </div>
 
                 {/* EMPLOYEE OVERVIEW TABLE */}
-                <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-4 space-y-3 shadow-md">
+                <div id="employee-overview-table" className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-4 space-y-3 shadow-md">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-sm font-bold text-white flex items-center gap-2">
@@ -1485,7 +1577,7 @@ export const Expenses: React.FC = () => {
                     <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Top Cost Categories</h3>
-                        <button className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold">View All</button>
+                        <button onClick={() => setShowCategoryAnalyticsModal(true)} className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer">View All</button>
                       </div>
 
                       <div className="space-y-2 text-xs">
@@ -1551,7 +1643,15 @@ export const Expenses: React.FC = () => {
                       </h2>
                       <p className="text-[11px] text-slate-400">Latest expense claims submitted by employees</p>
                     </div>
-                    <button className="text-xs text-blue-400 hover:text-blue-300 font-semibold">View All</button>
+                    <button
+                      onClick={() => {
+                        setMainViewMode('PERSONAL');
+                        setActiveRoleTab('WORKFORCE');
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                    >
+                      View All
+                    </button>
                   </div>
 
                   <div className="overflow-x-auto border border-slate-800/80 rounded-lg">
@@ -3102,6 +3202,268 @@ export const Expenses: React.FC = () => {
               >
                 {deletingTrip ? 'Deleting...' : 'Delete Permanently'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CATEGORY ANALYTICS MODAL */}
+      {showCategoryAnalyticsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-purple-400" />
+                <span>Top Cost Categories Analytics ({currentFy.label})</span>
+              </h3>
+              <button onClick={() => setShowCategoryAnalyticsModal(false)} className="text-slate-400 hover:text-white p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-800 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#090d16] text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th className="p-3">Category</th>
+                    <th className="p-3 text-right">Total Amount (₹)</th>
+                    <th className="p-3 text-right">Approved (₹)</th>
+                    <th className="p-3 text-right">Pending (₹)</th>
+                    <th className="p-3 text-right">Rejected (₹)</th>
+                    <th className="p-3 text-right">Share (%)</th>
+                    <th className="p-3 text-center">Claim Count</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {mgmtAnalytics?.categoryBreakdown?.map((cat: any) => (
+                    <tr key={cat.category} className="hover:bg-slate-800/30">
+                      <td className="p-3 font-bold text-white flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                        <span>{cat.category}</span>
+                      </td>
+                      <td className="p-3 text-right font-mono font-bold text-purple-300">₹{cat.amount.toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-emerald-400">₹{(cat.approvedAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-amber-400">₹{(cat.pendingAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-rose-400">₹{(cat.rejectedAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono font-semibold text-slate-300">{cat.percentage.toFixed(1)}%</td>
+                      <td className="p-3 text-center font-mono text-slate-400">{cat.claimCount || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowCategoryAnalyticsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAILED EXPENSE LEDGER / PENDING APPROVAL CENTER MODAL */}
+      {showLedgerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  {ledgerType === 'PENDING' ? <Clock className="w-5 h-5 text-amber-400" /> :
+                   ledgerType === 'APPROVED' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> :
+                   ledgerType === 'REJECTED' ? <XCircle className="w-5 h-5 text-rose-400" /> :
+                   <DollarSign className="w-5 h-5 text-purple-400" />}
+                  <span>
+                    {ledgerType === 'PENDING' ? 'Pending Approval Center' :
+                     ledgerType === 'APPROVED' ? 'Detailed APPROVED Expense Ledger' :
+                     ledgerType === 'REJECTED' ? 'Detailed REJECTED Expense Ledger' :
+                     'Detailed ALL Expense Ledger'} ({currentFy.label})
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {ledgerType === 'PENDING' ? 'Review, view, approve or reject pending employee claims' :
+                   ledgerType === 'APPROVED' ? 'List of all approved expense records' :
+                   ledgerType === 'REJECTED' ? 'List of rejected expenses with reviewer metadata and persisted reasons' :
+                   'Complete itemized ledger of all expense records'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-[#090d16] px-4 py-2 rounded-xl border border-slate-800 text-right">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Ledger Amount</div>
+                  <div className="text-lg font-black text-white font-mono">₹{ledgerTotalAmount.toLocaleString('en-IN')}</div>
+                </div>
+
+                <button onClick={() => setShowLedgerModal(false)} className="p-1 text-slate-400 hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter / Search Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={ledgerSearch}
+                  onChange={e => {
+                    setLedgerSearch(e.target.value);
+                    fetchLedgerData(ledgerType, 1, e.target.value);
+                  }}
+                  placeholder="Search by employee name, code, merchant, purpose..."
+                  className="w-full pl-9 pr-3 py-1.5 bg-[#090d16] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500"
+                />
+              </div>
+
+              <div className="text-xs text-slate-400">
+                Found <strong className="text-white">{ledgerTotalRecords}</strong> records
+              </div>
+            </div>
+
+            {/* Ledger Table */}
+            {loadingLedger ? (
+              <div className="py-12 text-center text-xs text-slate-400">Loading ledger records...</div>
+            ) : ledgerRecords.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500 italic border border-slate-800/80 rounded-xl bg-[#090d16]">
+                No records found matching current criteria.
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#090d16] text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Employee</th>
+                      <th className="p-3">Department</th>
+                      <th className="p-3">Type & Date</th>
+                      <th className="p-3">Category & Details</th>
+                      <th className="p-3 text-right">Amount (₹)</th>
+                      <th className="p-3 text-center">Status</th>
+                      {ledgerType === 'REJECTED' && <th className="p-3">Rejection Reason & Approver</th>}
+                      <th className="p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {ledgerRecords.map(rec => (
+                      <tr key={rec.id} className="hover:bg-slate-800/30">
+                        <td className="p-3 font-bold text-white">
+                          <div>{rec.employeeName}</div>
+                          <span className="text-[10px] font-mono text-slate-400">{rec.employeeCode}</span>
+                        </td>
+                        <td className="p-3 text-slate-300">{rec.department}</td>
+                        <td className="p-3">
+                          <div className="font-semibold text-slate-200">{rec.expenseType}</div>
+                          <div className="text-[10px] font-mono text-slate-400">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-slate-200">{rec.category}</div>
+                          <div className="text-[10px] text-slate-400 truncate max-w-[180px]">{rec.merchant || rec.description || '-'}</div>
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-emerald-400">
+                          ₹{rec.amount.toLocaleString('en-IN')}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            rec.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                            rec.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                            'bg-amber-950 text-amber-400 border-amber-800'
+                          }`}>
+                            {rec.status}
+                          </span>
+                        </td>
+                        {ledgerType === 'REJECTED' && (
+                          <td className="p-3 text-xs">
+                            <div className="text-rose-300 font-semibold">{rec.rejectionReason || 'No reason provided'}</div>
+                            <div className="text-[10px] text-slate-400">Reviewed by: {rec.approver || 'System Admin'}</div>
+                          </td>
+                        )}
+                        <td className="p-3 text-center space-x-1">
+                          <button
+                            onClick={() => {
+                              if (rec.claimSource === 'TRIP') {
+                                setShowLedgerModal(false);
+                                loadTripDetails(rec.id);
+                              } else {
+                                setSelectedSingleExpense(rec);
+                              }
+                            }}
+                            className="px-2 py-1 bg-blue-950 hover:bg-blue-900 border border-blue-800 text-blue-300 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                            title="View Claim Details"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>View</span>
+                          </button>
+
+                          {(ledgerType === 'PENDING' || rec.status === 'SUBMITTED' || rec.status === 'PENDING') && (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  if (rec.claimSource === 'TRIP') {
+                                    await handleApproveTrip(rec.id);
+                                  } else {
+                                    await handleApproveSingle(rec.id);
+                                  }
+                                  fetchLedgerData(ledgerType, ledgerPage, ledgerSearch);
+                                  fetchManagementData();
+                                }}
+                                className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (rec.claimSource === 'TRIP') {
+                                    await handleRejectTrip(rec.id);
+                                  } else {
+                                    await handleRejectSingle(rec.id);
+                                  }
+                                  fetchLedgerData(ledgerType, ledgerPage, ledgerSearch);
+                                  fetchManagementData();
+                                }}
+                                className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+              <div>Page {ledgerPage} of {ledgerTotalPages}</div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={ledgerPage <= 1}
+                  onClick={() => {
+                    const newPage = ledgerPage - 1;
+                    setLedgerPage(newPage);
+                    fetchLedgerData(ledgerType, newPage, ledgerSearch);
+                  }}
+                  className="px-3 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-xs cursor-pointer"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={ledgerPage >= ledgerTotalPages}
+                  onClick={() => {
+                    const newPage = ledgerPage + 1;
+                    setLedgerPage(newPage);
+                    fetchLedgerData(ledgerType, newPage, ledgerSearch);
+                  }}
+                  className="px-3 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-xs cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </div>

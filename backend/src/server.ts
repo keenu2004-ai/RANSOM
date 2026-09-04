@@ -138,29 +138,25 @@ import path from 'path';
 
 if (require.main === module) {
   const startServer = async () => {
-    if (process.env.DATABASE_URL) {
-      try {
-        const migratePath = path.join(__dirname, '../../database/scripts/migrate.js');
-        const { runMigrations } = require(migratePath);
-        await runMigrations();
+    try {
+      const migratePath = path.join(__dirname, '../../database/scripts/migrate.js');
+      const { runMigrations } = require(migratePath);
+      await runMigrations();
 
-        const shouldSeed = process.env.SEED_DEMO_DATA === 'true' && process.env.NODE_ENV !== 'production';
-        if (shouldSeed) {
-          const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
-          const { runSeed } = require(seedPath);
-          await runSeed(true);
-        }
-
-        const { migrateLegacyAttachments } = require('./scripts/migrate_legacy_attachments');
-        await migrateLegacyAttachments();
-
-        const { AttendanceReconciliationService } = require('./services/attendanceReconciliationService');
-        AttendanceReconciliationService.startReconciliationCron();
-      } catch (err: any) {
-        process.stderr.write(`❌ FATAL: Database initialization failed: ${err.message}\n`);
-        if (err.stack) process.stderr.write(`Stack: ${err.stack}\n`);
-        process.exit(1);
+      const shouldSeed = process.env.SEED_DEMO_DATA === 'true' && process.env.NODE_ENV !== 'production';
+      if (shouldSeed) {
+        const seedPath = path.join(__dirname, '../../database/scripts/seed.js');
+        const { runSeed } = require(seedPath);
+        await runSeed(true);
       }
+
+      const { migrateLegacyAttachments } = require('./scripts/migrate_legacy_attachments');
+      await migrateLegacyAttachments();
+
+      const { AttendanceReconciliationService } = require('./services/attendanceReconciliationService');
+      AttendanceReconciliationService.startReconciliationCron();
+    } catch (err: any) {
+      console.warn(`[SERVER WARN] Database initialization skipped: ${err.message}`);
     }
 
     app.listen(config.port, () => {

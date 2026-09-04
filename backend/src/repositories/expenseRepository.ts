@@ -282,17 +282,18 @@ export class ExpenseRepository {
         const action = status === 'APPROVED' ? 'EXPENSE_APPROVED' : 'EXPENSE_REJECTED';
         await query(`
           INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-          VALUES ($1, $2, $3, 'expenses', 'Expense', $4, $5)
-        `, [organizationId, reviewerEmployeeId || null, action, id, JSON.stringify({ status, rejectionReason })]);
+          VALUES ($1, $2::text, $3, 'expenses', 'Expense', $4::text, $5)
+        `, [organizationId, reviewerEmployeeId ? String(reviewerEmployeeId) : null, action, id, JSON.stringify({ status, rejectionReason })]);
 
         const empUserRes = await query('SELECT user_id FROM employees WHERE id = $1', [row.employee_id]);
-        if (empUserRes.rows.length > 0 && empUserRes.rows[0].user_id) {
+        if (empUserRes.rows.length > 0) {
           await query(`
-            INSERT INTO notifications (organization_id, user_id, title, message)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO notifications (organization_id, employee_id, user_id, title, message)
+            VALUES ($1, $2, $3, $4, $5)
           `, [
             organizationId,
-            empUserRes.rows[0].user_id,
+            row.employee_id,
+            empUserRes.rows[0].user_id || null,
             `Expense Claim ${status}`,
             status === 'APPROVED'
               ? `Your ${row.expense_type} claim of ₹${row.amount} has been approved.`
@@ -315,15 +316,19 @@ export class ExpenseRepository {
 
       const attRes = await client.query("SELECT * FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
       for (const att of attRes.rows) {
-        await StorageService.deleteObject(att.storage_file_id, att.object_path);
+        try {
+          await StorageService.deleteObject(att.storage_file_id, att.object_path);
+        } catch (stgErr) {
+          console.warn('StorageService deleteObject failed for expense attachment:', att.object_path, stgErr);
+        }
       }
 
-      await client.query("DELETE FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
+      await client.query("DELETE FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2::text", [organizationId, id]);
       await client.query('DELETE FROM expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
 
       await client.query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
-        VALUES ($1, $2, 'EXPENSE_DELETED', 'expenses', 'Expense', $3, $4)
+        VALUES ($1, $2, 'EXPENSE_DELETED', 'expenses', 'Expense', $3::text, $4)
       `, [organizationId, userId, id, JSON.stringify(expense)]);
 
       return expense;
@@ -391,7 +396,7 @@ export class ExpenseRepository {
     const empCountRes = await query(`
       SELECT COUNT(*)::int as total_employees
       FROM employees
-      WHERE organization_id = $1 AND status = 'Active'
+      WHERE organization_id = $1 AND status ILIKE 'Active'
     `, [organizationId]);
     const totalEmployees = empCountRes.rows[0]?.total_employees || 0;
 
@@ -487,7 +492,7 @@ export class ExpenseRepository {
 
     const cte = this.getCombinedClaimsCTE();
 
-    let whereSql = `WHERE emp.organization_id = $1 AND emp.status = 'Active'`;
+    let whereSql = `WHERE emp.organization_id = $1 AND emp.status ILIKE 'Active'`;
     const params: any[] = [organizationId, fyStart, fyEnd];
     let paramIdx = 4;
 
@@ -808,7 +813,11 @@ export class ExpenseRepository {
       ${cte}
       SELECT
         category,
-        COALESCE(SUM(amount), 0)::numeric as total_amount
+        COALESCE(SUM(amount), 0)::numeric as total_amount,
+        COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0)::numeric as approved_amount,
+        COALESCE(SUM(CASE WHEN status IN ('SUBMITTED', 'PENDING') THEN amount ELSE 0 END), 0)::numeric as pending_amount,
+        COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN amount ELSE 0 END), 0)::numeric as rejected_amount,
+        COUNT(*)::int as claim_count
       FROM unified_claims
       WHERE claim_date >= $2 AND claim_date <= $3
       GROUP BY category
@@ -821,6 +830,10 @@ export class ExpenseRepository {
       return {
         category: r.category,
         amount,
+        approvedAmount: parseFloat(r.approved_amount || '0'),
+        pendingAmount: parseFloat(r.pending_amount || '0'),
+        rejectedAmount: parseFloat(r.rejected_amount || '0'),
+        claimCount: r.claim_count || 0,
         percentage: overallTotal > 0 ? (amount / overallTotal) * 100 : 0
       };
     });
@@ -1038,5 +1051,117 @@ export class ExpenseRepository {
       approver: r.reviewer_name || '',
       remarks: r.remarks || ''
     }));
+  }
+
+  static async getManagementLedger(
+    organizationId: string,
+    fyStart: string,
+    fyEnd: string,
+    filters: { status?: string; search?: string; category?: string; page?: number; limit?: number } = {}
+  ) {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const cte = this.getCombinedClaimsCTE();
+    let whereSql = `WHERE uc.claim_date >= $2 AND uc.claim_date <= $3`;
+    const params: any[] = [organizationId, fyStart, fyEnd];
+    let pIdx = 4;
+
+    if (filters.status) {
+      if (filters.status === 'PENDING' || filters.status === 'SUBMITTED') {
+        whereSql += ` AND uc.status IN ('SUBMITTED', 'PENDING')`;
+      } else {
+        whereSql += ` AND uc.status = $${pIdx}`;
+        params.push(filters.status);
+        pIdx++;
+      }
+    }
+
+    if (filters.search) {
+      whereSql += ` AND (CONCAT(emp.first_name, ' ', emp.last_name) ILIKE $${pIdx} OR emp.employee_code ILIKE $${pIdx} OR uc.description ILIKE $${pIdx} OR uc.merchant ILIKE $${pIdx})`;
+      params.push(`%${filters.search}%`);
+      pIdx++;
+    }
+
+    if (filters.category) {
+      whereSql += ` AND uc.category = $${pIdx}`;
+      params.push(filters.category);
+      pIdx++;
+    }
+
+    const countSql = `
+      ${cte}
+      SELECT COUNT(*)::int as total,
+             COALESCE(SUM(uc.amount), 0)::numeric as total_amount
+      FROM unified_claims uc
+      INNER JOIN employees emp ON uc.employee_id = emp.id
+      ${whereSql}
+    `;
+    const countRes = await query<{ total: number; total_amount: string }>(countSql, params);
+    const totalRecords = countRes.rows[0]?.total || 0;
+    const totalAmount = parseFloat(countRes.rows[0]?.total_amount || '0');
+
+    const dataSql = `
+      ${cte}
+      SELECT
+        uc.id,
+        uc.employee_id,
+        CONCAT(emp.first_name, ' ', emp.last_name) as employee_name,
+        emp.employee_code,
+        COALESCE(dept.name, 'Unassigned') as department,
+        uc.expense_type,
+        uc.claim_date,
+        uc.category,
+        uc.amount,
+        uc.status,
+        uc.merchant,
+        uc.description,
+        uc.claim_source,
+        uc.created_at as submitted_date,
+        uc.reviewed_at,
+        CONCAT(rev.first_name, ' ', rev.last_name) as reviewer_name,
+        uc.rejection_reason
+      FROM unified_claims uc
+      INNER JOIN employees emp ON uc.employee_id = emp.id
+      LEFT JOIN departments dept ON emp.department_id = dept.id
+      LEFT JOIN employees rev ON uc.reviewed_by = rev.id
+      ${whereSql}
+      ORDER BY uc.claim_date DESC, uc.created_at DESC
+      LIMIT $${pIdx} OFFSET $${pIdx + 1}
+    `;
+
+    params.push(limit, offset);
+    const dataRes = await query(dataSql, params);
+
+    return {
+      totalRecords,
+      totalAmount,
+      records: dataRes.rows.map(r => ({
+        id: r.id,
+        employeeId: r.employee_id,
+        employeeName: r.employee_name,
+        employeeCode: r.employee_code,
+        department: r.department,
+        expenseType: r.expense_type,
+        date: r.claim_date,
+        category: r.category,
+        amount: parseFloat(r.amount || '0'),
+        status: r.status,
+        merchant: r.merchant || '',
+        description: r.description || '',
+        claimSource: r.claim_source,
+        submittedDate: r.submitted_date,
+        reviewedDate: r.reviewed_at || '',
+        approver: r.reviewer_name || '',
+        rejectionReason: r.rejection_reason || ''
+      })),
+      pagination: {
+        total: totalRecords,
+        page,
+        limit,
+        totalPages: Math.ceil(totalRecords / limit)
+      }
+    };
   }
 }

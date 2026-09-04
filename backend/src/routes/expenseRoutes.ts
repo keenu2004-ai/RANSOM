@@ -847,6 +847,38 @@ router.get('/management/recent', requireManagementRole, async (req: Authenticate
   }
 });
 
+// 5b. Detailed Expense Ledger Endpoint (ALL, APPROVED, PENDING, REJECTED)
+router.get('/management/ledger', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    const { startYear, status, search, category, page, limit } = req.query;
+    const fy = getFinancialYearPeriod(startYear as string);
+
+    const ledgerData = await ExpenseRepository.getManagementLedger(
+      organizationId,
+      fy.startDate,
+      fy.endDate,
+      {
+        status: status as string,
+        search: search as string,
+        category: category as string,
+        page: page ? parseInt(page as string, 10) : 1,
+        limit: limit ? parseInt(limit as string, 10) : 10
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        financialYear: fy,
+        ...ledgerData
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 // 6. Excel/CSV Download Report Endpoint
 router.get('/management/report', requireManagementRole, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
