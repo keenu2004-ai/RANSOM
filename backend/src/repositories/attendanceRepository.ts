@@ -99,14 +99,14 @@ export class AttendanceRepository {
       await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
 
       const text = `
-        SELECT 
+        SELECT
           a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
           a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
           a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
           a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
         FROM attendance a
-        WHERE a.employee_id = $1 AND a.organization_id = $2 
-          AND a.check_out IS NULL 
+        WHERE a.employee_id = $1 AND a.organization_id = $2
+          AND a.check_out IS NULL
           AND (a.session_state IS NULL OR a.session_state = 'ACTIVE')
         ORDER BY a.check_in DESC
         LIMIT 1
@@ -121,7 +121,7 @@ export class AttendanceRepository {
    */
   static async findTodaySessions(employeeId: string, organizationId: string, dateStr: string) {
     const text = `
-      SELECT 
+      SELECT
         a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
         a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
         a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
@@ -148,7 +148,7 @@ export class AttendanceRepository {
       }
 
       const sessionsRes = await client.query(
-        `SELECT 
+        `SELECT
           a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
           a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
           a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
@@ -162,14 +162,14 @@ export class AttendanceRepository {
 
       // Authoritative global active session for employee (check_out IS NULL AND ACTIVE)
       const globalActiveRes = await client.query(
-        `SELECT 
+        `SELECT
           a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
           a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
           a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
           a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours, a.location_id
         FROM attendance a
-        WHERE a.employee_id = $1 AND a.organization_id = $2 
-          AND a.check_out IS NULL 
+        WHERE a.employee_id = $1 AND a.organization_id = $2
+          AND a.check_out IS NULL
           AND (a.session_state IS NULL OR a.session_state = 'ACTIVE')
         ORDER BY a.check_in DESC LIMIT 1`,
         [employeeId, organizationId]
@@ -199,7 +199,7 @@ export class AttendanceRepository {
         `SELECT lr.id, lr.status, lt.name as leave_type_name, lt.code as leave_type_code
          FROM leave_requests lr
          JOIN leave_types lt ON lr.leave_type_id = lt.id
-         WHERE lr.employee_id = $1 AND lr.organization_id = $2 
+         WHERE lr.employee_id = $1 AND lr.organization_id = $2
            AND lr.status = 'APPROVED'
            AND $3 BETWEEN lr.start_date AND lr.end_date
          LIMIT 1`,
@@ -216,7 +216,7 @@ export class AttendanceRepository {
 
       // Check Pending Regularization
       const regRes = await client.query(
-        `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations 
+        `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations
          WHERE employee_id = $1 AND organization_id = $2 AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
         [employeeId, organizationId, targetDateStr]
       );
@@ -282,9 +282,9 @@ export class AttendanceRepository {
 
       // 2. Lock & check active session for employee across ALL dates
       const activeRes = await client.query(
-        `SELECT id, check_in, date, status, session_state FROM attendance 
-         WHERE employee_id = $1 AND organization_id = $2 
-           AND check_out IS NULL 
+        `SELECT id, check_in, date, status, session_state FROM attendance
+         WHERE employee_id = $1 AND organization_id = $2
+           AND check_out IS NULL
            AND (session_state IS NULL OR session_state = 'ACTIVE')
          FOR UPDATE`,
         [employeeId, organizationId]
@@ -342,8 +342,8 @@ export class AttendanceRepository {
 
       const activeRes = await client.query(
         `SELECT id, check_in FROM attendance
-         WHERE employee_id = $1 AND organization_id = $2 
-           AND check_out IS NULL 
+         WHERE employee_id = $1 AND organization_id = $2
+           AND check_out IS NULL
            AND (session_state IS NULL OR session_state = 'ACTIVE')
            AND date = $3
          FOR UPDATE`,
@@ -359,7 +359,7 @@ export class AttendanceRepository {
 
       const text = `
         UPDATE attendance
-        SET 
+        SET
           check_out = CURRENT_TIMESTAMP,
           session_state = 'COMPLETED',
           punch_out_lat = $1,
@@ -372,7 +372,18 @@ export class AttendanceRepository {
         RETURNING id, employee_id, date, check_in, check_out, session_state, punch_in_lat, punch_in_lng, punch_in_accuracy, punch_in_location_name, punch_out_lat, punch_out_lng, punch_out_accuracy, punch_out_location_name, working_hours, break_duration_mins, status
       `;
       const res = await client.query(text, [latitude || null, longitude || null, accuracy || null, locationName, active.id, organizationId]);
-      return res.rows[0];
+      const record = res.rows[0];
+
+      // Reconcile automatic leave deductions for employee in current year
+      try {
+        const year = parseInt(todayStr.split('-')[0], 10);
+        const { AttendanceLeaveDeductionService } = require('../services/attendanceLeaveDeductionService');
+        await AttendanceLeaveDeductionService.reconcileEmployeeDeduction(organizationId, employeeId, year, client);
+      } catch (deductionErr) {
+        console.warn('Automatic leave deduction reconciliation warning:', deductionErr);
+      }
+
+      return record;
     });
   }
 
@@ -387,7 +398,7 @@ export class AttendanceRepository {
 
     const text = `
       UPDATE attendance
-      SET 
+      SET
         break_duration_mins = COALESCE(break_duration_mins, 0) + $1,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $2 AND organization_id = $3 AND check_out IS NULL
@@ -415,7 +426,7 @@ export class AttendanceRepository {
     return withTransaction(async (client) => {
       // Prevent duplicate pending regularization requests for the same employee/date
       const dupRes = await client.query(
-        `SELECT id FROM attendance_regularizations 
+        `SELECT id FROM attendance_regularizations
          WHERE employee_id = $1 AND organization_id = $2 AND attendance_date = $3 AND status = 'PENDING'`,
         [employeeId, organizationId, attendanceDate]
       );
@@ -424,8 +435,8 @@ export class AttendanceRepository {
       }
 
       const attRes = await client.query(
-        `SELECT id, check_in, check_out FROM attendance 
-         WHERE employee_id = $1 AND organization_id = $2 AND date = $3 
+        `SELECT id, check_in, check_out FROM attendance
+         WHERE employee_id = $1 AND organization_id = $2 AND date = $3
          ORDER BY check_in ASC LIMIT 1`,
         [employeeId, organizationId, attendanceDate]
       );
@@ -437,10 +448,10 @@ export class AttendanceRepository {
 
       const text = `
         INSERT INTO attendance_regularizations (
-          organization_id, employee_id, attendance_date, 
+          organization_id, employee_id, attendance_date,
           attendance_session_id, attendance_type,
           original_in_time, original_out_time,
-          requested_punch_in, requested_punch_out, 
+          requested_punch_in, requested_punch_out,
           reason, status, submitted_by
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING', $11)
         RETURNING *
@@ -523,7 +534,7 @@ export class AttendanceRepository {
     }
 
     const sql = `
-      SELECT 
+      SELECT
         r.id, r.organization_id, r.employee_id,
         COALESCE(CONCAT(e.first_name, ' ', e.last_name), r.employee_name_snapshot, 'Deleted Employee') as employee_name,
         COALESCE(e.employee_code, r.employee_code_snapshot, 'EMP') as employee_code,
@@ -542,8 +553,8 @@ export class AttendanceRepository {
   static async approveRegularization(organizationId: string, regularizationId: string, approverId: string) {
     return withTransaction(async (client) => {
       const regRes = await client.query(
-        `SELECT * FROM attendance_regularizations 
-         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING' 
+        `SELECT * FROM attendance_regularizations
+         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING'
          FOR UPDATE`,
         [regularizationId, organizationId]
       );
@@ -557,14 +568,14 @@ export class AttendanceRepository {
       }
 
       await client.query(
-        `UPDATE attendance_regularizations 
-         SET status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+        `UPDATE attendance_regularizations
+         SET status = 'APPROVED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
          WHERE id = $2`,
         [approverId, regularizationId]
       );
 
-      const dateStr = typeof reg.attendance_date === 'string' 
-        ? reg.attendance_date.split('T')[0] 
+      const dateStr = typeof reg.attendance_date === 'string'
+        ? reg.attendance_date.split('T')[0]
         : new Date(reg.attendance_date).toISOString().split('T')[0];
 
       const checkInTime = reg.requested_punch_in ? new Date(reg.requested_punch_in) : null;
@@ -665,6 +676,15 @@ export class AttendanceRepository {
         );
       }
 
+      // Reconcile automatic leave deductions for employee after regularization approval
+      try {
+        const year = parseInt(dateStr.split('-')[0], 10);
+        const { AttendanceLeaveDeductionService } = require('../services/attendanceLeaveDeductionService');
+        await AttendanceLeaveDeductionService.reconcileEmployeeDeduction(organizationId, reg.employee_id, year, client);
+      } catch (deductionErr) {
+        console.warn('Automatic leave deduction reconciliation warning on regularization approval:', deductionErr);
+      }
+
       return { regularization: { ...reg, status: 'APPROVED' }, attendance: attRecord };
     });
   }
@@ -672,8 +692,8 @@ export class AttendanceRepository {
   static async rejectRegularization(organizationId: string, regularizationId: string, approverId: string, rejectionReason?: string) {
     return withTransaction(async (client) => {
       const regRes = await client.query(
-        `SELECT * FROM attendance_regularizations 
-         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING' 
+        `SELECT * FROM attendance_regularizations
+         WHERE id = $1 AND organization_id = $2 AND status = 'PENDING'
          FOR UPDATE`,
         [regularizationId, organizationId]
       );
@@ -683,15 +703,15 @@ export class AttendanceRepository {
       }
 
       const res = await client.query(
-        `UPDATE attendance_regularizations 
-         SET status = 'REJECTED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2, updated_at = CURRENT_TIMESTAMP 
-         WHERE id = $3 AND organization_id = $4 
+        `UPDATE attendance_regularizations
+         SET status = 'REJECTED', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3 AND organization_id = $4
          RETURNING *`,
         [approverId, rejectionReason || 'Rejected by manager', regularizationId, organizationId]
       );
 
-      const dateStr = typeof reg.attendance_date === 'string' 
-        ? reg.attendance_date.split('T')[0] 
+      const dateStr = typeof reg.attendance_date === 'string'
+        ? reg.attendance_date.split('T')[0]
         : new Date(reg.attendance_date).toISOString().split('T')[0];
 
       const empRes = await client.query(`SELECT user_id, employee_code, first_name, last_name FROM employees WHERE id = $1`, [reg.employee_id]);
@@ -955,14 +975,14 @@ export class AttendanceRepository {
     const dayIsHoliday = isHoliday || holRes.rows.length > 0;
 
     const text = `
-      SELECT 
+      SELECT
         (SELECT COUNT(*)::int FROM employees WHERE organization_id = $1 AND status = 'ACTIVE') as total_employees,
         (SELECT COUNT(DISTINCT a.employee_id)::int FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.organization_id = $1 AND a.date = $2 AND e.status = 'ACTIVE') as present_today,
         (SELECT COUNT(DISTINCT l.employee_id)::int FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.organization_id = $1 AND $2 BETWEEN l.start_date AND l.end_date AND l.status = 'APPROVED' AND e.status = 'ACTIVE') as on_leave_today
     `;
     const res = await query(text, [organizationId, targetDateStr]);
     const row = res.rows[0] || { total_employees: 0, present_today: 0, on_leave_today: 0 };
-    
+
     let absent_today = 0;
     if (!dayIsHoliday) {
       absent_today = Math.max(0, row.total_employees - (row.present_today + row.on_leave_today));

@@ -267,10 +267,13 @@ export const Attendance: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Legend matching reference screenshot */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-slate-300 bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Present</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Absent</span>
+          {/* Master Policy Status Badges Legend */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-slate-300 bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl flex-wrap">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Present (09:00–09:15)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Short Leave (09:15–09:30)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Late Present (09:30–11:00)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> Half Day (11:00–13:00)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Absent (13:00+)</span>
           </div>
 
           {user?.employeeId && (
@@ -292,10 +295,10 @@ export const Attendance: React.FC = () => {
             <div>
               <h3 className="font-bold text-sm text-slate-200">Today's Attendance Control</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                {activeSession 
-                  ? `Session in progress. Check in recorded at ${activeSession.check_in ? new Date(activeSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.` 
-                  : (todaySummary?.completedSessionCount || 0) > 0 
-                  ? `Completed ${todaySummary?.completedSessionCount} session(s) today. Ready for next session.` 
+                {activeSession
+                  ? `Session in progress. Check in recorded at ${activeSession.check_in ? new Date(activeSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.`
+                  : (todaySummary?.completedSessionCount || 0) > 0
+                  ? `Completed ${todaySummary?.completedSessionCount} session(s) today. Ready for next session.`
                   : 'No active session. Click Check In to start.'}
               </p>
             </div>
@@ -504,13 +507,19 @@ export const Attendance: React.FC = () => {
                             <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                isAbsent
+                                isAbsent || a.status === 'ABSENT'
                                   ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                                  : a.status?.includes('SHORT LEAVE')
+                                  ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
+                                  : a.status?.includes('LATE PRESENT')
+                                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
+                                  : a.status === 'HALF DAY'
+                                  ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60'
                                   : a.status === 'HOLIDAY'
                                   ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
-                                  : a.check_out || a.status === 'PRESENT' || a.status === 'LATE PRESENT' || a.status === 'EARLY CHECKOUT' || a.status === 'LATE PRESENT / EARLY CHECKOUT'
+                                  : a.status === 'PRESENT'
                                   ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                                  : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 animate-pulse'
+                                  : 'bg-slate-800 text-slate-300 border border-slate-700'
                               }`}>
                                 {a.status || 'PRESENT'}
                               </span>

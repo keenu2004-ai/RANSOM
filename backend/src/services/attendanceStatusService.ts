@@ -107,36 +107,66 @@ export class AttendanceStatusService {
   }
 
   /**
-   * Determines check-in punctuality relative to 09:00 AM start with 15-min grace period (up to 09:15 AM).
+   * Evaluates check-in timestamp against exact Master Attendance Rules:
+   * Rule A (PRESENT): 09:00:00 to 09:15:00
+   * Rule B (SHORT LEAVE): 09:15:01 to 09:30:00
+   * Rule C (LATE PRESENT): 09:30:01 to 10:59:59
+   * Rule D (HALF DAY): 11:00:00 to 12:59:59
+   * Rule E (ABSENT): 13:00:00 onward
    */
-  static isCheckInLate(checkInTimestamp: string | Date, timeZone: string = 'Asia/Kolkata'): boolean {
+  static getPunctualityCategory(checkInTimestamp: string | Date, timeZone: string = 'Asia/Kolkata'): 'PRESENT' | 'SHORT_LEAVE' | 'LATE_PRESENT' | 'HALF_DAY' | 'ABSENT' {
     try {
       const d = typeof checkInTimestamp === 'string' ? new Date(checkInTimestamp) : checkInTimestamp;
-      if (isNaN(d.getTime())) return false;
+      if (isNaN(d.getTime())) return 'PRESENT';
 
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone,
         hour: 'numeric',
         minute: 'numeric',
+        second: 'numeric',
         hour12: false
       });
       const parts = formatter.formatToParts(d);
       let hour = 0;
       let minute = 0;
+      let second = 0;
 
       for (const p of parts) {
         if (p.type === 'hour') hour = parseInt(p.value, 10);
         if (p.type === 'minute') minute = parseInt(p.value, 10);
+        if (p.type === 'second') second = parseInt(p.value, 10);
       }
 
-      // 09:00 AM to 09:15 AM => PRESENT
-      // 09:16 AM onwards => LATE PRESENT
-      if (hour > 9) return true;
-      if (hour === 9 && minute > 15) return true;
-      return false;
+      const totalSecs = hour * 3600 + minute * 60 + second;
+
+      // 09:00:00 is 32400s
+      // 09:15:00 is 33300s
+      // 09:30:00 is 34200s
+      // 11:00:00 is 39600s
+      // 13:00:00 is 46800s
+
+      if (totalSecs <= 33300) {
+        return 'PRESENT'; // 09:00 - 09:15
+      } else if (totalSecs <= 34200) {
+        return 'SHORT_LEAVE'; // 09:15:01 - 09:30:00
+      } else if (totalSecs < 39600) {
+        return 'LATE_PRESENT'; // 09:30:01 - 10:59:59
+      } else if (totalSecs < 46800) {
+        return 'HALF_DAY'; // 11:00:00 - 12:59:59
+      } else {
+        return 'ABSENT'; // 13:00:00 onward
+      }
     } catch {
-      return false;
+      return 'PRESENT';
     }
+  }
+
+  /**
+   * Determines check-in punctuality relative to 09:00 AM start with 15-min grace period (up to 09:15 AM).
+   */
+  static isCheckInLate(checkInTimestamp: string | Date, timeZone: string = 'Asia/Kolkata'): boolean {
+    const category = this.getPunctualityCategory(checkInTimestamp, timeZone);
+    return category !== 'PRESENT';
   }
 
   /**
@@ -234,21 +264,58 @@ export class AttendanceStatusService {
       } else {
         // Completed sessions present
         sessionState = 'COMPLETED';
-        const isLate = firstCheckIn ? this.isCheckInLate(firstCheckIn, timeZone) : false;
-        const isEarly = totalWorkingHours < 8.0;
+        const checkInCategory = firstCheckIn ? this.getPunctualityCategory(firstCheckIn, timeZone) : 'PRESENT';
 
-        if (isLate && isEarly) {
-          status = 'LATE PRESENT / EARLY CHECKOUT';
-          displayStatus = 'LATE PRESENT / EARLY CHECKOUT';
-        } else if (isLate) {
-          status = 'LATE PRESENT';
-          displayStatus = 'LATE PRESENT';
-        } else if (isEarly) {
-          status = 'EARLY CHECKOUT';
-          displayStatus = 'EARLY CHECKOUT';
+        // Check if final checkout reached office end time (05:00 PM / 17:00:00 IST)
+        let reachedOfficeEnd = false;
+        if (lastCheckOut) {
+          try {
+            const outDate = typeof lastCheckOut === 'string' ? new Date(lastCheckOut) : lastCheckOut;
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone,
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: false
+            });
+            const parts = formatter.formatToParts(outDate);
+            let outHour = 0;
+            let outMinute = 0;
+            for (const p of parts) {
+              if (p.type === 'hour') outHour = parseInt(p.value, 10);
+              if (p.type === 'minute') outMinute = parseInt(p.value, 10);
+            }
+            if (outHour >= 17) reachedOfficeEnd = true;
+          } catch {
+            reachedOfficeEnd = false;
+          }
+        }
+
+        const isEarlyOut = !reachedOfficeEnd && totalWorkingHours < 8.0 && totalWorkingHours >= 4.0;
+
+        if (checkInCategory === 'ABSENT') {
+          status = 'ABSENT';
+          displayStatus = 'ABSENT';
+        } else if (checkInCategory === 'HALF_DAY') {
+          status = 'HALF DAY';
+          displayStatus = 'HALF DAY';
+        } else if (checkInCategory === 'SHORT_LEAVE') {
+          status = isEarlyOut ? 'SHORT LEAVE / EARLY CHECKOUT' : 'SHORT LEAVE';
+          displayStatus = isEarlyOut ? 'SHORT LEAVE / EARLY CHECKOUT' : 'SHORT LEAVE';
+        } else if (checkInCategory === 'LATE_PRESENT') {
+          status = isEarlyOut ? 'LATE PRESENT / EARLY CHECKOUT' : 'LATE PRESENT';
+          displayStatus = isEarlyOut ? 'LATE PRESENT / EARLY CHECKOUT' : 'LATE PRESENT';
         } else {
-          status = 'PRESENT';
-          displayStatus = 'PRESENT';
+          // Check-in was PRESENT (09:00 - 09:15)
+          if (totalWorkingHours < 4.0) {
+            status = 'HALF DAY';
+            displayStatus = 'HALF DAY';
+          } else if (isEarlyOut) {
+            status = 'EARLY CHECKOUT';
+            displayStatus = 'EARLY CHECKOUT';
+          } else {
+            status = 'PRESENT';
+            displayStatus = 'PRESENT';
+          }
         }
       }
     }
