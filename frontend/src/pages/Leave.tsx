@@ -39,6 +39,8 @@ export const Leave: React.FC = () => {
   const [empSearch, setEmpSearch] = useState('');
   const [empDeptFilter, setEmpDeptFilter] = useState('ALL');
   const [empStatusFilter, setEmpStatusFilter] = useState('ALL');
+  const [empPage, setEmpPage] = useState(1);
+  const [empLimit, setEmpLimit] = useState(5);
 
   const [reqTab, setReqTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'ALL'>('PENDING');
   const [reqSearch, setReqSearch] = useState('');
@@ -113,18 +115,26 @@ export const Leave: React.FC = () => {
             apiFetch('/employees').catch(() => null)
           ]);
 
-          if (allBalRes?.data) {
-            setAllBalancesData(allBalRes.data.employees || []);
-            setSummaryData(allBalRes.data.summary || {
-              totalEmployees: 0, activeEmployees: 0, inactiveEmployees: 0,
+          if (allBalRes) {
+            const empList = allBalRes.employees || allBalRes.data?.employees || [];
+            const summary = allBalRes.summary || allBalRes.data?.summary || {
+              totalEmployees: empList.length, activeEmployees: empList.filter((e: any) => e.status === 'ACTIVE').length, inactiveEmployees: empList.filter((e: any) => e.status !== 'ACTIVE').length,
               pendingRequests: 0, approvedThisYear: 0, avgLeaveUsage: 0
-            });
+            };
+
+            setAllBalancesData(empList);
+            setSummaryData(summary);
+
+            // Auto-select first employee for drawer default if not set
+            if (empList.length > 0 && !selectedEmpDetail) {
+              setSelectedEmpDetail(empList[0]);
+            }
           }
 
-          const reqs = reqRes?.data?.leaveRequests || reqRes?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
+          const reqs = reqRes?.leaveRequests || reqRes?.data?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
           setLeaveRequests(reqs);
 
-          const emps = empRes?.data?.employees || empRes?.employees || (Array.isArray(empRes) ? empRes : []);
+          const emps = empRes?.employees || empRes?.data?.employees || (Array.isArray(empRes) ? empRes : []);
           setEmployees(emps);
         } catch (err: any) {
           setLeaveFetchError(err.message || 'Unable to load leave data.');
@@ -132,7 +142,7 @@ export const Leave: React.FC = () => {
       } else {
         try {
           const reqRes = await apiFetch('/leaves');
-          const reqs = reqRes?.data?.leaveRequests || reqRes?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
+          const reqs = reqRes?.leaveRequests || reqRes?.data?.leaveRequests || (Array.isArray(reqRes) ? reqRes : []);
           setLeaveRequests(reqs);
         } catch (err: any) {
           setLeaveFetchError(err.message || 'Unable to load leave requests.');
@@ -242,6 +252,8 @@ export const Leave: React.FC = () => {
     const matchesStatus = empStatusFilter === 'ALL' || emp.status.toUpperCase() === empStatusFilter.toUpperCase();
     return matchesSearch && matchesDept && matchesStatus;
   });
+
+  const paginatedEmpBalances = filteredEmpBalances.slice((empPage - 1) * empLimit, empPage * empLimit);
 
   // Filtered Requests
   const filteredRequests = leaveRequests.filter(req => {
@@ -413,36 +425,48 @@ export const Leave: React.FC = () => {
                   <thead className="bg-slate-950/80 text-xs uppercase text-slate-400 font-semibold border-b border-slate-800">
                     <tr>
                       <th className="py-3.5 px-4">Employee</th>
+                      <th className="py-3.5 px-4">Code</th>
                       <th className="py-3.5 px-4">Department</th>
                       <th className="py-3.5 px-4 min-w-[130px]">Casual Leave (CL)</th>
                       <th className="py-3.5 px-4 min-w-[140px]">Privilege (EL/PL)</th>
                       <th className="py-3.5 px-4 min-w-[130px]">Sick Leave (SL)</th>
-                      <th className="py-3.5 px-4">Total Avail.</th>
+                      <th className="py-3.5 px-4">Total</th>
                       <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 text-right">Action</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
-                    {filteredEmpBalances.length === 0 ? (
+                    {paginatedEmpBalances.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-slate-500">
+                        <td colSpan={9} className="py-8 text-center text-slate-500">
                           No employee balances match your search/filter criteria.
                         </td>
                       </tr>
                     ) : (
-                      filteredEmpBalances.map(emp => (
-                        <tr key={emp.employee_id} className="hover:bg-slate-800/40 transition">
+                      paginatedEmpBalances.map(emp => (
+                        <tr
+                          key={emp.employee_id}
+                          className={`hover:bg-slate-800/40 transition cursor-pointer ${
+                            selectedEmpDetail?.employee_id === emp.employee_id ? 'bg-indigo-500/10' : ''
+                          }`}
+                          onClick={() => { setSelectedEmpDetail(emp); setDrawerTab('BALANCE'); }}
+                        >
                           <td className="py-3 px-4 font-medium text-white">
-                            <div>{emp.employee_name}</div>
-                            <div className="text-xs text-slate-500 font-mono">{emp.employee_code}</div>
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-full bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xs font-bold">
+                                {emp.employee_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>{emp.employee_name}</div>
+                            </div>
                           </td>
+                          <td className="py-3 px-4 text-xs text-slate-400 font-mono">{emp.employee_code}</td>
                           <td className="py-3 px-4 text-slate-400">{emp.department}</td>
                           
                           {/* CL Progress */}
                           <td className="py-3 px-4">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-400">{emp.casual_leave.used}/{emp.casual_leave.quota} used</span>
-                              <span className="font-semibold text-cyan-400">{emp.casual_leave.available} avail</span>
+                              <span className="text-slate-300 font-bold">{emp.casual_leave.used} / {emp.casual_leave.quota} used</span>
+                              <span className="text-cyan-400 font-medium">{emp.casual_leave.available} remaining</span>
                             </div>
                             <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
                               <div 
@@ -455,8 +479,8 @@ export const Leave: React.FC = () => {
                           {/* PL Progress */}
                           <td className="py-3 px-4">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-400">{emp.privilege_leave.used}/{emp.privilege_leave.quota} used</span>
-                              <span className="font-semibold text-emerald-400">{emp.privilege_leave.available} avail</span>
+                              <span className="text-slate-300 font-bold">{emp.privilege_leave.used} / {emp.privilege_leave.quota} used</span>
+                              <span className="text-emerald-400 font-medium">{emp.privilege_leave.available} remaining</span>
                             </div>
                             <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
                               <div 
@@ -469,8 +493,8 @@ export const Leave: React.FC = () => {
                           {/* SL Progress */}
                           <td className="py-3 px-4">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-400">{emp.sick_leave.used}/{emp.sick_leave.quota} used</span>
-                              <span className="font-semibold text-amber-400">{emp.sick_leave.available} avail</span>
+                              <span className="text-slate-300 font-bold">{emp.sick_leave.used} / {emp.sick_leave.quota} used</span>
+                              <span className="text-amber-400 font-medium">{emp.sick_leave.available} remaining</span>
                             </div>
                             <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
                               <div 
@@ -494,7 +518,7 @@ export const Leave: React.FC = () => {
 
                           <td className="py-3 px-4 text-right">
                             <button
-                              onClick={() => { setSelectedEmpDetail(emp); setDrawerTab('BALANCE'); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedEmpDetail(emp); setDrawerTab('BALANCE'); }}
                               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 rounded-lg text-xs font-medium border border-slate-700 transition inline-flex items-center gap-1.5"
                             >
                               <Eye className="h-3.5 w-3.5" /> View
@@ -505,6 +529,53 @@ export const Leave: React.FC = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* PAGINATION FOOTER */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 pt-2">
+                <div>
+                  Showing {filteredEmpBalances.length === 0 ? 0 : (empPage - 1) * empLimit + 1} to {Math.min(empPage * empLimit, filteredEmpBalances.length)} of {filteredEmpBalances.length} employees
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={empPage <= 1}
+                    onClick={() => setEmpPage(p => Math.max(1, p - 1))}
+                    className="p-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 disabled:opacity-40"
+                  >
+                    &lt;
+                  </button>
+                  {Array.from({ length: Math.ceil(filteredEmpBalances.length / empLimit) || 1 }, (_, i) => i + 1).slice(0, 5).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setEmpPage(p)}
+                      className={`px-3 py-1 rounded-lg border font-medium ${
+                        empPage === p
+                          ? 'bg-indigo-600 text-white border-indigo-500'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    disabled={empPage >= Math.ceil(filteredEmpBalances.length / empLimit)}
+                    onClick={() => setEmpPage(p => Math.min(Math.ceil(filteredEmpBalances.length / empLimit), p + 1))}
+                    className="p-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 disabled:opacity-40"
+                  >
+                    &gt;
+                  </button>
+
+                  <select
+                    value={empLimit}
+                    onChange={e => { setEmpLimit(Number(e.target.value)); setEmpPage(1); }}
+                    className="ml-2 py-1 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none"
+                  >
+                    <option value={5}>5 per page</option>
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                  </select>
+                </div>
               </div>
             </div>
           ) : (
