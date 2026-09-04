@@ -190,8 +190,8 @@ export const AdminControl: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-        <div className="flex gap-2">
+      <div className="border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 min-w-max">
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${

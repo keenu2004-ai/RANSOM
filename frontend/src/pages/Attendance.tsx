@@ -260,28 +260,28 @@ export const Attendance: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Clock className="w-6 h-6 text-cyan-400" />
-            <span>Attendance Logs / Attendance Management</span>
+            <Clock className="w-6 h-6 text-cyan-400 shrink-0" />
+            <span>Attendance Management</span>
           </h1>
-          <p className="text-xs text-slate-400">Employee attendance records, punch control, and regularization management</p>
+          <p className="text-xs text-slate-400 mt-1">Employee attendance records, punch control, and regularization management</p>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Master Policy Status Badges Legend */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-slate-300 bg-slate-900/80 px-3 py-1.5 border border-slate-800 rounded-xl flex-wrap">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Present (09:00–09:15)</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Short Leave (09:15–09:30)</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Late Present (09:30–11:00)</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> Half Day (11:00–13:00)</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Absent (13:00+)</span>
+          <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-slate-300 bg-slate-900/80 p-2 sm:px-3 sm:py-1.5 border border-slate-800 rounded-xl flex-wrap">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Present</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Short Leave</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-cyan-400"></span> Late</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> Half Day</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Absent</span>
           </div>
 
           {user?.employeeId && (
             <button
               onClick={() => openRegularizeForDate(new Date().toISOString().split('T')[0])}
-              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
             >
-              <CalendarIcon className="w-4 h-4 text-indigo-400" />
+              <CalendarIcon className="w-4 h-4 text-indigo-400 shrink-0" />
               <span>Regularize Attendance</span>
             </button>
           )}

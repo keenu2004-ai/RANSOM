@@ -189,20 +189,19 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   })();
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#050B14]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 h-16 bg-[#050B14]/90 backdrop-blur-xl border-b border-white/10 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
       {/* Left: Mobile Hamburger & Logo */}
-      {/* Left: Mobile Hamburger & Desktop Branding */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <button
           type="button"
           onClick={onMenuClick}
-          className="lg:hidden p-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+          className="lg:hidden p-1.5 sm:p-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
           aria-label="Open menu"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
 
-        <div className="lg:hidden flex items-center gap-2">
+        <div className="lg:hidden flex items-center max-w-[130px] sm:max-w-none">
           <TheiakshiLogo variant="full" size="sm" />
         </div>
 
@@ -216,14 +215,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       </div>
 
       {/* Right Controls: Attendance, Bell, Theme Toggle, Profile */}
-      <div className="flex items-center gap-2 sm:gap-3 relative">
+      <div className="flex items-center gap-1.5 sm:gap-3 relative shrink-0">
         {/* Quick Check-in/out Punch Button */}
         {user?.employeeId && (
           <button
             type="button"
             onClick={handlePunch}
             disabled={actionLoading}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer ${
               hasActiveSession
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
@@ -232,11 +231,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-label={hasActiveSession ? 'Check Out Attendance' : 'Check In Attendance'}
           >
             {actionLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin shrink-0" />
             ) : (
-              <Fingerprint className="w-4 h-4 shrink-0" />
+              <Fingerprint className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             )}
-            <span className="text-[11px] sm:text-xs whitespace-nowrap">{hasActiveSession ? 'Check Out' : 'Check In'}</span>
+            <span className="text-[10px] sm:text-xs font-medium">{hasActiveSession ? 'Out' : 'In'}</span>
           </button>
         )}
 

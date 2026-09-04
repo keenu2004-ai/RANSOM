@@ -16,7 +16,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-[1600px] w-full mx-auto space-y-6">
+        <main className="flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:p-8 overflow-y-auto max-w-[1600px] w-full mx-auto space-y-4 sm:space-y-6 min-w-0">
           {children}
         </main>
       </div>

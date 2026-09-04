@@ -291,23 +291,23 @@ export const Employees: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-cyan-400" />
+            <Users className="w-6 h-6 text-cyan-400 shrink-0" />
             <span>Employee Directory</span>
           </h1>
-          <p className="text-xs text-slate-400">Manage organizational personnel, department assignments, and designations</p>
+          <p className="text-xs text-slate-400 mt-1">Manage organizational personnel, department assignments, and designations</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 text-xs font-semibold">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 text-xs font-semibold justify-center">
             <button
               onClick={() => setActiveTab('list')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'list' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all ${activeTab === 'list' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Employee List
             </button>
             <button
               onClick={() => setActiveTab('orgChart')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${activeTab === 'orgChart' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all ${activeTab === 'orgChart' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Org Chart
             </button>
@@ -316,7 +316,7 @@ export const Employees: React.FC = () => {
           {hasPermission(user?.role, 'EMPLOYEE_CREATE') && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all w-full sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               <span>Add Employee</span>
@@ -328,8 +328,8 @@ export const Employees: React.FC = () => {
       {activeTab === 'list' && (
         <>
           {/* Filters Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <div className="relative flex-1 min-w-[200px]">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div className="relative flex-1 w-full min-w-0">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
               <input
                 type="text"
@@ -343,7 +343,7 @@ export const Employees: React.FC = () => {
             <select
               value={filterDepartmentId}
               onChange={e => { setFilterDepartmentId(e.target.value); setPage(1); }}
-              className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full sm:w-auto px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             >
               <option value="">All Departments</option>
               {departments.map(d => (
@@ -354,14 +354,14 @@ export const Employees: React.FC = () => {
             <select
               value={status}
               onChange={e => { setStatus(e.target.value); setPage(1); }}
-              className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full sm:w-auto px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             >
               <option value="">All Statuses</option>
               <option value="ACTIVE">Active Only</option>
               <option value="INACTIVE">Inactive Only</option>
             </select>
 
-            <button type="submit" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-xl transition-all">
+            <button type="submit" className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-xl transition-all">
               Filter
             </button>
           </form>

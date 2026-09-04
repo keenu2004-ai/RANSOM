@@ -278,23 +278,23 @@ export const Leave: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 text-slate-100 max-w-[1600px] mx-auto">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 text-slate-100 max-w-[1600px] mx-auto min-w-0 w-full overflow-x-hidden">
       {/* SECTION A — HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800 backdrop-blur-md">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 backdrop-blur-md">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <CalendarDays className="h-7 w-7 text-indigo-400" />
-            Leave Management & Policy
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <CalendarDays className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-400 shrink-0" />
+            <span>Leave Management & Policy</span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             Manage employee leave balances, entitlements, requests, and leave policies.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           <button
             onClick={() => setShowApplyModal(true)}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+            className="w-full sm:w-auto justify-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
           >
             <Plus className="h-4 w-4" /> Apply Leave
           </button>
@@ -303,14 +303,14 @@ export const Leave: React.FC = () => {
             <>
               <button
                 onClick={() => setShowAdjustmentModal(true)}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-sm border border-slate-700 transition flex items-center gap-2"
+                className="w-full sm:w-auto justify-center px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-sm border border-slate-700 transition flex items-center gap-2"
               >
                 <Sliders className="h-4 w-4 text-indigo-400" /> Adjust Employee Leave
               </button>
 
               <button
                 onClick={() => setShowPolicyModal(true)}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-sm border border-slate-700 transition flex items-center gap-2"
+                className="w-full sm:w-auto justify-center px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-sm border border-slate-700 transition flex items-center gap-2"
               >
                 <Settings className="h-4 w-4 text-indigo-400" /> Configure Policy
               </button>
@@ -622,34 +622,36 @@ export const Leave: React.FC = () => {
                 <p className="text-xs text-slate-400">Manage and review employee leave requests & deduction allocations</p>
               </div>
 
-              {/* Status Tabs */}
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                {(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'ALL'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setReqTab(tab)}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                      reqTab === tab
-                        ? 'bg-indigo-600 text-white shadow'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {tab === 'PENDING' ? `Pending (${leaveRequests.filter(r => r.status === 'PENDING').length})` : tab}
-                  </button>
-                ))}
+              {/* Status Tabs Container */}
+              <div className="w-full md:w-auto overflow-x-auto no-scrollbar py-0.5">
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs min-w-max">
+                  {(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'ALL'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setReqTab(tab)}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
+                        reqTab === tab
+                          ? 'bg-indigo-600 text-white shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {tab === 'PENDING' ? `Pending (${leaveRequests.filter(r => r.status === 'PENDING').length})` : tab}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="flex flex-wrap items-center gap-3 border-t border-slate-800/80 pt-4">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 border-t border-slate-800/80 pt-4">
+              <div className="relative w-full sm:w-auto">
                 <Search className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search employee..."
                   value={reqSearch}
                   onChange={e => setReqSearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48"
+                  className="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-full sm:w-48"
                 />
               </div>
 
@@ -657,7 +659,7 @@ export const Leave: React.FC = () => {
                 <select
                   value={reqDeptFilter}
                   onChange={e => setReqDeptFilter(e.target.value)}
-                  className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                  className="w-full sm:w-auto py-2 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="ALL">All Departments</option>
                   {departments.map(d => (
@@ -669,7 +671,7 @@ export const Leave: React.FC = () => {
               <select
                 value={reqTypeFilter}
                 onChange={e => setReqTypeFilter(e.target.value)}
-                className="py-2 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                className="w-full sm:w-auto py-2 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
               >
                 <option value="ALL">All Leave Types</option>
                 <option value="CL">Casual Leave (CL)</option>
@@ -680,7 +682,7 @@ export const Leave: React.FC = () => {
               {(reqSearch || reqDeptFilter !== 'ALL' || reqTypeFilter !== 'ALL') && (
                 <button
                   onClick={() => { setReqSearch(''); setReqDeptFilter('ALL'); setReqTypeFilter('ALL'); }}
-                  className="text-xs text-indigo-400 hover:underline"
+                  className="text-xs text-indigo-400 hover:underline self-start sm:self-center"
                 >
                   Clear filters
                 </button>

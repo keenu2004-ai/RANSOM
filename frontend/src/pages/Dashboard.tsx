@@ -201,11 +201,11 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 pb-8">
       {/* ─── WELCOME HEADER ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0A1424] p-6 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0A1424] p-4 sm:p-6 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
               Welcome back, {formattedName} 👋
             </h1>
             {refreshing && (
@@ -217,9 +217,9 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 relative z-10 shrink-0">
-          <div className="px-4 py-2 bg-[#050B14] border border-white/10 rounded-xl text-xs font-semibold text-cyan-300 shadow-inner flex items-center gap-2">
-            <Clock className="w-4 h-4 text-cyan-400" />
+        <div className="flex items-center gap-3 relative z-10 shrink-0 self-start sm:self-auto">
+          <div className="px-3 sm:px-4 py-2 bg-[#050B14] border border-white/10 rounded-xl text-xs font-semibold text-cyan-300 shadow-inner flex items-center gap-2">
+            <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
             <span>{todayFormatted}</span>
           </div>
         </div>
