@@ -130,6 +130,19 @@ export class AssetController {
     }
   }
 
+  static async permanentDelete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const userId = req.user!.userId;
+      const { id } = req.params;
+
+      await AssetRepository.permanentDelete(id, organizationId, userId);
+      return res.status(200).json({ success: true, message: 'Asset permanently deleted from the system.' });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   static async assign(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;

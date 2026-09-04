@@ -12,7 +12,7 @@ export class AssetRepository {
     offset?: number;
   }) {
     let sql = `
-      SELECT 
+      SELECT
         a.*,
         c.name as category_name,
         c.code as category_code,
@@ -51,10 +51,10 @@ export class AssetRepository {
       params.push(`%${filters.search}%`);
       const searchIdx = params.length;
       sql += ` AND (
-        a.asset_code ILIKE $${searchIdx} OR 
-        a.asset_name ILIKE $${searchIdx} OR 
-        a.brand ILIKE $${searchIdx} OR 
-        a.model ILIKE $${searchIdx} OR 
+        a.asset_code ILIKE $${searchIdx} OR
+        a.asset_name ILIKE $${searchIdx} OR
+        a.brand ILIKE $${searchIdx} OR
+        a.model ILIKE $${searchIdx} OR
         a.serial_number ILIKE $${searchIdx} OR
         a.location ILIKE $${searchIdx}
       )`;
@@ -100,7 +100,7 @@ export class AssetRepository {
   // Find asset by ID
   static async findById(id: string, organizationId: string) {
     const res = await query(`
-      SELECT 
+      SELECT
         a.*,
         c.name as category_name,
         c.code as category_code,
@@ -570,10 +570,49 @@ export class AssetRepository {
     });
   }
 
+  // True permanent delete asset from database
+  static async permanentDelete(id: string, organizationId: string, userId: string) {
+    return withTransaction(async (client) => {
+      const assetRes = await client.query(
+        `SELECT * FROM assets WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+        [id, organizationId]
+      );
+      if (assetRes.rows.length === 0) throw new Error('Asset not found.');
+      const asset = assetRes.rows[0];
+
+      if (asset.status === 'ASSIGNED') {
+        throw new Error('Cannot permanently delete an asset currently assigned to an employee. Return the asset to available stock first.');
+      }
+
+      // 1. Create a durable audit log snapshot before permanently removing the asset
+      await client.query(`
+        INSERT INTO audit_logs (
+          organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values
+        ) VALUES ($1, $2, 'PERMANENT_DELETE_ASSET', 'assets', 'Asset', $3, $4, $5)
+      `, [
+        organizationId,
+        userId,
+        id,
+        JSON.stringify(asset),
+        JSON.stringify({ deleted_permanently: true, assetCode: asset.asset_code, name: asset.asset_name, timestamp: new Date().toISOString() })
+      ]);
+
+      // 2. Clean up dependent foreign keys
+      await client.query(`UPDATE asset_requests SET fulfilled_asset_id = NULL WHERE fulfilled_asset_id = $1 AND organization_id = $2`, [id, organizationId]);
+      await client.query(`DELETE FROM asset_history WHERE asset_id = $1 AND organization_id = $2`, [id, organizationId]);
+      await client.query(`DELETE FROM asset_maintenance WHERE asset_id = $1 AND organization_id = $2`, [id, organizationId]);
+
+      // 3. Hard delete from assets table
+      const deleteRes = await client.query(`DELETE FROM assets WHERE id = $1 AND organization_id = $2 RETURNING id`, [id, organizationId]);
+
+      return deleteRes.rows[0] || null;
+    });
+  }
+
   // Get asset history timeline
   static async getHistory(assetId: string, organizationId: string) {
     const res = await query(`
-      SELECT 
+      SELECT
         h.*,
         u.email as performed_by_email,
         e.employee_code,
@@ -663,7 +702,7 @@ export class AssetRepository {
     if (res.rows.length === 0) {
       await query(`
         INSERT INTO asset_categories (id, organization_id, name, code, description)
-        VALUES 
+        VALUES
           (gen_random_uuid(), $1, 'Electronic', 'CAT-ELECTRONIC', 'Electronic equipment, devices & appliances'),
           (gen_random_uuid(), $1, 'Hardware', 'CAT-HARDWARE', 'IT hardware, laptops, servers & computer peripherals'),
           (gen_random_uuid(), $1, 'Parts', 'CAT-PARTS', 'Component parts, spare parts & replacement modules'),
@@ -699,7 +738,7 @@ export class AssetRepository {
   // Summary Metrics & Reports
   static async getSummaryMetrics(organizationId: string) {
     const res = await query(`
-      SELECT 
+      SELECT
         COUNT(id)::int as total_assets,
         COUNT(CASE WHEN status = 'AVAILABLE' THEN 1 END)::int as available_count,
         COUNT(CASE WHEN assigned_employee_id IS NULL AND status = 'AVAILABLE' THEN 1 END)::int as in_stock_count,
@@ -776,7 +815,7 @@ export class AssetRepository {
     filters: { employeeId?: string; status?: string }
   ) {
     let sql = `
-      SELECT 
+      SELECT
         ar.*,
         c.name as category_name,
         c.code as category_code,
@@ -813,7 +852,7 @@ export class AssetRepository {
 
   static async getRequestById(organizationId: string, requestId: string) {
     const sql = `
-      SELECT 
+      SELECT
         ar.*,
         c.name as category_name,
         c.code as category_code,

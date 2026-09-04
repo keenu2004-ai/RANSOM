@@ -24,9 +24,9 @@ export class EmployeeRepository {
 
     if (filters.search) {
       whereClause += ` AND (
-        LOWER(e.first_name) LIKE LOWER($${paramIndex}) OR 
-        LOWER(e.last_name) LIKE LOWER($${paramIndex}) OR 
-        LOWER(e.employee_code) LIKE LOWER($${paramIndex}) OR 
+        LOWER(e.first_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(e.last_name) LIKE LOWER($${paramIndex}) OR
+        LOWER(e.employee_code) LIKE LOWER($${paramIndex}) OR
         LOWER(e.email) LIKE LOWER($${paramIndex})
       )`;
       params.push(`%${filters.search}%`);
@@ -64,7 +64,7 @@ export class EmployeeRepository {
 
     // Fetch paginated rows with explicit SELECT
     const dataSql = `
-      SELECT 
+      SELECT
         e.id,
         e.organization_id,
         e.user_id,
@@ -86,6 +86,7 @@ export class EmployeeRepository {
         t.name as team_name,
         e.manager_id,
         CONCAT(m.first_name, ' ', m.last_name) as manager_name,
+        e.region,
         e.created_at,
         e.updated_at
       FROM employees e
@@ -116,7 +117,7 @@ export class EmployeeRepository {
   static async findById(id: string, organizationId: string, client?: any) {
     const db = client || { query };
     const text = `
-      SELECT 
+      SELECT
         e.id,
         e.organization_id,
         e.user_id,
@@ -144,6 +145,7 @@ export class EmployeeRepository {
         e.aadhaar_number,
         e.bank_account_number,
         e.bank_ifsc,
+        e.region,
         e.created_at,
         e.updated_at
       FROM employees e
@@ -205,10 +207,10 @@ export class EmployeeRepository {
           organization_id, user_id, employee_code, first_name, last_name, email,
           phone, date_of_birth, gender, joining_date, employment_type, status,
           branch_id, department_id, designation_id, team_id, manager_id,
-          pan_number, aadhaar_number, bank_account_number, bank_ifsc
+          pan_number, aadhaar_number, bank_account_number, bank_ifsc, region
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
-        ) RETURNING id, employee_code, first_name, last_name, email, status, created_at
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+        ) RETURNING id, employee_code, first_name, last_name, email, status, region, created_at
       `;
 
       const params = [
@@ -217,7 +219,8 @@ export class EmployeeRepository {
         data.employment_type || 'FULL_TIME', data.status || 'ACTIVE',
         data.branch_id || null, data.department_id || null, data.designation_id || null,
         data.team_id || null, data.manager_id || null,
-        data.pan_number || null, data.aadhaar_number || null, data.bank_account_number || null, data.bank_ifsc || null
+        data.pan_number || null, data.aadhaar_number || null, data.bank_account_number || null, data.bank_ifsc || null,
+        data.region && ['NORTH', 'SOUTH'].includes(data.region.toUpperCase()) ? data.region.toUpperCase() : null
       ];
 
       const res = await client.query(text, params);
@@ -302,6 +305,7 @@ export class EmployeeRepository {
           designation_id = $11,
           team_id = $12,
           manager_id = $13,
+          region = CASE WHEN $14::text IS NOT NULL THEN $14 ELSE region END,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND organization_id = $2`,
         [
@@ -317,7 +321,8 @@ export class EmployeeRepository {
           data.department_id || null,
           data.designation_id || null,
           data.team_id || null,
-          data.manager_id || null
+          data.manager_id || null,
+          data.region !== undefined ? (data.region && ['NORTH', 'SOUTH'].includes(String(data.region).toUpperCase()) ? String(data.region).toUpperCase() : null) : null
         ]
       );
 
@@ -330,7 +335,7 @@ export class EmployeeRepository {
       if (status === 'INACTIVE') {
         // Asset safety guard: Block deactivation if employee has active assigned assets
         const assetCheck = await client.query(`
-          SELECT COUNT(*)::int as count FROM assets 
+          SELECT COUNT(*)::int as count FROM assets
           WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
         `, [id, organizationId]);
         const activeAssetsCount = assetCheck.rows[0]?.count || 0;
@@ -386,7 +391,7 @@ export class EmployeeRepository {
   static async delete(id: string, organizationId: string, actorUserId?: string): Promise<boolean> {
     // 1. Asset safety guard: Block physical deletion if employee has active assigned assets
     const assetCheck = await query(`
-      SELECT COUNT(*)::int as count FROM assets 
+      SELECT COUNT(*)::int as count FROM assets
       WHERE assigned_employee_id = $1 AND organization_id = $2 AND status = 'ASSIGNED'
     `, [id, organizationId]);
     const activeAssetsCount = assetCheck.rows[0]?.count || 0;
@@ -461,7 +466,7 @@ export class EmployeeRepository {
 
   static async getOrgChart(organizationId: string) {
     const text = `
-      SELECT 
+      SELECT
         e.id,
         e.employee_code,
         e.first_name,

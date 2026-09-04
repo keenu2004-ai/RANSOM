@@ -3,8 +3,8 @@ import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission, getAllowedAssignableRoles } from '../utils/permissions';
 import { SmartDeleteConfirmationModal } from '../components/SmartDeleteConfirmationModal';
-import { 
-  Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network, 
+import {
+  Users, Plus, Search, Filter, RefreshCw, UserCheck, UserX, Network,
   ChevronLeft, ChevronRight, CheckCircle2, Edit3, X, Building2, Briefcase, Trash2, AlertTriangle
 } from 'lucide-react';
 
@@ -42,7 +42,8 @@ export const Employees: React.FC = () => {
     employment_type: 'FULL_TIME',
     department_id: '',
     designation_id: '',
-    system_role: 'EMPLOYEE'
+    system_role: 'EMPLOYEE',
+    region: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -55,7 +56,8 @@ export const Employees: React.FC = () => {
     phone: '',
     employment_type: 'FULL_TIME',
     department_id: '',
-    designation_id: ''
+    designation_id: '',
+    region: ''
   });
   const [editFormError, setEditFormError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -173,7 +175,7 @@ export const Employees: React.FC = () => {
       setShowAddModal(false);
       setFormData({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '', phone: '',
-        employment_type: 'FULL_TIME', department_id: '', designation_id: '', system_role: 'EMPLOYEE'
+        employment_type: 'FULL_TIME', department_id: '', designation_id: '', system_role: 'EMPLOYEE', region: ''
       });
       setSuccessMsg('Employee profile & user credentials created successfully.');
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -194,7 +196,8 @@ export const Employees: React.FC = () => {
       phone: emp.phone || '',
       employment_type: emp.employment_type || 'FULL_TIME',
       department_id: emp.department_id || '',
-      designation_id: emp.designation_id || ''
+      designation_id: emp.designation_id || '',
+      region: emp.region || ''
     });
     setEditFormError(null);
     try {
@@ -373,6 +376,7 @@ export const Employees: React.FC = () => {
                     <th className="px-6 py-3.5">Employee</th>
                     <th className="px-6 py-3.5">Department</th>
                     <th className="px-6 py-3.5">Designation</th>
+                    <th className="px-6 py-3.5">Region</th>
                     <th className="px-6 py-3.5">Employment</th>
                     <th className="px-6 py-3.5">Status</th>
                     <th className="px-6 py-3.5 text-right">Actions</th>
@@ -381,7 +385,7 @@ export const Employees: React.FC = () => {
                 <tbody className="divide-y divide-slate-800/60">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-slate-500">Fetching employee records...</td>
+                      <td colSpan={8} className="px-6 py-8 text-center text-slate-500">Fetching employee records...</td>
                     </tr>
                   ) : employees.length > 0 ? (
                     employees.map(emp => (
@@ -403,6 +407,15 @@ export const Employees: React.FC = () => {
                             <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
                             {emp.designation_name || 'Unassigned'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {emp.region === 'NORTH' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">NORTH</span>
+                          ) : emp.region === 'SOUTH' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">SOUTH</span>
+                          ) : (
+                            <span className="text-[11px] text-slate-500 italic">Unassigned</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300">
@@ -591,7 +604,7 @@ export const Employees: React.FC = () => {
               </div>
 
               <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Department</label>
@@ -619,6 +632,19 @@ export const Employees: React.FC = () => {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Region / Location</label>
+                <select
+                  value={formData.region}
+                  onChange={e => setFormData({ ...formData, region: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="">Unassigned (No Region)</option>
+                  <option value="NORTH">North Region</option>
+                  <option value="SOUTH">South Region</option>
+                </select>
               </div>
 
               <div>
@@ -730,7 +756,7 @@ export const Employees: React.FC = () => {
               </div>
 
               <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 mb-1 font-medium">Department</label>
@@ -758,6 +784,19 @@ export const Employees: React.FC = () => {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Region / Location</label>
+                <select
+                  value={editFormData.region}
+                  onChange={e => setEditFormData({ ...editFormData, region: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                >
+                  <option value="">Unassigned (No Region)</option>
+                  <option value="NORTH">North Region</option>
+                  <option value="SOUTH">South Region</option>
+                </select>
               </div>
 
               <div>

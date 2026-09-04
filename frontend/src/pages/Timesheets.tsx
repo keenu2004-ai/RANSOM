@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X,
   CheckCircle2, Clock, AlertTriangle, Download, ArrowRight, MapPin, Phone, Mail,
-  Target, Briefcase, Calendar, AlertCircle, Send, Hourglass, Check
+  Target, Briefcase, Calendar, AlertCircle, Send, Hourglass, Check, ListFilter, LayoutGrid, Table
 } from 'lucide-react';
 import {
   normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, getMondayOfWeekStr, parseDateOnlyToLocal
@@ -17,6 +17,9 @@ export const Timesheets: React.FC = () => {
   const [pendingCarryForward, setPendingCarryForward] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // View Mode: 'week' | 'month' | 'list'
+  const [activeView, setActiveView] = useState<'week' | 'month' | 'list'>('week');
+
   // Filter states (Specific to Weekly Plan only)
   const [filterVisitType, setFilterVisitType] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
@@ -26,6 +29,12 @@ export const Timesheets: React.FC = () => {
 
   // Active Week Date State (Reference Monday Date String "YYYY-MM-DD")
   const [selectedMondayStr, setSelectedMondayStr] = useState<string>(() => getMondayOfWeekStr());
+
+  // Active Month State for Month View
+  const [selectedMonthDate, setSelectedMonthDate] = useState<Date>(() => new Date());
+
+  // Overflow Popover / Modal for Month View
+  const [overflowModalData, setOverflowModalData] = useState<{ dateStr: string; displayLabel: string; plans: any[] } | null>(null);
 
   // Task Create & Edit Modal
   const [showModal, setShowModal] = useState(false);
@@ -87,6 +96,66 @@ export const Timesheets: React.FC = () => {
     return days;
   }, [selectedMondayStr]);
 
+  // Month Days Grid (Sunday -> Saturday)
+  const monthCalendarGrid = useMemo(() => {
+    const year = selectedMonthDate.getFullYear();
+    const month = selectedMonthDate.getMonth();
+
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+
+    const startDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sun
+    const daysInMonth = lastDayOfMonth.getDate();
+
+    const grid = [];
+    // Previous month padding days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const pDay = prevMonthLastDay - i;
+      const d = new Date(year, month - 1, pDay);
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const dStr = String(pDay).padStart(2, '0');
+      grid.push({
+        date: d,
+        dateStr: `${yStr}-${mStr}-${dStr}`,
+        dayNum: pDay,
+        isCurrentMonth: false
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      const yStr = d.getFullYear();
+      const mStr = String(month + 1).padStart(2, '0');
+      const dStr = String(i).padStart(2, '0');
+      grid.push({
+        date: d,
+        dateStr: `${yStr}-${mStr}-${dStr}`,
+        dayNum: i,
+        isCurrentMonth: true
+      });
+    }
+
+    // Next month padding days to complete 35 or 42 grid cells
+    const remaining = (7 - (grid.length % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(year, month + 1, i);
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const dStr = String(i).padStart(2, '0');
+      grid.push({
+        date: d,
+        dateStr: `${yStr}-${mStr}-${dStr}`,
+        dayNum: i,
+        isCurrentMonth: false
+      });
+    }
+
+    return grid;
+  }, [selectedMonthDate]);
+
   const handlePrevWeek = () => {
     setSelectedMondayStr(prev => addCalendarDays(prev, -7));
   };
@@ -97,13 +166,32 @@ export const Timesheets: React.FC = () => {
 
   const handleThisWeek = () => {
     setSelectedMondayStr(getMondayOfWeekStr());
+    setSelectedMonthDate(new Date());
+  };
+
+  const handlePrevMonth = () => {
+    setSelectedMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const startDate = weekDays[0].dateStr;
-      const endDate = weekDays[6].dateStr;
+      let startDate = weekDays[0].dateStr;
+      let endDate = weekDays[6].dateStr;
+
+      if (activeView === 'month') {
+        startDate = monthCalendarGrid[0].dateStr;
+        endDate = monthCalendarGrid[monthCalendarGrid.length - 1].dateStr;
+      } else if (activeView === 'list') {
+        const y = selectedMonthDate.getFullYear();
+        const m = selectedMonthDate.getMonth();
+        startDate = normalizeDateOnly(new Date(y, m, 1))!;
+        endDate = normalizeDateOnly(new Date(y, m + 1, 0))!;
+      }
 
       const [taskRes, pendingRes, empRes] = await Promise.all([
         apiFetch('/timesheets', {
@@ -134,7 +222,7 @@ export const Timesheets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [weekDays, isManagement, filterEmployeeId, filterStatus, filterVisitType, filterPriority, filterOpportunity]);
+  }, [weekDays, monthCalendarGrid, activeView, selectedMonthDate, isManagement, filterEmployeeId, filterStatus, filterVisitType, filterPriority, filterOpportunity]);
 
   useEffect(() => {
     fetchTasks();
@@ -334,12 +422,15 @@ export const Timesheets: React.FC = () => {
 
   // Formatted Date Header string: e.g. "31 Aug – 06 Sep 2026"
   const dateRangeDisplay = useMemo(() => {
+    if (activeView === 'month' || activeView === 'list') {
+      return selectedMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    }
     const dStart = parseDateOnlyToLocal(weekDays[0].dateStr);
     const dEnd = parseDateOnlyToLocal(weekDays[6].dateStr);
     const startStr = `${String(dStart.getDate()).padStart(2, '0')} ${dStart.toLocaleString('en-US', { month: 'short' })}`;
     const endStr = `${String(dEnd.getDate()).padStart(2, '0')} ${dEnd.toLocaleString('en-US', { month: 'short' })} ${dEnd.getFullYear()}`;
     return `${startStr} – ${endStr}`;
-  }, [weekDays]);
+  }, [weekDays, activeView, selectedMonthDate]);
 
   const todayStr = normalizeDateOnly(new Date());
 
@@ -362,19 +453,54 @@ export const Timesheets: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-white tracking-tight">Weekly Plan</h1>
-            <p className="text-xs text-slate-400">Plan, track and manage employee customer visits and tasks for the selected week.</p>
+            <p className="text-xs text-slate-400">Plan, track and manage employee customer visits and tasks for the selected period.</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Week Navigation Selector */}
+          {/* View Switcher: [Month] [Week] [List] */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => setActiveView('month')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeView === 'month' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setActiveView('week')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeView === 'week' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setActiveView('list')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeView === 'list' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              List
+            </button>
+          </div>
+
+          {/* Navigation Controls */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
             <button
-              onClick={handlePrevWeek}
+              onClick={activeView === 'week' ? handlePrevWeek : handlePrevMonth}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
-              title="Previous Week"
+              title="Previous"
             >
               <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleThisWeek}
+              className="px-2.5 py-1 text-xs font-semibold text-purple-400 hover:text-purple-300 rounded-lg transition-all"
+            >
+              Today
             </button>
 
             <div className="px-3 text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -383,9 +509,9 @@ export const Timesheets: React.FC = () => {
             </div>
 
             <button
-              onClick={handleNextWeek}
+              onClick={activeView === 'week' ? handleNextWeek : handleNextMonth}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
-              title="Next Week"
+              title="Next"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -420,7 +546,7 @@ export const Timesheets: React.FC = () => {
           <div className="space-y-1">
             <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Total Plans</span>
             <div className="text-2xl font-extrabold text-white">{kpis.totalPlans}</div>
-            <div className="text-[11px] text-slate-400">For this week</div>
+            <div className="text-[11px] text-slate-400">Selected period</div>
           </div>
           <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
             <CalendarIcon className="w-6 h-6" />
@@ -514,112 +640,316 @@ export const Timesheets: React.FC = () => {
         </div>
       )}
 
-      {/* 7-COLUMN WEEKLY CALENDAR LAYOUT */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {weekDays.map((day, idx) => {
-          const isToday = day.dateStr === todayStr;
-          const dayTasks = tasksByDate.get(day.dateStr) || [];
+      {/* 1. WEEK VIEW (MON - SUN) */}
+      {activeView === 'week' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {weekDays.map((day, idx) => {
+            const isToday = day.dateStr === todayStr;
+            const dayTasks = tasksByDate.get(day.dateStr) || [];
 
-          return (
-            <div
-              key={idx}
-              className={`rounded-2xl border transition-all flex flex-col justify-between min-h-[360px] overflow-hidden ${
-                isToday
-                  ? 'bg-slate-900/90 border-purple-500/80 shadow-lg shadow-purple-500/10 ring-1 ring-purple-500/40'
-                  : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
-              }`}
-            >
-              {/* Day Header */}
-              <div className={`p-3 border-b text-center space-y-0.5 ${
-                isToday ? 'bg-purple-950/40 border-purple-500/40' : 'bg-slate-950/40 border-slate-800'
-              }`}>
-                <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
-                  {day.shortName}
+            return (
+              <div
+                key={idx}
+                className={`rounded-2xl border transition-all flex flex-col justify-between min-h-[360px] overflow-hidden ${
+                  isToday
+                    ? 'bg-slate-900/90 border-purple-500/80 shadow-lg shadow-purple-500/10 ring-1 ring-purple-500/40'
+                    : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                }`}
+              >
+                {/* Day Header */}
+                <div className={`p-3 border-b text-center space-y-0.5 ${
+                  isToday ? 'bg-purple-950/40 border-purple-500/40' : 'bg-slate-950/40 border-slate-800'
+                }`}>
+                  <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
+                    {day.shortName}
+                  </div>
+                  <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                    {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
+                  </div>
                 </div>
-                <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
-                  {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
-                </div>
-              </div>
 
-              {/* Day Plans List */}
-              <div className="p-2.5 flex-1 space-y-2 overflow-y-auto max-h-[480px]">
-                {dayTasks.map((t, tIdx) => (
-                  <div
-                    key={t.id || tIdx}
-                    onClick={() => openEditModal(t)}
-                    className={`p-3 bg-slate-950/90 border-l-4 ${getCardAccentColor(tIdx, t.status)} border-y border-r border-slate-800 hover:border-slate-700 rounded-xl space-y-2 cursor-pointer transition-all shadow-md group relative`}
-                  >
-                    {/* Time Slot & Actions */}
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                      <span>{t.time_slot || '10:00 - 11:00'}</span>
+                {/* Day Plans List */}
+                <div className="p-2.5 flex-1 space-y-2 overflow-y-auto max-h-[480px]">
+                  {dayTasks.map((t, tIdx) => (
+                    <div
+                      key={t.id || tIdx}
+                      onClick={() => openEditModal(t)}
+                      className={`p-3 bg-slate-950/90 border-l-4 ${getCardAccentColor(tIdx, t.status)} border-y border-r border-slate-800 hover:border-slate-700 rounded-xl space-y-2 cursor-pointer transition-all shadow-md group relative`}
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                        <span>{t.time_slot || '10:00 - 11:00'}</span>
+                        <button
+                          onClick={(e) => handleDeleteTask(t.id, e)}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete Plan"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {t.customer_name && (
+                        <div className="font-bold text-slate-100 text-xs line-clamp-1">
+                          {t.customer_name}
+                        </div>
+                      )}
+
+                      {t.visit_location && (
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span className="truncate">{t.visit_location}</span>
+                        </div>
+                      )}
+
+                      <div className="text-[11px] text-slate-300 font-medium line-clamp-2">
+                        {t.title || t.visit_objective || 'Customer Meeting'}
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-between border-t border-slate-800/80">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                          t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
+                          t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                          'bg-slate-800 text-slate-300 border border-slate-700'
+                        }`}>
+                          {t.status === 'PLANNED' ? 'Planned' : t.status || 'Planned'}
+                        </span>
+
+                        {t.assigned_employee_name && (
+                          <span className="text-[9px] text-slate-400 font-semibold truncate max-w-[80px]">
+                            {t.assigned_employee_name.split(' ')[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {dayTasks.length === 0 && (
+                    <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-slate-800/60 rounded-xl space-y-2 bg-slate-950/20">
+                      <CalendarIcon className="w-7 h-7 text-slate-600" />
+                      <span className="text-xs text-slate-400 font-medium">No plans for this day</span>
                       <button
-                        onClick={(e) => handleDeleteTask(t.id, e)}
-                        className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete Plan"
+                        onClick={() => openCreateModalForDate(day.dateStr)}
+                        className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Plan</span>
                       </button>
                     </div>
-
-                    {/* Customer / Account Name */}
-                    {t.customer_name && (
-                      <div className="font-bold text-slate-100 text-xs line-clamp-1">
-                        {t.customer_name}
-                      </div>
-                    )}
-
-                    {/* Location */}
-                    {t.visit_location && (
-                      <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                        <span className="truncate">{t.visit_location}</span>
-                      </div>
-                    )}
-
-                    {/* Task Title / Objective */}
-                    <div className="text-[11px] text-slate-300 font-medium line-clamp-2">
-                      {t.title || t.visit_objective || 'Customer Meeting'}
-                    </div>
-
-                    {/* Status Pill */}
-                    <div className="pt-1 flex items-center justify-between border-t border-slate-800/80">
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
-                        t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                        t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
-                        t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
-                        'bg-slate-800 text-slate-300 border border-slate-700'
-                      }`}>
-                        {t.status === 'PLANNED' ? 'Planned' : t.status || 'Planned'}
-                      </span>
-
-                      {t.assigned_employee_name && (
-                        <span className="text-[9px] text-slate-400 font-semibold truncate max-w-[80px]">
-                          {t.assigned_employee_name.split(' ')[0]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Empty State for Day */}
-                {dayTasks.length === 0 && (
-                  <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-slate-800/60 rounded-xl space-y-2 bg-slate-950/20">
-                    <CalendarIcon className="w-7 h-7 text-slate-600" />
-                    <span className="text-xs text-slate-400 font-medium">No plans for this day</span>
-                    <button
-                      onClick={() => openCreateModalForDate(day.dateStr)}
-                      className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Plan</span>
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 2. MONTH VIEW (SUN - SAT GRID) */}
+      {activeView === 'month' && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold uppercase tracking-wider text-purple-400 border-b border-slate-800 pb-3">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {monthCalendarGrid.map((cell, cIdx) => {
+              const dayPlans = tasksByDate.get(cell.dateStr) || [];
+              const isToday = cell.dateStr === todayStr;
+
+              return (
+                <div
+                  key={cIdx}
+                  onClick={() => openCreateModalForDate(cell.dateStr)}
+                  className={`min-h-[110px] p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
+                    !cell.isCurrentMonth
+                      ? 'bg-slate-950/20 border-slate-900/40 text-slate-600 opacity-40'
+                      : isToday
+                      ? 'bg-purple-950/30 border-purple-500/80 shadow-md shadow-purple-500/10 ring-1 ring-purple-500/40'
+                      : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/40 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
+                      isToday ? 'bg-purple-600 text-white font-extrabold' : 'text-slate-300'
+                    }`}>
+                      {cell.dayNum}
+                    </span>
+
+                    {dayPlans.length > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
+                        {dayPlans.length} {dayPlans.length === 1 ? 'plan' : 'plans'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Plan Snippets (Max 2 cards) */}
+                  <div className="space-y-1 my-1">
+                    {dayPlans.slice(0, 2).map((p, pIdx) => (
+                      <div
+                        key={p.id || pIdx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(p);
+                        }}
+                        className="px-2 py-1 bg-slate-900 border-l-2 border-purple-500 border-slate-800 hover:border-purple-400 rounded text-[10px] truncate transition-all"
+                      >
+                        <span className="font-bold text-slate-100">{p.customer_name || p.title}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Overflow button "+N more" */}
+                  {dayPlans.length > 2 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOverflowModalData({
+                          dateStr: cell.dateStr,
+                          displayLabel: `${cell.dayNum} ${cell.date.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`,
+                          plans: dayPlans
+                        });
+                      }}
+                      className="text-[10px] font-bold text-purple-400 hover:text-purple-300 text-left pt-0.5"
+                    >
+                      +{dayPlans.length - 2} more...
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. LIST VIEW (TABULAR FORMAT) */}
+      {activeView === 'list' && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <Table className="w-4 h-4 text-purple-400" />
+              <span>Weekly Plan Records ({tasks.length})</span>
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto border border-slate-800 rounded-2xl">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                <tr>
+                  <th className="p-3">Date</th>
+                  <th className="p-3">Employee</th>
+                  <th className="p-3">Plan / Visit</th>
+                  <th className="p-3">Customer / Location</th>
+                  <th className="p-3">Opportunity Stage</th>
+                  <th className="p-3">Follow-Up Date</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {tasks.map((t, idx) => (
+                  <tr key={t.id || idx} className="hover:bg-slate-800/40">
+                    <td className="p-3 font-mono font-bold text-purple-400">{t.date}</td>
+                    <td className="p-3 font-semibold text-slate-200">{t.assigned_employee_name || 'Self'}</td>
+                    <td className="p-3 font-bold text-white max-w-[200px] truncate">{t.title}</td>
+                    <td className="p-3 text-slate-300 max-w-[200px] truncate">
+                      <div>{t.customer_name || '—'}</div>
+                      {t.visit_location && <span className="text-[10px] text-slate-500">{t.visit_location}</span>}
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                        {t.opportunity_stage || 'No Requirement'}
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-slate-400">{t.follow_up_date || '—'}</td>
+                    <td className="p-3">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                        t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                        t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                        'bg-slate-800 text-slate-300 border-slate-700'
+                      }`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right space-x-1">
+                      <button onClick={() => openEditModal(t)} className="p-1 text-slate-400 hover:text-purple-400" title="Edit Plan">
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => openRescheduleModal(t)} className="p-1 text-slate-400 hover:text-cyan-400" title="Reschedule">
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button onClick={(e) => handleDeleteTask(t.id, e)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {tasks.length === 0 && (
+                  <tr><td colSpan={8} className="p-8 text-center text-slate-500 italic">No weekly plan records found for this period.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* OVERFLOW MODAL FOR MONTH VIEW */}
+      {overflowModalData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border border-slate-800 p-6 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-purple-400" />
+                <h3 className="font-bold text-white text-sm">Plans for {overflowModalData.displayLabel}</h3>
+              </div>
+              <button onClick={() => setOverflowModalData(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          );
-        })}
-      </div>
+
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {overflowModalData.plans.map((p, idx) => (
+                <div
+                  key={p.id || idx}
+                  onClick={() => {
+                    setOverflowModalData(null);
+                    openEditModal(p);
+                  }}
+                  className="p-3 bg-slate-950 border border-slate-800 hover:border-purple-500 rounded-xl space-y-1 cursor-pointer transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">{p.title}</span>
+                    <span className="text-[10px] font-mono text-purple-400">{p.time_slot || '10:00 - 11:00'}</span>
+                  </div>
+                  {p.customer_name && <div className="text-[11px] text-cyan-400 font-semibold">{p.customer_name}</div>}
+                  {p.visit_location && <div className="text-[10px] text-slate-400">Location: {p.visit_location}</div>}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <button
+                onClick={() => {
+                  const d = overflowModalData.dateStr;
+                  setOverflowModalData(null);
+                  openCreateModalForDate(d);
+                }}
+                className="px-3.5 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-xl"
+              >
+                + Add New Plan
+              </button>
+              <button onClick={() => setOverflowModalData(null)} className="px-4 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-xl font-medium">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Weekly Plan Modal with 3-Step Stepper */}
       {showModal && (
@@ -629,7 +959,6 @@ export const Timesheets: React.FC = () => {
             {/* Modal Left Stepper Sidebar */}
             <div className="w-full md:w-64 bg-[#0D1322] border-b md:border-b-0 md:border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
               <div className="space-y-6">
-                {/* Modal Title Banner */}
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/30 shrink-0">
                     <CalendarIcon className="w-5 h-5" />
@@ -642,9 +971,7 @@ export const Timesheets: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Vertical Stepper List */}
                 <div className="relative space-y-6 pl-2 pt-2">
-                  {/* Vertical Connecting Line */}
                   <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-800" />
 
                   {/* Step 1 */}

@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck, 
-  RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2, 
+import {
+  Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck,
+  RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2,
   AlertTriangle, Clock, X, Edit3, Trash2, Tag, Calendar, User, DollarSign,
   Info, Box, Shield, WrenchIcon, Layers, FileText, ChevronRight, Eye, Check, XCircle, Monitor, Laptop, HardDrive, AlertOctagon
 } from 'lucide-react';
@@ -33,7 +33,7 @@ export const Assets: React.FC = () => {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  
+
   // Phase 4 Asset Request Modals
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showFulfillModal, setShowFulfillModal] = useState(false);
@@ -124,7 +124,7 @@ export const Assets: React.FC = () => {
       ]);
 
       setSummary(sumRes?.summary || sumRes || null);
-      
+
       const fetchedCats = Array.isArray(catsRes) ? catsRes : (catsRes?.categories || catsRes?.data || []);
       setCategories(fetchedCats);
 
@@ -444,9 +444,12 @@ export const Assets: React.FC = () => {
     }
   };
 
-  // Safe Soft Delete Handlers
+  const [deleteOption, setDeleteOption] = useState<'PERMANENT' | 'SOFT'>('PERMANENT');
+
+  // Delete Handlers (Soft Archive or Permanent Hard Delete)
   const handleOpenDelete = (asset: any) => {
     setSelectedAsset(asset);
+    setDeleteOption('PERMANENT');
     setDeleteError(null);
     setShowDeleteModal(true);
   };
@@ -456,9 +459,14 @@ export const Assets: React.FC = () => {
     setDeleteError(null);
 
     try {
-      await apiFetch(`/assets/${selectedAsset.id}`, { method: 'DELETE' });
+      if (deleteOption === 'PERMANENT') {
+        await apiFetch(`/assets/${selectedAsset.id}/permanent`, { method: 'DELETE' });
+        setSuccessMsg(`Asset '${selectedAsset.asset_code}' permanently deleted from the system.`);
+      } else {
+        await apiFetch(`/assets/${selectedAsset.id}`, { method: 'DELETE' });
+        setSuccessMsg(`Asset '${selectedAsset.asset_code}' archived to inactive inventory.`);
+      }
       setShowDeleteModal(false);
-      setSuccessMsg(`Asset '${selectedAsset.asset_code}' removed from active inventory.`);
       await fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -779,7 +787,7 @@ export const Assets: React.FC = () => {
                       <button onClick={() => handleViewDetails(a)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Audit Details">
                         <Eye className="w-4 h-4" />
                       </button>
-                      
+
                       {isManagerOrAdmin && (
                         <button onClick={() => handleOpenStatusModal(a)} className="p-1 text-slate-400 hover:text-amber-400" title="Update Status (Retire/Dispose/Maintenance)">
                           <RefreshCw className="w-4 h-4" />
@@ -791,7 +799,7 @@ export const Assets: React.FC = () => {
                           Assign
                         </button>
                       )}
-                      
+
                       {isManagerOrAdmin && a.status === 'ASSIGNED' && (
                         <button onClick={() => handleOpenReturn(a)} className="px-2 py-0.5 bg-amber-950 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded text-[10px] font-bold">
                           Return
@@ -1008,15 +1016,24 @@ export const Assets: React.FC = () => {
         </div>
       )}
 
-      {/* SOFT DELETE CONFIRMATION MODAL */}
+      {/* PERMANENT / SOFT DELETE CONFIRMATION MODAL */}
       {showDeleteModal && selectedAsset && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-rose-400 flex items-center gap-2">
-                <AlertOctagon className="w-5 h-5" />
-                <span>Confirm Asset Soft-Delete</span>
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border border-slate-800 p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-start gap-3">
+                <div className="p-3 bg-rose-600/20 text-rose-500 rounded-full border border-rose-500/30 shrink-0">
+                  <AlertOctagon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-rose-400">
+                    Delete Asset Permanently?
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    This will permanently delete the asset from the system. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
               <button type="button" onClick={() => setShowDeleteModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
@@ -1027,36 +1044,117 @@ export const Assets: React.FC = () => {
               </div>
             )}
 
-            <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5 text-xs">
-              <div>Asset Code: <strong className="font-mono text-cyan-400">{selectedAsset.asset_code}</strong></div>
-              <div>Asset Name: <strong className="text-white">{selectedAsset.asset_name}</strong></div>
-              <div>Current Status: <strong className="text-emerald-400">{selectedAsset.status}</strong></div>
+            {/* Asset Identity Box */}
+            <div className="p-3.5 bg-[#060911] border border-slate-800/80 rounded-2xl space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Asset Code:</span>
+                <strong className="font-mono text-cyan-400">{selectedAsset.asset_code}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Asset Name:</span>
+                <strong className="text-white">{selectedAsset.asset_name}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Current Status:</span>
+                <strong className="text-emerald-400">{selectedAsset.status}</strong>
+              </div>
               {selectedAsset.assigned_employee_id && (
-                <div className="text-rose-400 font-bold">Assigned To: {selectedAsset.employee_first_name} {selectedAsset.employee_last_name}</div>
+                <div className="flex justify-between text-rose-400 font-bold pt-1 border-t border-slate-800/60">
+                  <span>Assigned To:</span>
+                  <span>{selectedAsset.employee_first_name} {selectedAsset.employee_last_name}</span>
+                </div>
               )}
             </div>
 
-            {selectedAsset.status === 'ASSIGNED' ? (
+            {/* Choose Delete Option */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-300">Choose Delete Option:</label>
+
+              {/* Option 1: Permanently Delete */}
+              <div
+                onClick={() => setDeleteOption('PERMANENT')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  deleteOption === 'PERMANENT'
+                    ? 'bg-rose-950/30 border-rose-600 ring-2 ring-rose-600/30'
+                    : 'bg-[#060911] border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className={`p-2 rounded-xl border shrink-0 ${
+                  deleteOption === 'PERMANENT' ? 'bg-rose-600 text-white border-rose-500' : 'bg-slate-900 text-slate-400 border-slate-800'
+                }`}>
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-xs font-bold ${deleteOption === 'PERMANENT' ? 'text-rose-400' : 'text-slate-200'}`}>
+                    Permanently Delete
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Remove this asset from the system completely (cannot be recovered)
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="delete_opt"
+                  checked={deleteOption === 'PERMANENT'}
+                  onChange={() => setDeleteOption('PERMANENT')}
+                  className="mt-1 accent-rose-600"
+                />
+              </div>
+
+              {/* Option 2: Soft Delete (Archive) */}
+              <div
+                onClick={() => setDeleteOption('SOFT')}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  deleteOption === 'SOFT'
+                    ? 'bg-purple-950/30 border-purple-500 ring-2 ring-purple-500/30'
+                    : 'bg-[#060911] border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className={`p-2 rounded-xl border shrink-0 ${
+                  deleteOption === 'SOFT' ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-900 text-slate-400 border-slate-800'
+                }`}>
+                  <Box className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-xs font-bold ${deleteOption === 'SOFT' ? 'text-purple-300' : 'text-slate-200'}`}>
+                    Soft Delete (Archive)
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Move to inactive inventory (can be restored later)
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="delete_opt"
+                  checked={deleteOption === 'SOFT'}
+                  onChange={() => setDeleteOption('SOFT')}
+                  className="mt-1 accent-purple-600"
+                />
+              </div>
+            </div>
+
+            {selectedAsset.status === 'ASSIGNED' && (
               <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Cannot delete an assigned asset. Please return the asset to available stock first.</span>
-              </div>
-            ) : (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>This action will soft-delete the asset from active inventory. Historical audit logs will be preserved.</span>
+                <span>Cannot delete an assigned asset. Return the asset to available stock first.</span>
               </div>
             )}
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-              <button type="button" onClick={() => setShowDeleteModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium text-xs">Cancel</button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-xs transition-all"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={handleDeleteAsset}
                 disabled={selectedAsset.status === 'ASSIGNED'}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold uppercase shadow disabled:opacity-50"
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/30 transition-all disabled:opacity-50"
               >
-                YES, SOFT-DELETE ASSET
+                {deleteOption === 'PERMANENT' ? 'Delete Permanently' : 'Archive Asset'}
               </button>
             </div>
           </div>
