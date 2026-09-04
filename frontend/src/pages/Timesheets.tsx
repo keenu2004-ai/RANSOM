@@ -1,14 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { 
-  FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X, 
-  CheckCircle2, User, Clock, AlertTriangle, Filter, Download, ArrowRight, RefreshCw, 
-  MapPin, Phone, Mail, DollarSign, Target, Briefcase, Calendar, AlertCircle
+import {
+  FileText, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit3, Trash2, X,
+  CheckCircle2, Clock, AlertTriangle, Download, ArrowRight, MapPin, Phone, Mail,
+  Target, Briefcase, Calendar, AlertCircle, Send, Hourglass, Check
 } from 'lucide-react';
-import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
-import { 
-  normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, getMondayOfWeekStr, parseDateOnlyToLocal 
+import {
+  normalizeDateOnly, formatDateOnly, displayDateOnly, addCalendarDays, getMondayOfWeek, getMondayOfWeekStr, parseDateOnlyToLocal
 } from '../utils/dateUtils';
 
 export const Timesheets: React.FC = () => {
@@ -16,11 +15,9 @@ export const Timesheets: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pendingCarryForward, setPendingCarryForward] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'weekly' | 'tracker' | 'history'>('weekly');
 
-  // Filter states
+  // Filter states (Specific to Weekly Plan only)
   const [filterVisitType, setFilterVisitType] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -30,11 +27,9 @@ export const Timesheets: React.FC = () => {
   // Active Week Date State (Reference Monday Date String "YYYY-MM-DD")
   const [selectedMondayStr, setSelectedMondayStr] = useState<string>(() => getMondayOfWeekStr());
 
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
-  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
-
   // Task Create & Edit Modal
   const [showModal, setShowModal] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     assignedEmployeeId: '',
@@ -48,13 +43,13 @@ export const Timesheets: React.FC = () => {
     contactDetails: '',
     visitLocation: '',
     visitType: 'New Prospect',
-    timeSlot: '10:30-12:00',
+    timeSlot: '10:00-11:00',
     productsToPresent: '',
     visitObjective: '',
     outcomeSummary: '',
     nextAction: '',
     followUpDate: '',
-    opportunityStage: 'Qualified',
+    opportunityStage: 'No Requirement',
     estimatedValue: 0,
     priority: 'MEDIUM',
     cancellationReason: ''
@@ -72,16 +67,21 @@ export const Timesheets: React.FC = () => {
   // Week Days Array (Monday -> Sunday)
   const weekDays = useMemo(() => {
     const days = [];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const baseMondayStr = normalizeDateOnly(selectedMondayStr) || getMondayOfWeekStr();
     for (let i = 0; i < 7; i++) {
       const dateStr = addCalendarDays(baseMondayStr, i);
       const localDate = parseDateOnlyToLocal(dateStr);
+      const dayNumStr = String(localDate.getDate()).padStart(2, '0');
+      const monthShort = localDate.toLocaleString('en-US', { month: 'short' });
       days.push({
-        name: dayNames[i],
+        shortName: dayNames[i],
+        fullName: fullDayNames[i],
         date: localDate,
         dateStr: dateStr,
-        dayNum: localDate.getDate()
+        dayNumStr: dayNumStr,
+        displayLabel: `${dayNumStr} ${monthShort}`
       });
     }
     return days;
@@ -106,16 +106,16 @@ export const Timesheets: React.FC = () => {
       const endDate = weekDays[6].dateStr;
 
       const [taskRes, pendingRes, empRes] = await Promise.all([
-        apiFetch('/timesheets', { 
-          params: { 
-            startDate, 
-            endDate, 
+        apiFetch('/timesheets', {
+          params: {
+            startDate,
+            endDate,
             assignedEmployeeId: filterEmployeeId || undefined,
             status: filterStatus || undefined,
             visitType: filterVisitType || undefined,
             priority: filterPriority || undefined,
             opportunityStage: filterOpportunity || undefined
-          } 
+          }
         }).catch(() => null),
         apiFetch('/timesheets/pending-carry-forward', { params: { beforeDate: startDate } }).catch(() => null),
         isManagement ? apiFetch('/employees').catch(() => []) : Promise.resolve([])
@@ -129,25 +129,6 @@ export const Timesheets: React.FC = () => {
 
       const fetchedEmps = Array.isArray(empRes) ? empRes : (empRes?.employees || empRes?.data || []);
       setEmployees(fetchedEmps);
-
-      // Map to Calendar Events
-      const events: CalendarEvent[] = rawTasks.map((t: any) => ({
-        id: `task-${t.id}`,
-        date: normalizeDateOnly(t.date),
-        type: 'TASK',
-        title: `${t.customer_name ? `[${t.customer_name}] ` : ''}${t.title || 'Field Visit'}`,
-        status: t.status || 'PLANNED',
-        employeeName: t.assigned_employee_name,
-        metadata: {
-          description: t.description || t.visit_objective,
-          hours: t.hours,
-          location: t.visit_location,
-          contact: t.contact_person,
-          createdBy: t.created_by_email
-        }
-      }));
-
-      setCalendarEvents(events);
     } catch (err) {
       console.error('Error fetching tasks:', err);
     } finally {
@@ -161,6 +142,7 @@ export const Timesheets: React.FC = () => {
 
   const openCreateModalForDate = (dateStr: string) => {
     setEditingTask(null);
+    setModalStep(1);
     const defaultEmpId = user?.employeeId || (employees.length > 0 ? employees[0].id : '');
     setFormData({
       assignedEmployeeId: defaultEmpId,
@@ -174,13 +156,13 @@ export const Timesheets: React.FC = () => {
       contactDetails: '',
       visitLocation: '',
       visitType: 'New Prospect',
-      timeSlot: '10:30-12:00',
+      timeSlot: '10:00 - 11:00',
       productsToPresent: '',
       visitObjective: '',
       outcomeSummary: '',
       nextAction: '',
       followUpDate: '',
-      opportunityStage: 'Qualified',
+      opportunityStage: 'No Requirement',
       estimatedValue: 0,
       priority: 'MEDIUM',
       cancellationReason: ''
@@ -191,6 +173,7 @@ export const Timesheets: React.FC = () => {
 
   const openEditModal = (task: any) => {
     setEditingTask(task);
+    setModalStep(1);
     setFormData({
       assignedEmployeeId: task.assigned_employee_id || '',
       title: task.title || task.description || '',
@@ -203,13 +186,13 @@ export const Timesheets: React.FC = () => {
       contactDetails: task.contact_details || '',
       visitLocation: task.visit_location || '',
       visitType: task.visit_type || 'New Prospect',
-      timeSlot: task.time_slot || '10:30-12:00',
+      timeSlot: task.time_slot || '10:00 - 11:00',
       productsToPresent: task.products_to_present || '',
       visitObjective: task.visit_objective || '',
       outcomeSummary: task.outcome_summary || '',
       nextAction: task.next_action || '',
-      followUpDate: normalizeDateOnly(task.follow_up_date),
-      opportunityStage: task.opportunity_stage || 'Qualified',
+      followUpDate: normalizeDateOnly(task.follow_up_date) || '',
+      opportunityStage: task.opportunity_stage || 'No Requirement',
       estimatedValue: task.estimated_value ? Number(task.estimated_value) : 0,
       priority: task.priority || 'MEDIUM',
       cancellationReason: task.cancellation_reason || ''
@@ -253,10 +236,11 @@ export const Timesheets: React.FC = () => {
 
     if (!formData.title || formData.title.trim() === '') {
       setFormError('Task Title / Objective is required.');
+      setModalStep(1);
       return;
     }
 
-    const payload = { 
+    const payload = {
       ...formData,
       description: formData.description ? formData.description.trim() : ''
     };
@@ -327,137 +311,168 @@ export const Timesheets: React.FC = () => {
     const map = new Map<string, any[]>();
     tasks.forEach(t => {
       const dKey = normalizeDateOnly(t.date);
-      if (!map.has(dKey)) map.set(dKey, []);
-      map.get(dKey)!.push(t);
+      if (dKey) {
+        if (!map.has(dKey)) map.set(dKey, []);
+        map.get(dKey)!.push(t);
+      }
     });
     return map;
   }, [tasks]);
 
-  // Statistics Summary
-  const stats = useMemo(() => {
-    let totalPlanned = tasks.length;
-    let completed = 0;
-    let inProgress = 0;
-    let cancelled = 0;
-    let rescheduled = 0;
-    let pipelineVal = 0;
-    let dealsWon = 0;
+  // Dynamic Weekly Plan Specific KPIs
+  const kpis = useMemo(() => {
+    const totalPlans = tasks.length;
+    const scheduledVisits = tasks.filter(t => t.visit_type || t.customer_name || t.time_slot).length;
+    const pendingFollowUps = tasks.filter(t =>
+      (t.follow_up_date || t.next_action || ['PLANNED', 'IN_PROGRESS'].includes(t.status)) &&
+      t.status !== 'COMPLETED' && t.status !== 'CANCELLED'
+    ).length;
+    const completed = tasks.filter(t => t.status === 'COMPLETED').length;
 
-    tasks.forEach(t => {
-      if (t.status === 'COMPLETED') completed++;
-      if (t.status === 'IN_PROGRESS') inProgress++;
-      if (t.status === 'CANCELLED') cancelled++;
-      if (t.rescheduled_to_task_id) rescheduled++;
-      if (t.estimated_value) pipelineVal += Number(t.estimated_value);
-      if (t.opportunity_stage === 'Won') dealsWon++;
-    });
-
-    return { totalPlanned, completed, inProgress, cancelled, rescheduled, pipelineVal, dealsWon };
+    return { totalPlans, scheduledVisits, pendingFollowUps, completed };
   }, [tasks]);
 
-  const weekStartStr = displayDateOnly(weekDays[0].dateStr);
-  const weekEndStr = displayDateOnly(weekDays[6].dateStr);
+  // Formatted Date Header string: e.g. "31 Aug – 06 Sep 2026"
+  const dateRangeDisplay = useMemo(() => {
+    const dStart = parseDateOnlyToLocal(weekDays[0].dateStr);
+    const dEnd = parseDateOnlyToLocal(weekDays[6].dateStr);
+    const startStr = `${String(dStart.getDate()).padStart(2, '0')} ${dStart.toLocaleString('en-US', { month: 'short' })}`;
+    const endStr = `${String(dEnd.getDate()).padStart(2, '0')} ${dEnd.toLocaleString('en-US', { month: 'short' })} ${dEnd.getFullYear()}`;
+    return `${startStr} – ${endStr}`;
+  }, [weekDays]);
+
+  const todayStr = normalizeDateOnly(new Date());
+
+  // Card Left Border Accents
+  const getCardAccentColor = (index: number, status: string) => {
+    if (status === 'COMPLETED') return 'border-l-purple-500 hover:border-l-purple-400';
+    if (status === 'IN_PROGRESS') return 'border-l-cyan-500 hover:border-l-cyan-400';
+    if (status === 'CANCELLED') return 'border-l-rose-500 hover:border-l-rose-400';
+    const accents = ['border-l-cyan-500', 'border-l-indigo-500', 'border-l-purple-500', 'border-l-emerald-500'];
+    return accents[index % accents.length];
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Title */}
+      {/* Top Banner & Header Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-cyan-400" />
-            <span>Weekly Work & Field Visit Management System</span>
-          </h1>
-          <p className="text-xs text-slate-400">Plan customer visits, record meeting outcomes, track pipeline value, and carry forward pending tasks</p>
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-purple-600/20 text-purple-400 rounded-2xl border border-purple-500/30 shadow-lg shadow-purple-500/10">
+            <CalendarIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold text-white tracking-tight">Weekly Plan</h1>
+            <p className="text-xs text-slate-400">Plan, track and manage employee customer visits and tasks for the selected week.</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Week Navigation Selector */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
+            <button
+              onClick={handlePrevWeek}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              title="Previous Week"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="px-3 text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-purple-400" />
+              <span>{dateRangeDisplay}</span>
+            </div>
+
+            <button
+              onClick={handleNextWeek}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              title="Next Week"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
           <button
             type="button"
             disabled={downloading}
             onClick={handleDownloadExcel}
-            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
-            title="Export Weekly Plan to Excel / CSV"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
+            title="Export Weekly Plan to Excel"
           >
-            <Download className="w-4 h-4" />
-            <span>{downloading ? 'Downloading...' : 'Download Excel'}</span>
+            <Download className="w-4 h-4 text-cyan-400" />
+            <span>{downloading ? 'Downloading...' : 'Export'}</span>
           </button>
 
+          {/* Add Plan Primary Button */}
           <button
-            onClick={() => openCreateModalForDate(normalizeDateOnly(new Date()))}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+            onClick={() => openCreateModalForDate(todayStr || weekDays[0].dateStr)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-600/25 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>New Visit / Task</span>
+            <span>+ Add Plan</span>
           </button>
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-            <span>Total Planned</span>
-            <Calendar className="w-4 h-4 text-cyan-400" />
+      {/* KPI Cards Row (4 Cards Only - Weekly Plan Specific) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* TOTAL PLANS */}
+        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Total Plans</span>
+            <div className="text-2xl font-extrabold text-white">{kpis.totalPlans}</div>
+            <div className="text-[11px] text-slate-400">For this week</div>
           </div>
-          <div className="text-xl font-extrabold text-white">{stats.totalPlanned}</div>
-          <div className="text-[10px] text-slate-500">Scheduled visits</div>
+          <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+            <CalendarIcon className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-emerald-900/50 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold">
-            <span>Completed</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        {/* SCHEDULED VISITS */}
+        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Scheduled Visits</span>
+            <div className="text-2xl font-extrabold text-white">{kpis.scheduledVisits}</div>
+            <div className="text-[11px] text-slate-400">Customer meetings</div>
           </div>
-          <div className="text-xl font-extrabold text-emerald-300">{stats.completed}</div>
-          <div className="text-[10px] text-emerald-500/80">Outcomes recorded</div>
+          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+            <Send className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-cyan-900/50 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-cyan-400 text-xs font-semibold">
-            <span>In Progress</span>
-            <Clock className="w-4 h-4 text-cyan-400" />
+        {/* PENDING FOLLOW-UPS */}
+        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Pending Follow-ups</span>
+            <div className="text-2xl font-extrabold text-white">{kpis.pendingFollowUps}</div>
+            <div className="text-[11px] text-slate-400">Action required</div>
           </div>
-          <div className="text-xl font-extrabold text-cyan-300">{stats.inProgress}</div>
-          <div className="text-[10px] text-cyan-500/80">Active meetings</div>
+          <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+            <Hourglass className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-amber-900/50 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-amber-400 text-xs font-semibold">
-            <span>Carry Forward</span>
-            <AlertCircle className="w-4 h-4 text-amber-400" />
+        {/* COMPLETED */}
+        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Completed</span>
+            <div className="text-2xl font-extrabold text-white">{kpis.completed}</div>
+            <div className="text-[11px] text-slate-400">Marked as completed</div>
           </div>
-          <div className="text-xl font-extrabold text-amber-300">{pendingCarryForward.length}</div>
-          <div className="text-[10px] text-amber-500/80">Pending from past</div>
-        </div>
-
-        <div className="p-4 bg-slate-900 border border-rose-900/50 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-rose-400 text-xs font-semibold">
-            <span>Cancelled</span>
-            <AlertTriangle className="w-4 h-4 text-rose-400" />
+          <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-          <div className="text-xl font-extrabold text-rose-300">{stats.cancelled}</div>
-          <div className="text-[10px] text-rose-500/80">Audit preserved</div>
-        </div>
-
-        <div className="p-4 bg-slate-900 border border-purple-900/50 rounded-2xl space-y-1">
-          <div className="flex items-center justify-between text-purple-400 text-xs font-semibold">
-            <span>Pipeline Value</span>
-            <DollarSign className="w-4 h-4 text-purple-400" />
-          </div>
-          <div className="text-lg font-extrabold text-purple-300 font-mono">₹{stats.pipelineVal.toLocaleString('en-IN')}</div>
-          <div className="text-[10px] text-purple-400/80">{stats.dealsWon} deals won</div>
         </div>
       </div>
 
       {/* Carried Forward Pending Work Banner */}
       {pendingCarryForward.length > 0 && (
-        <div className="p-5 bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/40 border border-amber-800/60 rounded-2xl space-y-3 shadow-xl">
+        <div className="p-4 bg-amber-950/20 border border-amber-800/40 rounded-2xl space-y-3 shadow-xl">
           <div className="flex items-center justify-between border-b border-amber-800/40 pb-2">
-            <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
+            <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+              <AlertCircle className="w-4 h-4 text-amber-400" />
               <span>CARRIED FORWARD — {pendingCarryForward.length} PENDING ITEMS FROM PREVIOUS WEEKS</span>
             </div>
-            <span className="text-[11px] text-amber-400/80 font-medium">Require Action: Complete, Cancel, or Reschedule</span>
+            <span className="text-[10px] text-amber-400/80 font-medium">Require Action: Complete, Cancel, or Reschedule</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
@@ -468,7 +483,7 @@ export const Timesheets: React.FC = () => {
                     <span className="font-bold text-slate-100 block">{item.title}</span>
                     {item.assigned_employee_name && (
                       <span className="text-cyan-400 text-[11px] font-semibold block">
-                        Employee: {item.assigned_employee_name} {item.assigned_employee_code ? `(${item.assigned_employee_code})` : ''}
+                        Employee: {item.assigned_employee_name}
                       </span>
                     )}
                     {item.customer_name && <span className="text-amber-400 text-[11px] font-semibold block">Customer: {item.customer_name}</span>}
@@ -478,23 +493,16 @@ export const Timesheets: React.FC = () => {
                   </span>
                 </div>
 
-                {item.visit_location && (
-                  <div className="text-slate-400 text-[11px] flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span>{item.visit_location}</span>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                   <button
                     onClick={() => openEditModal(item)}
-                    className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-semibold"
+                    className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-semibold"
                   >
                     Complete
                   </button>
                   <button
                     onClick={() => openRescheduleModal(item)}
-                    className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-[11px] font-semibold flex items-center gap-1"
+                    className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-[10px] font-semibold flex items-center gap-1"
                   >
                     <span>Reschedule</span>
                     <ArrowRight className="w-3 h-3" />
@@ -506,516 +514,549 @@ export const Timesheets: React.FC = () => {
         </div>
       )}
 
-      {/* Main Weekly Navigation & Filters Bar */}
-      <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-cyan-400" />
-              <span>Weekly Work Plan: {weekStartStr} — {weekEndStr}</span>
-            </h2>
-            <p className="text-xs text-slate-400">Click any day column to add or schedule customer visits and work activities</p>
-          </div>
+      {/* 7-COLUMN WEEKLY CALENDAR LAYOUT */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {weekDays.map((day, idx) => {
+          const isToday = day.dateStr === todayStr;
+          const dayTasks = tasksByDate.get(day.dateStr) || [];
 
-          {/* Controls & Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {isManagement && (
-              <select
-                value={filterEmployeeId}
-                onChange={e => setFilterEmployeeId(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs px-3 py-1.5 rounded-xl outline-none"
-              >
-                <option value="">All Employees</option>
-                {employees.map(e => (
-                  <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>
-                ))}
-              </select>
-            )}
-
-            <select
-              value={filterVisitType}
-              onChange={e => setFilterVisitType(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs px-3 py-1.5 rounded-xl outline-none"
+          return (
+            <div
+              key={idx}
+              className={`rounded-2xl border transition-all flex flex-col justify-between min-h-[360px] overflow-hidden ${
+                isToday
+                  ? 'bg-slate-900/90 border-purple-500/80 shadow-lg shadow-purple-500/10 ring-1 ring-purple-500/40'
+                  : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+              }`}
             >
-              <option value="">All Visit Types</option>
-              <option value="New Prospect">New Prospect</option>
-              <option value="Follow-Up">Follow-Up</option>
-              <option value="Demo / Presentation">Demo / Presentation</option>
-              <option value="Technical Support">Technical Support</option>
-              <option value="AMC / Service">AMC / Service</option>
-              <option value="Order Closure">Order Closure</option>
-              <option value="Relationship Call">Relationship Call</option>
-            </select>
+              {/* Day Header */}
+              <div className={`p-3 border-b text-center space-y-0.5 ${
+                isToday ? 'bg-purple-950/40 border-purple-500/40' : 'bg-slate-950/40 border-slate-800'
+              }`}>
+                <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
+                  {day.shortName}
+                </div>
+                <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                  {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
+                </div>
+              </div>
 
-            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
-              <button
-                onClick={handlePrevWeek}
-                className="p-1.5 hover:bg-slate-800 text-slate-300 rounded-lg transition-all"
-                title="Previous Week"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleThisWeek}
-                className="px-3 py-1 font-semibold text-cyan-400 hover:text-cyan-300 rounded-lg transition-all"
-              >
-                {(() => {
-                  const currentMon = getMondayOfWeekStr();
-                  const selMon = normalizeDateOnly(selectedMondayStr);
-                  if (selMon === currentMon) return 'This Week';
-                  const diffDays = Math.round((parseDateOnlyToLocal(selMon!).getTime() - parseDateOnlyToLocal(currentMon).getTime()) / (1000 * 60 * 60 * 24));
-                  const diffWeeks = Math.round(diffDays / 7);
-                  if (diffWeeks === -1) return 'Last Week';
-                  if (diffWeeks === 1) return 'Next Week';
-                  if (diffWeeks < 0) return `${Math.abs(diffWeeks)} Weeks Ago`;
-                  return `${diffWeeks} Weeks Ahead`;
-                })()}
-              </button>
-              <button
-                onClick={handleNextWeek}
-                className="p-1.5 hover:bg-slate-800 text-slate-300 rounded-lg transition-all"
-                title="Next Week"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 7-Day Weekly Layout (Mon - Sun) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {weekDays.map((day, idx) => {
-            const isToday = day.dateStr === normalizeDateOnly(new Date());
-            const dayTasks = tasksByDate.get(day.dateStr) || [];
-
-            return (
-              <div
-                key={idx}
-                onClick={() => openCreateModalForDate(day.dateStr)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[220px] group ${
-                  isToday 
-                    ? 'bg-cyan-950/20 border-cyan-500/50 hover:bg-cyan-950/30' 
-                    : 'bg-slate-950/60 border-slate-800 hover:bg-slate-800/40 hover:border-slate-700'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-2">
-                    <span className={`text-xs font-bold ${isToday ? 'text-cyan-400' : 'text-slate-300'}`}>
-                      {day.name}
-                    </span>
-                    <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${
-                      isToday ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'
-                    }`}>
-                      {day.dayNum}
-                    </span>
-                  </div>
-
-                  {/* Tasks List Cards */}
-                  <div className="space-y-2">
-                    {dayTasks.map((t, tIdx) => (
-                      <div
-                        key={t.id || tIdx}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(t);
-                        }}
-                        className="p-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-xl text-xs space-y-1.5 transition-all shadow group/item relative"
+              {/* Day Plans List */}
+              <div className="p-2.5 flex-1 space-y-2 overflow-y-auto max-h-[480px]">
+                {dayTasks.map((t, tIdx) => (
+                  <div
+                    key={t.id || tIdx}
+                    onClick={() => openEditModal(t)}
+                    className={`p-3 bg-slate-950/90 border-l-4 ${getCardAccentColor(tIdx, t.status)} border-y border-r border-slate-800 hover:border-slate-700 rounded-xl space-y-2 cursor-pointer transition-all shadow-md group relative`}
+                  >
+                    {/* Time Slot & Actions */}
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <span>{t.time_slot || '10:00 - 11:00'}</span>
+                      <button
+                        onClick={(e) => handleDeleteTask(t.id, e)}
+                        className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete Plan"
                       >
-                        <div className="flex items-start justify-between gap-1">
-                          <div className="font-bold text-slate-100 line-clamp-1">{t.title || 'Visit Task'}</div>
-                          <button
-                            onClick={(e) => handleDeleteTask(t.id, e)}
-                            className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover/item:opacity-100 transition-opacity"
-                            title="Delete Task"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
 
-                        {t.customer_name && (
-                          <div className="text-[11px] font-semibold text-cyan-400 truncate">
-                            👤 {t.customer_name}
-                          </div>
-                        )}
-
-                        {t.visit_location && (
-                          <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                            <MapPin className="w-2.5 h-2.5 text-slate-500 shrink-0" />
-                            <span>{t.visit_location}</span>
-                          </div>
-                        )}
-
-                        {t.time_slot && (
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            ⏰ {t.time_slot}
-                          </div>
-                        )}
-
-                        <div className="pt-1.5 border-t border-slate-800/60 flex flex-col gap-1 text-[10px]">
-                          <div className="flex items-center justify-between text-slate-400">
-                            <span>Assigned: <strong className="text-slate-200">{t.assigned_employee_name || 'You'}</strong></span>
-                            <span className="font-mono text-cyan-400 font-bold">{t.hours}h</span>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-1 flex-wrap">
-                            <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[9px] border ${
-                              t.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                              t.status === 'IN_PROGRESS' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' :
-                              t.status === 'CANCELLED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                              'bg-slate-800 text-slate-400 border-slate-700'
-                            }`}>
-                              {t.status || 'PLANNED'}
-                            </span>
-
-                            {t.priority && (
-                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold ${
-                                t.priority === 'HIGH' ? 'bg-rose-950 text-rose-400' :
-                                t.priority === 'MEDIUM' ? 'bg-amber-950 text-amber-400' : 'bg-slate-800 text-slate-400'
-                              }`}>
-                                {t.priority}
-                              </span>
-                            )}
-                          </div>
-
-                          {t.rescheduled_to_task_id && (
-                            <div className="text-[9px] text-amber-400 font-mono pt-0.5">
-                              🔁 Rescheduled
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-
-                    {dayTasks.length === 0 && (
-                      <div className="text-[11px] text-slate-500 italic py-6 text-center group-hover:text-slate-400">
-                        + Add Visit / Task
+                    {/* Customer / Account Name */}
+                    {t.customer_name && (
+                      <div className="font-bold text-slate-100 text-xs line-clamp-1">
+                        {t.customer_name}
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Shared Calendar Visualization */}
-      <SharedCalendar
-        events={calendarEvents}
-        initialYear={currentYear}
-        initialMonth={currentMonth}
-        onMonthChange={(y, m) => {
-          setCurrentYear(y);
-          setCurrentMonth(m);
-        }}
-        title="Weekly Work & Field Visit Calendar"
-        subtitle="Visualizing customer field meetings, daily tasks, organization holidays, and workforce leaves"
-      />
+                    {/* Location */}
+                    {t.visit_location && (
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                        <span className="truncate">{t.visit_location}</span>
+                      </div>
+                    )}
 
-      {/* Task Create / Edit Detail Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-cyan-400" />
-                <h3 className="font-bold text-lg text-white">
-                  {editingTask ? 'Edit Work Visit & Task Details' : 'Create Weekly Field Visit & Work Task'}
-                </h3>
-              </div>
-              <button type="button" onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5 text-xs">
-              {/* AREA 1: PLANNING & VISIT METADATA */}
-              <div className="space-y-3">
-                <div className="text-cyan-400 font-bold text-xs uppercase tracking-wider border-b border-slate-800 pb-1">
-                  1. Visit & Task Planning Details
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {isManagement ? (
-                    <div>
-                      <label className="block text-slate-300 mb-1 font-medium">Assigned Employee *</label>
-                      <select
-                        value={formData.assignedEmployeeId || (employees.length > 0 ? employees[0].id : '')}
-                        onChange={e => setFormData({ ...formData, assignedEmployeeId: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
-                      >
-                        {employees.map(emp => (
-                          <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>
-                        ))}
-                      </select>
+                    {/* Task Title / Objective */}
+                    <div className="text-[11px] text-slate-300 font-medium line-clamp-2">
+                      {t.title || t.visit_objective || 'Customer Meeting'}
                     </div>
-                  ) : (
-                    <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs flex items-center justify-between">
-                      <span className="text-slate-400">Assigned To:</span>
-                      <strong className="text-cyan-400 font-semibold">You (Self-Assigned)</strong>
+
+                    {/* Status Pill */}
+                    <div className="pt-1 flex items-center justify-between border-t border-slate-800/80">
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                        t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                        t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
+                        t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                        'bg-slate-800 text-slate-300 border border-slate-700'
+                      }`}>
+                        {t.status === 'PLANNED' ? 'Planned' : t.status || 'Planned'}
+                      </span>
+
+                      {t.assigned_employee_name && (
+                        <span className="text-[9px] text-slate-400 font-semibold truncate max-w-[80px]">
+                          {t.assigned_employee_name.split(' ')[0]}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))}
 
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Task Title / Objective *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.title}
-                      onChange={e => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="e.g. SGT University Visit / Microscope Demo"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Customer / Account Name</label>
-                    <input
-                      type="text"
-                      value={formData.customerName}
-                      onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="e.g. IIT Delhi / SGT University"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Contact Person</label>
-                    <input
-                      type="text"
-                      value={formData.contactPerson}
-                      onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="e.g. Dr. Vijay Kumar"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Contact Phone / Email</label>
-                    <input
-                      type="text"
-                      value={formData.contactDetails}
-                      onChange={e => setFormData({ ...formData, contactDetails: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="+91 9876543210 / email"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Visit Location / Place</label>
-                    <input
-                      type="text"
-                      value={formData.visitLocation}
-                      onChange={e => setFormData({ ...formData, visitLocation: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="e.g. Pusa Campus / Client Lab"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Visit Type</label>
-                    <select
-                      value={formData.visitType}
-                      onChange={e => setFormData({ ...formData, visitType: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
+                {/* Empty State for Day */}
+                {dayTasks.length === 0 && (
+                  <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-slate-800/60 rounded-xl space-y-2 bg-slate-950/20">
+                    <CalendarIcon className="w-7 h-7 text-slate-600" />
+                    <span className="text-xs text-slate-400 font-medium">No plans for this day</span>
+                    <button
+                      onClick={() => openCreateModalForDate(day.dateStr)}
+                      className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all"
                     >
-                      <option value="New Prospect">New Prospect</option>
-                      <option value="Follow-Up">Follow-Up</option>
-                      <option value="Demo / Presentation">Demo / Presentation</option>
-                      <option value="Technical Support">Technical Support</option>
-                      <option value="AMC / Service">AMC / Service</option>
-                      <option value="Order Closure">Order Closure</option>
-                      <option value="Relationship Call">Relationship Call</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Time Slot</label>
-                    <select
-                      value={formData.timeSlot}
-                      onChange={e => setFormData({ ...formData, timeSlot: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
-                    >
-                      <option value="09:00-10:30">09:00-10:30</option>
-                      <option value="10:30-12:00">10:30-12:00</option>
-                      <option value="12:00-13:30">12:00-13:30</option>
-                      <option value="15:30-17:00">15:30-17:00</option>
-                      <option value="Full Day">Full Day</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Planned Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.date}
-                      onChange={e => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Planned Hours *</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0.5"
-                      required
-                      value={formData.hours}
-                      onChange={e => setFormData({ ...formData, hours: parseFloat(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Priority</label>
-                    <select
-                      value={formData.priority}
-                      onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
-                    >
-                      <option value="HIGH">HIGH</option>
-                      <option value="MEDIUM">MEDIUM</option>
-                      <option value="LOW">LOW</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Products / Solutions to Present</label>
-                  <input
-                    type="text"
-                    value={formData.productsToPresent}
-                    onChange={e => setFormData({ ...formData, productsToPresent: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="e.g. Electron Microscope / Analytical Instruments"
-                  />
-                </div>
-              </div>
-
-              {/* AREA 2: EXECUTION PROGRESS & OUTCOMES */}
-              <div className="space-y-3 pt-2">
-                <div className="text-emerald-400 font-bold text-xs uppercase tracking-wider border-b border-slate-800 pb-1">
-                  2. Visit Progress, Discussion Outcome & Follow-Up
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Task Status *</label>
-                    <select
-                      value={formData.status}
-                      onChange={e => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-bold"
-                    >
-                      <option value="PLANNED">PLANNED</option>
-                      <option value="IN_PROGRESS">IN PROGRESS</option>
-                      <option value="COMPLETED">COMPLETED</option>
-                      <option value="CANCELLED">CANCELLED</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Opportunity Stage</label>
-                    <select
-                      value={formData.opportunityStage}
-                      onChange={e => setFormData({ ...formData, opportunityStage: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-semibold"
-                    >
-                      <option value="Lead">Lead</option>
-                      <option value="Qualified">Qualified</option>
-                      <option value="Proposal Sent">Proposal Sent</option>
-                      <option value="Negotiation">Negotiation</option>
-                      <option value="Won">Won</option>
-                      <option value="Lost">Lost</option>
-                      <option value="On Hold">On Hold</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Estimated Opportunity Value (₹)</label>
-                    <input
-                      type="number"
-                      value={formData.estimatedValue}
-                      onChange={e => setFormData({ ...formData, estimatedValue: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-amber-300 font-mono"
-                      placeholder="e.g. 250000"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Discussion Outcome / Meeting Summary</label>
-                  <textarea
-                    rows={2}
-                    value={formData.outcomeSummary}
-                    onChange={e => setFormData({ ...formData, outcomeSummary: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                    placeholder="Discussed microscope requirements. Customer requested quotation and tech specs..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Next Required Action</label>
-                    <input
-                      type="text"
-                      value={formData.nextAction}
-                      onChange={e => setFormData({ ...formData, nextAction: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
-                      placeholder="Send commercial quotation and technical datasheet..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-medium">Next Follow-Up Date</label>
-                    <input
-                      type="date"
-                      value={formData.followUpDate}
-                      onChange={e => setFormData({ ...formData, followUpDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {formData.status === 'CANCELLED' && (
-                  <div>
-                    <label className="block text-rose-400 mb-1 font-medium">Cancellation Reason *</label>
-                    <input
-                      type="text"
-                      value={formData.cancellationReason}
-                      onChange={e => setFormData({ ...formData, cancellationReason: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-rose-800 rounded-xl text-rose-300"
-                      placeholder="e.g. Customer cancelled meeting / Rescheduled by client..."
-                    />
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Plan</span>
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
+          );
+        })}
+      </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+      {/* Add / Edit Weekly Plan Modal with 3-Step Stepper */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 duration-150">
+
+            {/* Modal Left Stepper Sidebar */}
+            <div className="w-full md:w-64 bg-[#0D1322] border-b md:border-b-0 md:border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
+              <div className="space-y-6">
+                {/* Modal Title Banner */}
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/30 shrink-0">
+                    <CalendarIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-base leading-tight">
+                      {editingTask ? 'Edit Weekly Plan' : 'Add Weekly Plan'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Plan a customer visit or task for your team</p>
+                  </div>
+                </div>
+
+                {/* Vertical Stepper List */}
+                <div className="relative space-y-6 pl-2 pt-2">
+                  {/* Vertical Connecting Line */}
+                  <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-800" />
+
+                  {/* Step 1 */}
+                  <div
+                    onClick={() => setModalStep(1)}
+                    className="relative flex items-start gap-3 cursor-pointer group"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
+                      modalStep === 1
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
+                        : modalStep > 1
+                        ? 'bg-emerald-500 text-slate-950 font-extrabold'
+                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                    }`}>
+                      {modalStep > 1 ? <Check className="w-4 h-4 stroke-[3]" /> : '1'}
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold ${modalStep === 1 ? 'text-white' : 'text-slate-400'}`}>
+                        Visit Details
+                      </div>
+                      <div className="text-[10px] text-slate-500">Basic information</div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div
+                    onClick={() => setModalStep(2)}
+                    className="relative flex items-start gap-3 cursor-pointer group"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
+                      modalStep === 2
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
+                        : modalStep > 2
+                        ? 'bg-emerald-500 text-slate-950 font-extrabold'
+                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                    }`}>
+                      {modalStep > 2 ? <Check className="w-4 h-4 stroke-[3]" /> : '2'}
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold ${modalStep === 2 ? 'text-white' : 'text-slate-400'}`}>
+                        Meeting & Discussion
+                      </div>
+                      <div className="text-[10px] text-slate-500">Objectives and notes</div>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div
+                    onClick={() => setModalStep(3)}
+                    className="relative flex items-start gap-3 cursor-pointer group"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
+                      modalStep === 3
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
+                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                    }`}>
+                      3
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold ${modalStep === 3 ? 'text-white' : 'text-slate-400'}`}>
+                        Follow-Up
+                      </div>
+                      <div className="text-[10px] text-slate-500">Next steps</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden md:block text-[10px] text-slate-500 pt-4 border-t border-slate-800">
+                Theiakshi Enterprise Weekly Planner
+              </div>
+            </div>
+
+            {/* Modal Right Form Area */}
+            <div className="flex-1 bg-[#090D16] p-6 flex flex-col justify-between overflow-y-auto">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CalendarIcon className="w-4 h-4" />
+                    {modalStep === 1 && 'VISIT & TASK PLANNING DETAILS'}
+                    {modalStep === 2 && 'MEETING & DISCUSSION OUTCOME'}
+                    {modalStep === 3 && 'NEXT ACTIONS & FOLLOW-UP'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {formError && (
+                  <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                  {/* STEP 1: VISIT DETAILS */}
+                  {modalStep === 1 && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {isManagement ? (
+                          <div>
+                            <label className="block text-slate-300 mb-1 font-semibold">Assigned Employee *</label>
+                            <select
+                              value={formData.assignedEmployeeId || (employees.length > 0 ? employees[0].id : '')}
+                              onChange={e => setFormData({ ...formData, assignedEmployeeId: e.target.value })}
+                              className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                            >
+                              {employees.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-[#060911] border border-slate-800 rounded-xl text-xs flex items-center justify-between">
+                            <span className="text-slate-400">Assigned To:</span>
+                            <strong className="text-purple-400 font-semibold">You (Self-Assigned)</strong>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Task Title / Objective *</label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.title}
+                            onChange={e => setFormData({ ...formData, title: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            placeholder="e.g. CLRI VISIT"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Customer / Account Name</label>
+                          <input
+                            type="text"
+                            value={formData.customerName}
+                            onChange={e => setFormData({ ...formData, customerName: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            placeholder="e.g. CENTRAL LEATHER RESEARCH INSTITUTE"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Contact Person</label>
+                          <input
+                            type="text"
+                            value={formData.contactPerson}
+                            onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            placeholder="e.g. Amit Ashok"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Contact Phone / Email</label>
+                          <input
+                            type="text"
+                            value={formData.contactDetails}
+                            onChange={e => setFormData({ ...formData, contactDetails: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            placeholder="04424437137"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Visit Location / Place</label>
+                          <input
+                            type="text"
+                            value={formData.visitLocation}
+                            onChange={e => setFormData({ ...formData, visitLocation: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            placeholder="Adayar"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Visit Type</label>
+                          <select
+                            value={formData.visitType}
+                            onChange={e => setFormData({ ...formData, visitType: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                          >
+                            <option value="New Prospect">New Prospect</option>
+                            <option value="Follow-Up">Follow-Up</option>
+                            <option value="Demo / Presentation">Demo / Presentation</option>
+                            <option value="Technical Support">Technical Support</option>
+                            <option value="AMC / Service">AMC / Service</option>
+                            <option value="Order Closure">Order Closure</option>
+                            <option value="Relationship Call">Relationship Call</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Time Slot</label>
+                          <select
+                            value={formData.timeSlot}
+                            onChange={e => setFormData({ ...formData, timeSlot: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                          >
+                            <option value="09:00-10:30">09:00 - 10:30</option>
+                            <option value="10:00-11:00">10:00 - 11:00</option>
+                            <option value="11:00-12:00">11:00 - 12:00</option>
+                            <option value="12:00-13:30">12:00 - 13:30</option>
+                            <option value="14:00-15:30">14:00 - 15:30</option>
+                            <option value="15:00-16:00">15:00 - 16:00</option>
+                            <option value="Full Day">Full Day</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Planned Date *</label>
+                          <input
+                            type="date"
+                            required
+                            value={formData.date}
+                            onChange={e => setFormData({ ...formData, date: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Opportunity Stage with No Requirement */}
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Opportunity Stage</label>
+                          <select
+                            value={formData.opportunityStage}
+                            onChange={e => setFormData({ ...formData, opportunityStage: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                          >
+                            <option value="No Requirement">No Requirement</option>
+                            <option value="Lead">Lead</option>
+                            <option value="Qualified">Qualified</option>
+                            <option value="Proposal Sent">Proposal Sent</option>
+                            <option value="Negotiation">Negotiation</option>
+                            <option value="Won">Won</option>
+                            <option value="Lost">Lost</option>
+                            <option value="On Hold">On Hold</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Priority</label>
+                          <select
+                            value={formData.priority}
+                            onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                          >
+                            <option value="HIGH">HIGH</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="LOW">LOW</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-semibold">Products / Solutions to Present</label>
+                        <input
+                          type="text"
+                          value={formData.productsToPresent}
+                          onChange={e => setFormData({ ...formData, productsToPresent: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          placeholder="e.g. Microscope"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2: MEETING & DISCUSSION */}
+                  {modalStep === 2 && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Task Status *</label>
+                          <select
+                            value={formData.status}
+                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-bold focus:border-purple-500 focus:outline-none"
+                          >
+                            <option value="PLANNED">PLANNED</option>
+                            <option value="IN_PROGRESS">IN PROGRESS</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-300 mb-1 font-semibold">Estimated Opportunity Value (₹)</label>
+                          <input
+                            type="number"
+                            value={formData.estimatedValue}
+                            onChange={e => setFormData({ ...formData, estimatedValue: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-amber-300 font-mono focus:border-purple-500 focus:outline-none"
+                            placeholder="e.g. 250000"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-semibold">Visit Objective / Notes</label>
+                        <textarea
+                          rows={3}
+                          value={formData.visitObjective}
+                          onChange={e => setFormData({ ...formData, visitObjective: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          placeholder="Objectives for the customer visit..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-semibold">Discussion Outcome / Meeting Summary</label>
+                        <textarea
+                          rows={3}
+                          value={formData.outcomeSummary}
+                          onChange={e => setFormData({ ...formData, outcomeSummary: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          placeholder="Discussed product requirements. Customer requested quotation..."
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: FOLLOW-UP */}
+                  {modalStep === 3 && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-semibold">Next Required Action</label>
+                        <input
+                          type="text"
+                          value={formData.nextAction}
+                          onChange={e => setFormData({ ...formData, nextAction: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          placeholder="Send commercial quotation and technical specs..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 font-semibold">Next Follow-Up Date</label>
+                        <input
+                          type="date"
+                          value={formData.followUpDate}
+                          onChange={e => setFormData({ ...formData, followUpDate: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                        />
+                      </div>
+
+                      {formData.status === 'CANCELLED' && (
+                        <div>
+                          <label className="block text-rose-400 mb-1 font-semibold">Cancellation Reason *</label>
+                          <input
+                            type="text"
+                            value={formData.cancellationReason}
+                            onChange={e => setFormData({ ...formData, cancellationReason: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#060911] border border-rose-800 rounded-xl text-rose-300 focus:outline-none"
+                            placeholder="e.g. Rescheduled by client..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </form>
+              </div>
+
+              {/* Form Bottom Control Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-xs transition-all"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
-                >
-                  {editingTask ? 'Save Changes' : 'Create Task'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  {modalStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setModalStep((modalStep - 1) as any)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold text-xs transition-all"
+                    >
+                      Back
+                    </button>
+                  )}
+
+                  {modalStep < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => setModalStep((modalStep + 1) as any)}
+                      className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-purple-600/25 transition-all"
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-purple-600/30 transition-all"
+                    >
+                      Save Plan
+                    </button>
+                  )}
+                </div>
               </div>
-            </form>
+            </div>
+
           </div>
         </div>
       )}
@@ -1023,11 +1064,11 @@ export const Timesheets: React.FC = () => {
       {/* Reschedule Task Modal */}
       {rescheduleTaskItem && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="bg-[#0B0F19] border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <ArrowRight className="w-5 h-5 text-cyan-400" />
-                <h3 className="font-bold text-white text-sm">Reschedule Task / Field Visit</h3>
+                <ArrowRight className="w-5 h-5 text-purple-400" />
+                <h3 className="font-bold text-white text-sm">Reschedule Weekly Plan</h3>
               </div>
               <button onClick={() => setRescheduleTaskItem(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -1035,10 +1076,9 @@ export const Timesheets: React.FC = () => {
             </div>
 
             <form onSubmit={handleRescheduleSubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <p className="text-slate-400 font-medium">Task: <span className="text-slate-100 font-bold">{rescheduleTaskItem.title}</span></p>
+              <div className="p-3 bg-[#060911] rounded-xl border border-slate-800 space-y-1">
+                <p className="text-slate-400 font-medium">Plan: <span className="text-slate-100 font-bold">{rescheduleTaskItem.title}</span></p>
                 <p className="text-slate-400 font-medium">Original Date: <span className="text-amber-400 font-mono">{rescheduleTaskItem.date}</span></p>
-                <p className="text-slate-500 text-[11px]">The original historical record will be preserved and linked to the new date.</p>
               </div>
 
               <div>
@@ -1048,7 +1088,7 @@ export const Timesheets: React.FC = () => {
                   required
                   value={rescheduleNewDate}
                   onChange={e => setRescheduleNewDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-cyan-300 font-mono rounded-xl outline-none"
+                  className="w-full px-3 py-2 bg-[#060911] border border-slate-800 text-purple-300 font-mono rounded-xl outline-none"
                 />
               </div>
 
@@ -1059,7 +1099,7 @@ export const Timesheets: React.FC = () => {
                   value={rescheduleReason}
                   onChange={e => setRescheduleReason(e.target.value)}
                   placeholder="e.g. Customer requested later date..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl outline-none"
+                  className="w-full px-3 py-2 bg-[#060911] border border-slate-800 text-slate-200 rounded-xl outline-none"
                 />
               </div>
 
@@ -1074,7 +1114,7 @@ export const Timesheets: React.FC = () => {
                 <button
                   type="submit"
                   disabled={rescheduling || !rescheduleNewDate}
-                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl font-semibold shadow disabled:opacity-50"
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-semibold shadow disabled:opacity-50"
                 >
                   {rescheduling ? 'Rescheduling...' : 'Confirm Reschedule'}
                 </button>
