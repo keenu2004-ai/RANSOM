@@ -71,22 +71,44 @@ export class LeaveRepository {
     });
   }
 
-  static async getMonthlyCLUsage(employeeId: string, organizationId: string, year: number, month: number) {
+  static async getMonthlyCLUsage(employeeId: string, organizationId: string, year: number, month: number, client?: any) {
     // Month is 1-indexed (1 = Jan, 12 = Dec)
     const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
+    const queryFn = client ? (text: string, params: any[]) => client.query(text, params) : query;
+
+    // Fetch approved requests that overlap with the target month and actually deducted Casual Leave
     const text = `
-      SELECT COALESCE(SUM(lr.total_days), 0)::numeric as cl_used
+      SELECT lr.start_date, lr.end_date, lr.total_days, lr.actual_deduction_type, lt.code as leave_type_code, lt.name as leave_type_name
       FROM leave_requests lr
       INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
       WHERE lr.employee_id = $1 AND lr.organization_id = $2 
-        AND lt.code = 'CL' AND lr.status = 'APPROVED'
+        AND lr.status = 'APPROVED'
+        AND (lt.code = 'CL' OR lr.actual_deduction_type ILIKE '%Casual%')
         AND lr.start_date <= $4 AND lr.end_date >= $3
     `;
-    const res = await query<{ cl_used: string }>(text, [employeeId, organizationId, startDateStr, endDateStr]);
-    return parseFloat(res.rows[0]?.cl_used || '0');
+    const res = await queryFn(text, [employeeId, organizationId, startDateStr, endDateStr]);
+
+    let monthCLDays = 0;
+    const targetMonthStart = new Date(`${startDateStr}T00:00:00`);
+    const targetMonthEnd = new Date(`${endDateStr}T23:59:59`);
+
+    for (const req of res.rows) {
+      const reqStart = new Date(req.start_date);
+      const reqEnd = new Date(req.end_date);
+      const cur = new Date(reqStart);
+
+      while (cur <= reqEnd) {
+        if (cur >= targetMonthStart && cur <= targetMonthEnd) {
+          monthCLDays += 1;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+
+    return monthCLDays;
   }
 
   static async updatePolicy(organizationId: string, quotas: { clQuota: number; elQuota: number; slQuota: number; olQuota?: number }, actorUserId?: string) {
@@ -162,61 +184,69 @@ export class LeaveRepository {
     return withTransaction(async (client) => {
       const year = new Date(data.startDate).getFullYear();
 
+      // Acquire exclusive lock on employee balances for concurrency protection
+      await client.query(`
+        SELECT id FROM leave_balances
+        WHERE employee_id = $1 AND year = $2 AND organization_id = $3
+        FOR UPDATE
+      `, [employeeId, year, organizationId]);
+
       // Fetch requested leave type
-      const typeRes = await client.query('SELECT id, code, is_active FROM leave_types WHERE id = $1 AND organization_id = $2', [data.leaveTypeId, organizationId]);
+      const typeRes = await client.query('SELECT id, name, code, is_active FROM leave_types WHERE id = $1 AND organization_id = $2', [data.leaveTypeId, organizationId]);
       if (typeRes.rows.length === 0 || !typeRes.rows[0].is_active) {
         throw new Error('The selected leave type is no longer active or valid.');
       }
-      const requestedCode = typeRes.rows[0].code;
+      const requestedTypeRow = typeRes.rows[0];
+      const requestedCode = requestedTypeRow.code;
 
       let targetLeaveTypeId = data.leaveTypeId;
-      let clDays = 0;
-      let elDays = 0;
+      let actualDeductionType = requestedTypeRow.name;
+      let conversionReason: string | null = null;
 
-      // Handle CL Monthly Limit & EL Fallback Engine
+      // Handle Exact CL Policy Rules:
+      // A. Max 2 consecutive CL days per request.
+      // B. Max 2 CL days per calendar month per employee.
+      // Rule is ALL-OR-NOTHING. Never split one request between CL and Privilege/EL.
       if (requestedCode === 'CL') {
-        const start = new Date(data.startDate);
-        const end = new Date(data.endDate);
-        const current = new Date(start);
+        if (data.totalDays > 2) {
+          // Rule A: Consecutive CL Limit exceeded -> Entire request converts to Privilege
+          const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
+          if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
+          targetLeaveTypeId = plTypeRes.rows[0].id;
+          actualDeductionType = plTypeRes.rows[0].name;
+          conversionReason = 'Casual Leave request exceeds maximum consecutive CL limit.';
+        } else {
+          // Evaluate monthly CL usage across each distinct calendar month in the request range
+          const start = new Date(data.startDate);
+          const end = new Date(data.endDate);
+          const monthDaysCount: Record<string, { year: number; month: number; days: number }> = {};
 
-        // Evaluate day-by-day month boundary logic
-        while (current <= end) {
-          const cYear = current.getFullYear();
-          const cMonth = current.getMonth() + 1; // 1-indexed
-
-          // Query approved CL days for that specific month
-          const startM = `${cYear}-${String(cMonth).padStart(2, '0')}-01`;
-          const lastD = new Date(cYear, cMonth, 0).getDate();
-          const endM = `${cYear}-${String(cMonth).padStart(2, '0')}-${String(lastD).padStart(2, '0')}`;
-
-          const usageRes = await client.query(`
-            SELECT COALESCE(SUM(lr.total_days), 0)::numeric as count
-            FROM leave_requests lr
-            INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
-            WHERE lr.employee_id = $1 AND lr.organization_id = $2
-              AND lt.code = 'CL' AND lr.status = 'APPROVED'
-              AND lr.start_date <= $4 AND lr.end_date >= $3
-          `, [employeeId, organizationId, startM, endM]);
-
-          const monthUsedCL = parseFloat(usageRes.rows[0]?.count || '0');
-
-          if (monthUsedCL + clDays < 2) {
-            clDays += 1;
-          } else {
-            elDays += 1;
+          const cur = new Date(start);
+          while (cur <= end) {
+            const y = cur.getFullYear();
+            const m = cur.getMonth() + 1;
+            const key = `${y}-${m}`;
+            if (!monthDaysCount[key]) {
+              monthDaysCount[key] = { year: y, month: m, days: 0 };
+            }
+            monthDaysCount[key].days += 1;
+            cur.setDate(cur.getDate() + 1);
           }
 
-          current.setDate(current.getDate() + 1);
-        }
+          // Check monthly quota for each month spanned by the request
+          for (const key of Object.keys(monthDaysCount)) {
+            const { year: mYear, month: mMonth, days: reqDaysInMonth } = monthDaysCount[key];
+            const monthCLUsed = await LeaveRepository.getMonthlyCLUsage(employeeId, organizationId, mYear, mMonth, client);
 
-        // If all days fit within CL limit
-        if (elDays === 0) {
-          targetLeaveTypeId = data.leaveTypeId;
-        } else if (clDays === 0) {
-          // All requested days overflowed to EL -> switch target to EL/PL
-          const elTypeRes = await client.query("SELECT id FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
-          if (elTypeRes.rows.length === 0) throw new Error('Earned / Privilege Leave type not configured.');
-          targetLeaveTypeId = elTypeRes.rows[0].id;
+            if (monthCLUsed + reqDaysInMonth > 2) {
+              const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
+              if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
+              targetLeaveTypeId = plTypeRes.rows[0].id;
+              actualDeductionType = plTypeRes.rows[0].name;
+              conversionReason = 'Monthly Casual Leave quota exhausted.';
+              break;
+            }
+          }
         }
       }
 
@@ -233,25 +263,27 @@ export class LeaveRepository {
       }
 
       const balance = balRes.rows[0];
-      if (balance.available < data.totalDays) {
-        if (elDays > 0) {
-          throw new Error('You have exceeded the monthly Casual Leave limit and do not have enough Earned Leave to cover the additional days.');
-        }
-        throw new Error(`Insufficient leave balance. Available: ${balance.available} days, Requested: ${data.totalDays} days.`);
-      }
+      const availableNum = parseFloat(balance.available || '0');
 
-      // Create leave request with conversion note if applicable
-      const note = elDays > 0 ? ` (Note: ${clDays} day(s) CL, ${elDays} day(s) converted to EL due to 2-day monthly limit)` : '';
-      const fullReason = `${data.reason}${note}`;
+      if (availableNum < data.totalDays) {
+        if (conversionReason) {
+          throw new Error(`Insufficient Privilege Leave balance. Available: ${availableNum} days, Requested: ${data.totalDays} days.`);
+        }
+        throw new Error(`Insufficient leave balance. Available: ${availableNum} days, Requested: ${data.totalDays} days.`);
+      }
 
       const reqRes = await client.query(`
         INSERT INTO leave_requests (
-          organization_id, employee_id, leave_type_id, start_date, end_date, total_days, reason, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
-        RETURNING id, employee_id, leave_type_id, start_date, end_date, total_days, status, created_at
-      `, [organizationId, employeeId, targetLeaveTypeId, data.startDate, data.endDate, data.totalDays, fullReason]);
+          organization_id, employee_id, leave_type_id, requested_leave_type_id,
+          actual_deduction_type, conversion_reason, start_date, end_date, total_days, reason, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING')
+        RETURNING id, employee_id, leave_type_id, requested_leave_type_id, actual_deduction_type, conversion_reason, start_date, end_date, total_days, status, created_at
+      `, [
+        organizationId, employeeId, targetLeaveTypeId, data.leaveTypeId,
+        actualDeductionType, conversionReason, data.startDate, data.endDate, data.totalDays, data.reason
+      ]);
 
-      // Update pending balance
+      // Update pending balance on actual deduction target
       await client.query(`
         UPDATE leave_balances
         SET 
@@ -268,7 +300,7 @@ export class LeaveRepository {
   static async updateStatus(id: string, organizationId: string, status: 'APPROVED' | 'REJECTED' | 'CANCELLED', reviewerEmployeeId?: string, rejectionReason?: string) {
     return withTransaction(async (client) => {
       const reqRes = await client.query(`
-        SELECT id, employee_id, leave_type_id, start_date, total_days, status
+        SELECT id, employee_id, leave_type_id, start_date, total_days, status, actual_deduction_type
         FROM leave_requests
         WHERE id = $1 AND organization_id = $2
         FOR UPDATE
@@ -340,15 +372,22 @@ export class LeaveRepository {
     params.push(limit, offset);
     const dataText = `
       SELECT 
-        lr.id, lr.employee_id, lr.leave_type_id, lt.name as leave_type_name, lt.code as leave_type_code,
+        lr.id, lr.employee_id, lr.leave_type_id, lr.requested_leave_type_id,
+        lt_actual.name as leave_type_name, lt_actual.code as leave_type_code,
+        COALESCE(lt_req.name, lt_actual.name) as requested_leave_type_name,
+        COALESCE(lr.actual_deduction_type, lt_actual.name) as actual_deduction_type,
+        lr.conversion_reason,
         lr.start_date, lr.end_date, lr.total_days, lr.reason, lr.status, lr.rejection_reason, lr.created_at,
         COALESCE(e.first_name, SPLIT_PART(lr.employee_name_snapshot, ' ', 1), 'Deleted') as first_name,
         COALESCE(e.last_name, SUBSTRING(lr.employee_name_snapshot FROM POSITION(' ' IN lr.employee_name_snapshot) + 1), 'Employee') as last_name,
         COALESCE(e.employee_code, lr.employee_code_snapshot, 'EMP') as employee_code,
+        d.name as department_name,
         rev.first_name as reviewer_first_name, rev.last_name as reviewer_last_name
       FROM leave_requests lr
-      INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
+      INNER JOIN leave_types lt_actual ON lr.leave_type_id = lt_actual.id
+      LEFT JOIN leave_types lt_req ON lr.requested_leave_type_id = lt_req.id
       LEFT JOIN employees e ON lr.employee_id = e.id
+      LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN employees rev ON lr.reviewed_by = rev.id
       ${whereClause}
       ORDER BY lr.created_at DESC
@@ -452,6 +491,154 @@ export class LeaveRepository {
 
       return { ...leave, status: 'CANCELLED' };
     });
+  }
+
+  static async findAllBalances(organizationId: string, options: { search?: string; department?: string; status?: string; page?: number; limit?: number } = {}) {
+    const year = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const startDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+    const endDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const { search, department, status, page = 1, limit = 500 } = options;
+    const offset = (page - 1) * limit;
+
+    let whereClause = 'WHERE e.organization_id = $1';
+    const params: any[] = [organizationId];
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (e.first_name || ' ' || e.last_name ILIKE $${params.length} OR e.employee_code ILIKE $${params.length})`;
+    }
+
+    if (department && department !== 'ALL') {
+      params.push(department);
+      whereClause += ` AND (d.id::text = $${params.length} OR d.name ILIKE $${params.length})`;
+    }
+
+    if (status && status !== 'ALL') {
+      params.push(status.toUpperCase());
+      whereClause += ` AND UPPER(e.status) = $${params.length}`;
+    }
+
+    const countRes = await query(`
+      SELECT COUNT(*) 
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      ${whereClause}
+    `, params);
+    const total = parseInt(countRes.rows[0]?.count || '0', 10);
+
+    params.push(limit, offset);
+    const dataRes = await query(`
+      SELECT 
+        e.id as employee_id,
+        e.first_name,
+        e.last_name,
+        e.employee_code,
+        e.status as employee_status,
+        d.name as department_name,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'leave_type_id', lb.leave_type_id,
+              'leave_type_name', lt.name,
+              'leave_type_code', lt.code,
+              'quota', lb.quota,
+              'used', lb.used,
+              'pending', lb.pending,
+              'available', lb.available
+            )
+          ) FILTER (WHERE lb.id IS NOT NULL), '[]'
+        ) as balances,
+        COALESCE(
+          (
+            SELECT SUM(lr.total_days)
+            FROM leave_requests lr
+            INNER JOIN leave_types lt_cl ON lr.leave_type_id = lt_cl.id
+            WHERE lr.employee_id = e.id AND lr.organization_id = $1
+              AND (lt_cl.code = 'CL' OR lr.actual_deduction_type ILIKE '%Casual%')
+              AND lr.status = 'APPROVED'
+              AND lr.start_date <= '${endDateStr}' AND lr.end_date >= '${startDateStr}'
+          ), 0
+        )::numeric as monthly_cl_used
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${year}
+      LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id AND lt.is_active = TRUE
+      ${whereClause}
+      GROUP BY e.id, e.first_name, e.last_name, e.employee_code, e.status, d.name
+      ORDER BY e.first_name ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `, params);
+
+    const summariesRes = await query(`
+      SELECT 
+        (SELECT COUNT(*) FROM employees WHERE organization_id = $1) as total_employees,
+        (SELECT COUNT(*) FROM employees WHERE organization_id = $1 AND UPPER(status) = 'ACTIVE') as active_employees,
+        (SELECT COUNT(*) FROM employees WHERE organization_id = $1 AND UPPER(status) = 'INACTIVE') as inactive_employees,
+        (SELECT COUNT(*) FROM leave_requests WHERE organization_id = $1 AND status = 'PENDING') as pending_requests,
+        (SELECT COUNT(*) FROM leave_requests WHERE organization_id = $1 AND status = 'APPROVED' AND EXTRACT(YEAR FROM start_date) = ${year}) as approved_this_year,
+        (
+          SELECT COALESCE(ROUND(SUM(total_days) / NULLIF((SELECT COUNT(*) FROM employees WHERE organization_id = $1 AND UPPER(status) = 'ACTIVE'), 0), 1), 0)
+          FROM leave_requests
+          WHERE organization_id = $1 AND status = 'APPROVED' AND EXTRACT(YEAR FROM start_date) = ${year}
+        ) as avg_leave_usage
+    `, [organizationId]);
+
+    return {
+      employees: dataRes.rows.map(row => {
+        let cl = { quota: 0, used: 0, pending: 0, available: 0 };
+        let pl = { quota: 0, used: 0, pending: 0, available: 0 };
+        let sl = { quota: 0, used: 0, pending: 0, available: 0 };
+
+        (row.balances || []).forEach((b: any) => {
+          const quota = parseFloat(b.quota || '0');
+          const used = parseFloat(b.used || '0');
+          const pending = parseFloat(b.pending || '0');
+          const available = parseFloat(b.available || '0');
+
+          if (b.leave_type_code === 'CL' || (b.leave_type_name && b.leave_type_name.toLowerCase().includes('casual'))) {
+            cl = { quota, used, pending, available };
+          } else if (['EL', 'PL'].includes(b.leave_type_code) || (b.leave_type_name && (b.leave_type_name.toLowerCase().includes('privilege') || b.leave_type_name.toLowerCase().includes('earned')))) {
+            pl = { quota, used, pending, available };
+          } else if (b.leave_type_code === 'SL' || (b.leave_type_name && b.leave_type_name.toLowerCase().includes('sick'))) {
+            sl = { quota, used, pending, available };
+          }
+        });
+
+        const totalAvailable = cl.available + pl.available + sl.available;
+
+        return {
+          employee_id: row.employee_id,
+          employee_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+          employee_code: row.employee_code,
+          department: row.department_name || 'General',
+          status: row.employee_status,
+          casual_leave: cl,
+          privilege_leave: pl,
+          sick_leave: sl,
+          total_available: totalAvailable,
+          monthly_cl_used: parseFloat(row.monthly_cl_used || '0'),
+          all_balances: row.balances
+        };
+      }),
+      summary: {
+        totalEmployees: parseInt(summariesRes.rows[0]?.total_employees || '0', 10),
+        activeEmployees: parseInt(summariesRes.rows[0]?.active_employees || '0', 10),
+        inactiveEmployees: parseInt(summariesRes.rows[0]?.inactive_employees || '0', 10),
+        pendingRequests: parseInt(summariesRes.rows[0]?.pending_requests || '0', 10),
+        approvedThisYear: parseInt(summariesRes.rows[0]?.approved_this_year || '0', 10),
+        avgLeaveUsage: parseFloat(summariesRes.rows[0]?.avg_leave_usage || '0')
+      },
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   static async createLeaveAdjustment(

@@ -12,6 +12,40 @@ const applyLeaveSchema = z.object({
 });
 
 export class LeaveController {
+  // Organization-wide Employee Leave Balances for Super Admin / HR / HR Manager
+  static async allBalances(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const role = req.user!.role;
+
+      const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'];
+      if (!allowedRoles.includes(role)) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          error: 'Forbidden: You do not have permission to view organization-wide employee leave balances.'
+        });
+      }
+
+      const { search, department, status, page, limit } = req.query;
+
+      const result = await LeaveRepository.findAllBalances(organizationId, {
+        search: search as string,
+        department: department as string,
+        status: status as string,
+        page: page ? parseInt(page as string, 10) : 1,
+        limit: limit ? parseInt(limit as string, 10) : 500
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   // Personal self-service: Requires employeeId
   static async myBalance(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
