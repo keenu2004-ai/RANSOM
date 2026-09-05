@@ -29,6 +29,8 @@ router.get('/export/:employeeId', AttendanceExportController.exportEmployeeAtten
 // Administrative / Overview endpoints (Do NOT require employeeId)
 router.get('/locations', AttendanceController.locations);
 router.get('/workforce-summary', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.workforceSummary);
+router.get('/workforce-employees', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.workforceEmployees);
+router.get('/employee/:employeeId', AttendanceController.employeeDetails);
 router.get('/', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.list);
 
 export default router;

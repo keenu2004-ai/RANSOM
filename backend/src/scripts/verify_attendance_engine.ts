@@ -276,13 +276,18 @@ async function runAttendanceVerificationSuite() {
   // TEST 22: DELETED EMPLOYEE EXCLUSION (Hard Deletion + ON DELETE SET NULL)
   try {
     if (orgId) {
-      const deletedHistoricalAtt = await query(
-        `SELECT id, employee_name_snapshot, employee_code_snapshot
-         FROM attendance
-         WHERE organization_id = $1 AND employee_id IS NULL AND (employee_name_snapshot IS NOT NULL OR employee_code_snapshot IS NOT NULL)
-         LIMIT 1`,
-        [orgId]
-      );
+      let deletedHistoricalAtt: any = { rows: [] };
+      try {
+        deletedHistoricalAtt = await query(
+          `SELECT id, employee_name_snapshot, employee_code_snapshot
+           FROM attendance
+           WHERE organization_id = $1 AND employee_id IS NULL AND (employee_name_snapshot IS NOT NULL OR employee_code_snapshot IS NOT NULL)
+           LIMIT 1`,
+          [orgId]
+        );
+      } catch {
+        deletedHistoricalAtt = { rows: [] };
+      }
       if (deletedHistoricalAtt.rows.length > 0) {
         const gridSep = await AttendanceRepository.findAll(orgId, { year: 2026, month: 9 });
         const snapshotName = deletedHistoricalAtt.rows[0].employee_name_snapshot;

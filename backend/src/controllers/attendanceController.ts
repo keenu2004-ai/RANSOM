@@ -358,4 +358,78 @@ export class AttendanceController {
       return next(error);
     }
   }
+
+  // Lightweight Workforce Employee Summaries
+  static async workforceEmployees(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { startDate, endDate, departmentId, search, year, month } = req.query;
+
+      const result = await AttendanceRepository.getWorkforceEmployeeSummaries(organizationId, {
+        startDate: startDate as string,
+        endDate: endDate as string,
+        departmentId: departmentId as string,
+        search: search as string,
+        year: year ? parseInt(year as string, 10) : undefined,
+        month: month ? parseInt(month as string, 10) : undefined
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+        employees: result.employees,
+        totalEmployees: result.totalEmployees,
+        startDate: result.startDate,
+        endDate: result.endDate
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // Detailed Attendance per Single Employee (Newest First + Incremental Pagination)
+  static async employeeDetails(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const userRole = req.user!.role;
+      const userEmpId = req.user!.employeeId;
+      const { employeeId } = req.params;
+      const { startDate, endDate, year, month, page, limit } = req.query;
+
+      const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
+      if (!isManager && userEmpId !== employeeId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You can only view your own attendance records.',
+          code: 'FORBIDDEN'
+        });
+      }
+
+      const result = await AttendanceRepository.getEmployeeAttendanceDetails(organizationId, employeeId, {
+        startDate: startDate as string,
+        endDate: endDate as string,
+        year: year ? parseInt(year as string, 10) : undefined,
+        month: month ? parseInt(month as string, 10) : undefined,
+        page: page ? parseInt(page as string, 10) : 1,
+        limit: limit ? parseInt(limit as string, 10) : 30
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+        employee: result.employee,
+        records: result.records,
+        pagination: result.pagination,
+        totalWorkingHours: result.totalWorkingHours,
+        presentDays: result.presentDays,
+        startDate: result.startDate,
+        endDate: result.endDate
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found') || error.message?.includes('access denied')) {
+        return res.status(404).json({ success: false, code: 'EMPLOYEE_NOT_FOUND', error: error.message });
+      }
+      return next(error);
+    }
+  }
 }

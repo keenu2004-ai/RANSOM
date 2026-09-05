@@ -1,8 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
-import { Clock, CheckCircle, MapPin, Calendar as CalendarIcon, Play, Square, Layers, Eye, X, Compass, Shield, Loader2, Download, AlertCircle } from 'lucide-react';
+import {
+  Clock, CheckCircle, MapPin, Calendar as CalendarIcon, Play, Square, Layers, Eye, X,
+  Compass, Shield, Loader2, Download, AlertCircle, ChevronDown, ChevronRight, Search,
+  Filter, Users, UserCheck, UserX, CalendarDays, RefreshCw
+} from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
 
 const formatWorkingHours = (decimalHours: number | string | null | undefined): string => {
@@ -14,25 +18,81 @@ const formatWorkingHours = (decimalHours: number | string | null | undefined): s
   return `${hours}h ${String(minutes).padStart(2, '0')}m`;
 };
 
-interface SessionData {
+export type DatePreset = 'LAST_7_DAYS' | 'LAST_14_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'PREV_MONTH' | 'CUSTOM';
+
+const getDateRangeForPreset = (preset: DatePreset, customStart?: string, customEnd?: string): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const formatYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  if (preset === 'LAST_7_DAYS') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    return { startDate: formatYMD(start), endDate: formatYMD(now) };
+  }
+  if (preset === 'LAST_14_DAYS') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 13);
+    return { startDate: formatYMD(start), endDate: formatYMD(now) };
+  }
+  if (preset === 'LAST_30_DAYS') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 29);
+    return { startDate: formatYMD(start), endDate: formatYMD(now) };
+  }
+  if (preset === 'THIS_MONTH') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: formatYMD(start), endDate: formatYMD(end) };
+  }
+  if (preset === 'PREV_MONTH') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { startDate: formatYMD(start), endDate: formatYMD(end) };
+  }
+  return {
+    startDate: customStart || formatYMD(now),
+    endDate: customEnd || formatYMD(now)
+  };
+};
+
+interface EmployeeSummaryItem {
   id: string;
-  check_in: string;
-  check_out: string | null;
-  punch_in_lat: number | string | null;
-  punch_in_lng: number | string | null;
-  punch_in_accuracy: number | string | null;
-  punch_in_location_name?: string | null;
-  punch_out_lat: number | string | null;
-  punch_out_lng: number | string | null;
-  punch_out_accuracy: number | string | null;
-  punch_out_location_name?: string | null;
-  break_duration_mins: number;
-  working_hours: number | string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
   status: string;
+  departmentId?: string;
+  departmentName: string;
+  sessionCount: number;
+  totalHours: number;
+  presentDays: number;
+  latestAttendanceDate?: string | null;
+  latestCheckIn?: string | null;
+  latestStatus?: string | null;
+}
+
+interface EmployeeDetailState {
+  records: any[];
+  page: number;
+  totalPages: number;
+  hasMore: boolean;
+  loading: boolean;
+  loadingMore: boolean;
+  error?: string;
+  totalWorkingHours?: number;
+  presentDays?: number;
 }
 
 export const Attendance: React.FC = () => {
   const { user } = useAuth();
+  const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
+
   const {
     todaySummary,
     activeSession,
@@ -42,9 +102,32 @@ export const Attendance: React.FC = () => {
     refreshAttendance: contextRefresh
   } = useAttendance();
 
-  const [workforceSummary, setWorkforceSummary] = useState<any>(null);
-  const [attendanceList, setAttendanceList] = useState<any[]>([]);
-  const [monthSummary, setMonthSummary] = useState<any>(null);
+  // Workforce KPI Summary
+  const [workforceKpi, setWorkforceKpi] = useState<any>(null);
+
+  // Workforce Date Range Preset State (Defaults to LAST_7_DAYS)
+  const [selectedPreset, setSelectedPreset] = useState<DatePreset>('LAST_7_DAYS');
+  const [customStartDate, setCustomStartDate] = useState<string>(() => getDateRangeForPreset('LAST_7_DAYS').startDate);
+  const [customEndDate, setCustomEndDate] = useState<string>(() => getDateRangeForPreset('LAST_7_DAYS').endDate);
+
+  const activeDateRange = useMemo(() => {
+    return getDateRangeForPreset(selectedPreset, customStartDate, customEndDate);
+  }, [selectedPreset, customStartDate, customEndDate]);
+
+  // Workforce Employee Summaries
+  const [workforceEmployees, setWorkforceEmployees] = useState<EmployeeSummaryItem[]>([]);
+  const [loadingWorkforce, setLoadingWorkforce] = useState<boolean>(false);
+  const [workforceError, setWorkforceError] = useState<string | null>(null);
+
+  // Local Search & Filtering
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
+
+  // Single Expansion Accordion State
+  const [expandedEmpId, setExpandedEmpId] = useState<string | null>(null);
+  const [empDetailsMap, setEmpDetailsMap] = useState<Record<string, EmployeeDetailState>>({});
+
+  // Regularization & Calendar State
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [regularizations, setRegularizations] = useState<any[]>([]);
   const [attFetchError, setAttFetchError] = useState<string | null>(null);
@@ -80,6 +163,7 @@ export const Attendance: React.FC = () => {
     return isNaN(num) ? 'N/A' : `±${num.toFixed(1)}m`;
   };
 
+  // 1. Fetch Calendar Events for month
   const fetchCalendarEvents = useCallback(async (year: number, month: number) => {
     try {
       const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
@@ -106,52 +190,141 @@ export const Attendance: React.FC = () => {
     }
   }, []);
 
-  const fetchAttendance = useCallback(async (year: number, month: number) => {
-    setAttFetchError(null);
+  // 2. Fetch Workforce Employee Summaries
+  const fetchWorkforceSummaries = useCallback(async () => {
+    if (!isManagerOrAdmin) return;
+    setLoadingWorkforce(true);
+    setWorkforceError(null);
+
     try {
-      if (contextRefresh) {
-        await contextRefresh().catch(() => null);
-      }
+      const [summaryRes, kpiRes] = await Promise.all([
+        apiFetch('/attendance/workforce-employees', {
+          params: {
+            startDate: activeDateRange.startDate,
+            endDate: activeDateRange.endDate
+          }
+        }),
+        apiFetch('/attendance/workforce-summary')
+      ]);
 
-      if (['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '')) {
-        const summaryRes = await apiFetch(`/attendance/workforce-summary?year=${year}&month=${month + 1}`).catch(() => null);
-        setWorkforceSummary(summaryRes?.summary || summaryRes?.data?.summary || summaryRes || null);
+      setWorkforceEmployees(summaryRes?.employees || summaryRes?.data?.employees || []);
+      setWorkforceKpi(kpiRes?.summary || kpiRes?.data?.summary || null);
+    } catch (err: any) {
+      console.error('Failed to load workforce attendance summaries:', err);
+      setWorkforceError(err.message || 'Failed to load employee attendance summaries.');
+    } finally {
+      setLoadingWorkforce(false);
+    }
+  }, [isManagerOrAdmin, activeDateRange]);
 
-        const listRes = await apiFetch(`/attendance?year=${year}&month=${month + 1}`).catch(() => null);
-        const attData = listRes?.attendance || listRes?.data?.attendance || (Array.isArray(listRes) ? listRes : []);
-        setAttendanceList(attData);
-        if (listRes?.summary || listRes?.data?.summary) {
-          setMonthSummary(listRes?.summary || listRes?.data?.summary);
-        }
-      }
-
+  // 3. Fetch Regularizations
+  const fetchRegularizations = useCallback(async () => {
+    try {
       const regRes = await apiFetch('/attendance/regularizations').catch(() => null);
       setRegularizations(regRes?.regularizations || regRes?.data?.regularizations || (Array.isArray(regRes) ? regRes : []));
-    } catch (err: any) {
-      console.error('Error fetching attendance:', err);
-      setAttFetchError(err.message || 'Unable to load attendance information.');
+    } catch (err) {
+      console.error('Error fetching regularizations:', err);
     }
-  }, [user, contextRefresh]);
+  }, []);
 
+  // Initial and range change triggers
   useEffect(() => {
-    setAttendanceList([]);
-    setMonthSummary(null);
-    fetchAttendance(currentYear, currentMonth);
+    fetchWorkforceSummaries();
+    fetchRegularizations();
     fetchCalendarEvents(currentYear, currentMonth);
-  }, [currentYear, currentMonth, fetchAttendance, fetchCalendarEvents]);
+  }, [fetchWorkforceSummaries, fetchRegularizations, fetchCalendarEvents, currentYear, currentMonth]);
 
+  // When date range changes, invalidate expanded employee details cache & reset active expansion
+  useEffect(() => {
+    setEmpDetailsMap({});
+    setExpandedEmpId(null);
+  }, [activeDateRange.startDate, activeDateRange.endDate]);
+
+  // 4. Fetch Detailed Attendance for a Single Employee (Lazy-loaded, Newest First, Paginated)
+  const fetchEmployeeDetails = useCallback(async (empId: string, page: number = 1, append: boolean = false) => {
+    setEmpDetailsMap(prev => ({
+      ...prev,
+      [empId]: {
+        records: append ? (prev[empId]?.records || []) : [],
+        page,
+        totalPages: prev[empId]?.totalPages || 1,
+        hasMore: prev[empId]?.hasMore ?? false,
+        loading: !append,
+        loadingMore: append,
+        totalWorkingHours: prev[empId]?.totalWorkingHours,
+        presentDays: prev[empId]?.presentDays
+      }
+    }));
+
+    try {
+      const res = await apiFetch(`/attendance/employee/${empId}`, {
+        params: {
+          startDate: activeDateRange.startDate,
+          endDate: activeDateRange.endDate,
+          page,
+          limit: 30
+        }
+      });
+
+      const newRecords = res?.records || res?.data?.records || [];
+      const pagination = res?.pagination || res?.data?.pagination || { page: 1, totalPages: 1, hasMore: false };
+
+      setEmpDetailsMap(prev => ({
+        ...prev,
+        [empId]: {
+          records: append ? [...(prev[empId]?.records || []), ...newRecords] : newRecords,
+          page: pagination.page || page,
+          totalPages: pagination.totalPages || 1,
+          hasMore: pagination.hasMore ?? false,
+          loading: false,
+          loadingMore: false,
+          totalWorkingHours: res?.totalWorkingHours ?? prev[empId]?.totalWorkingHours,
+          presentDays: res?.presentDays ?? prev[empId]?.presentDays
+        }
+      }));
+    } catch (err: any) {
+      console.error(`Failed to load attendance details for employee ${empId}:`, err);
+      setEmpDetailsMap(prev => ({
+        ...prev,
+        [empId]: {
+          ...(prev[empId] || { records: [], page: 1, totalPages: 1, hasMore: false }),
+          loading: false,
+          loadingMore: false,
+          error: err.message || 'Failed to load attendance records.'
+        }
+      }));
+    }
+  }, [activeDateRange]);
+
+  // Toggle Employee Expansion (Single expansion by default)
+  const toggleEmployeeExpansion = (empId: string) => {
+    if (expandedEmpId === empId) {
+      setExpandedEmpId(null);
+    } else {
+      setExpandedEmpId(empId);
+      // If not yet loaded in current date range, fetch page 1
+      if (!empDetailsMap[empId] || empDetailsMap[empId].records.length === 0) {
+        fetchEmployeeDetails(empId, 1, false);
+      }
+    }
+  };
+
+  // Today's Live Actions
   const handleCheckIn = async () => {
     await contextCheckIn();
-    await fetchAttendance(currentYear, currentMonth);
-    await fetchCalendarEvents(currentYear, currentMonth);
+    fetchWorkforceSummaries();
+    if (contextRefresh) await contextRefresh().catch(() => null);
+    fetchCalendarEvents(currentYear, currentMonth);
   };
 
   const handleCheckOut = async () => {
     await contextCheckOut();
-    await fetchAttendance(currentYear, currentMonth);
-    await fetchCalendarEvents(currentYear, currentMonth);
+    fetchWorkforceSummaries();
+    if (contextRefresh) await contextRefresh().catch(() => null);
+    fetchCalendarEvents(currentYear, currentMonth);
   };
 
+  // Regularization actions
   const openRegularizeForDate = (dateStr: string) => {
     setRegFormData({
       attendanceDate: dateStr,
@@ -198,7 +371,9 @@ export const Attendance: React.FC = () => {
         reason: ''
       });
       setTimeout(() => setRegSuccess(null), 4000);
-      await fetchAttendance(currentYear, currentMonth);
+      fetchRegularizations();
+      fetchWorkforceSummaries();
+      if (expandedEmpId) fetchEmployeeDetails(expandedEmpId, 1, false);
     } catch (err: any) {
       setRegError(err.message || 'Failed to submit regularization request.');
     }
@@ -210,7 +385,9 @@ export const Attendance: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ action: 'APPROVE' })
       });
-      await fetchAttendance(currentYear, currentMonth);
+      fetchRegularizations();
+      fetchWorkforceSummaries();
+      if (expandedEmpId) fetchEmployeeDetails(expandedEmpId, 1, false);
     } catch (err: any) {
       alert(err.message || 'Failed to approve regularization.');
     }
@@ -224,7 +401,9 @@ export const Attendance: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ action: 'REJECT', rejectionReason: reason })
       });
-      await fetchAttendance(currentYear, currentMonth);
+      fetchRegularizations();
+      fetchWorkforceSummaries();
+      if (expandedEmpId) fetchEmployeeDetails(expandedEmpId, 1, false);
     } catch (err: any) {
       alert(err.message || 'Failed to reject regularization.');
     }
@@ -235,12 +414,36 @@ export const Attendance: React.FC = () => {
     try {
       await apiFetch(`/attendance/regularize/my/${id}`, { method: 'DELETE' });
       setRegSuccess('Regularization request withdrawn successfully.');
-      await fetchAttendance(currentYear, currentMonth);
+      fetchRegularizations();
+      fetchWorkforceSummaries();
+      if (expandedEmpId) fetchEmployeeDetails(expandedEmpId, 1, false);
       setTimeout(() => setRegSuccess(null), 4000);
     } catch (err: any) {
       alert(err.message || 'Failed to withdraw regularization.');
     }
   };
+
+  // Filtered workforce employees based on search query and department
+  const filteredEmployees = useMemo(() => {
+    return workforceEmployees.filter(emp => {
+      const matchesSearch = !searchQuery.trim() ||
+        emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDept = departmentFilter === 'ALL' || emp.departmentId === departmentFilter || emp.departmentName === departmentFilter;
+      return matchesSearch && matchesDept;
+    });
+  }, [workforceEmployees, searchQuery, departmentFilter]);
+
+  // Extract unique departments for filter dropdown
+  const uniqueDepartments = useMemo(() => {
+    const map = new Map<string, string>();
+    workforceEmployees.forEach(e => {
+      if (e.departmentName && e.departmentName !== 'Unassigned') {
+        map.set(e.departmentId || e.departmentName, e.departmentName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [workforceEmployees]);
 
   const sessions = todaySummary?.sessions || [];
 
@@ -253,8 +456,8 @@ export const Attendance: React.FC = () => {
             <span>{attFetchError}</span>
           </div>
           <button
-            onClick={() => fetchAttendance(currentYear, currentMonth)}
-            className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold"
+            onClick={() => fetchWorkforceSummaries()}
+            className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
           >
             Retry
           </button>
@@ -275,7 +478,7 @@ export const Attendance: React.FC = () => {
             <Clock className="w-6 h-6 text-cyan-400 shrink-0" />
             <span>Attendance Management</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Employee attendance records, punch control, and regularization management</p>
+          <p className="text-xs text-slate-400 mt-1">Employee attendance records, multi-session punches, and workforce management</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -300,9 +503,9 @@ export const Attendance: React.FC = () => {
         </div>
       </div>
 
-      {/* Employee Personal Attendance Section */}
+      {/* Employee Personal Attendance Section (Check In / Out Control) */}
       {user?.employeeId && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-6">
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-6 shadow-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="font-bold text-sm text-slate-200">Today's Attendance Control</h3>
@@ -311,7 +514,7 @@ export const Attendance: React.FC = () => {
                   ? `Session in progress. Check in recorded at ${activeSession.check_in ? new Date(activeSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.`
                   : (todaySummary?.completedSessionCount || 0) > 0
                   ? `Completed ${todaySummary?.completedSessionCount} session(s) today. Ready for next session.`
-                  : 'No active session. Click Check In to start.'}
+                  : 'No active session. Click Start New Session to record check in.'}
               </p>
             </div>
 
@@ -376,7 +579,7 @@ export const Attendance: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {sessions.map((s, idx) => (
+                    {sessions.map((s: any, idx: number) => (
                       <tr key={s.id || idx} className={s.check_out ? 'hover:bg-slate-800/30' : 'bg-cyan-950/20 border-l-2 border-l-cyan-400'}>
                         <td className="px-4 py-3 font-semibold text-slate-200">Session #{idx + 1}</td>
                         <td className="px-4 py-3 font-mono text-emerald-400">
@@ -412,7 +615,388 @@ export const Attendance: React.FC = () => {
         </div>
       )}
 
-      {/* Attendance-Only Calendar */}
+      {/* Workforce KPI Summary Cards (For Management) */}
+      {isManagerOrAdmin && workforceKpi && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span>Total Workforce</span>
+              <Users className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div className="text-2xl font-black text-white font-mono">{workforceKpi.totalEmployees || 0}</div>
+          </div>
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span>Present Today</span>
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl font-black text-emerald-400 font-mono">{workforceKpi.presentToday || 0}</div>
+          </div>
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span>On Leave Today</span>
+              <CalendarDays className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div className="text-2xl font-black text-indigo-400 font-mono">{workforceKpi.onLeaveToday || 0}</div>
+          </div>
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span>Absent Today</span>
+              <UserX className="w-4 h-4 text-rose-400" />
+            </div>
+            <div className="text-2xl font-black text-rose-400 font-mono">{workforceKpi.absentToday || 0}</div>
+          </div>
+        </div>
+      )}
+
+      {/* WORKFORCE ATTENDANCE SECTION (Collapsible & Lazy-Loaded Architecture) */}
+      {isManagerOrAdmin && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-5 p-5 sm:p-6">
+          {/* Top Bar: Title + Date Range Presets */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-cyan-400" />
+                <span>Workforce Attendance</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Showing summary from <span className="font-mono text-cyan-300 font-semibold">{activeDateRange.startDate}</span> to <span className="font-mono text-cyan-300 font-semibold">{activeDateRange.endDate}</span>
+              </p>
+            </div>
+
+            {/* Date Range Presets */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+              {(['LAST_7_DAYS', 'LAST_14_DAYS', 'LAST_30_DAYS', 'THIS_MONTH', 'PREV_MONTH', 'CUSTOM'] as DatePreset[]).map(preset => {
+                const labels: Record<DatePreset, string> = {
+                  LAST_7_DAYS: 'Last 7 Days',
+                  LAST_14_DAYS: 'Last 14 Days',
+                  LAST_30_DAYS: 'Last 30 Days',
+                  THIS_MONTH: 'This Month',
+                  PREV_MONTH: 'Prev Month',
+                  CUSTOM: 'Custom'
+                };
+                const isActive = selectedPreset === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setSelectedPreset(preset)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                    }`}
+                  >
+                    {labels[preset]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Custom Date Pickers (if CUSTOM selected) */}
+          {selectedPreset === 'CUSTOM' && (
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-wrap items-center gap-3 text-xs">
+              <span className="text-slate-400 font-medium">Custom Range:</span>
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400">Start:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-slate-400">End:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Search & Department Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-8 relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search employee by name or code..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-hidden"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="sm:col-span-4 relative">
+              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white appearance-none focus:border-cyan-500 focus:outline-hidden cursor-pointer"
+              >
+                <option value="ALL">All Departments ({workforceEmployees.length})</option>
+                {uniqueDepartments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Collapsible Employee List */}
+          {loadingWorkforce ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl animate-pulse flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800" />
+                    <div className="space-y-1.5">
+                      <div className="w-32 h-3.5 bg-slate-800 rounded" />
+                      <div className="w-20 h-2.5 bg-slate-800/60 rounded" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-20 h-6 bg-slate-800 rounded-lg" />
+                    <div className="w-24 h-6 bg-slate-800 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : workforceError ? (
+            <div className="p-4 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between">
+              <span>{workforceError}</span>
+              <button
+                type="button"
+                onClick={fetchWorkforceSummaries}
+                className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          ) : filteredEmployees.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+              No employees found matching the search criteria.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredEmployees.map(emp => {
+                const isExpanded = expandedEmpId === emp.id;
+                const details = empDetailsMap[emp.id];
+
+                return (
+                  <div
+                    key={emp.id}
+                    className="bg-slate-950/80 border border-slate-800 hover:border-slate-700/80 rounded-xl overflow-hidden shadow-sm transition-all"
+                  >
+                    {/* Collapsible Header Card */}
+                    <div className="p-3.5 sm:p-4 bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleEmployeeExpansion(emp.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={`Toggle attendance details for ${emp.fullName}`}
+                        className="flex items-center gap-3 text-left focus:outline-hidden focus:ring-2 focus:ring-cyan-500/50 rounded-lg cursor-pointer flex-1 min-w-0"
+                      >
+                        <div className="p-1 text-slate-400 hover:text-white transition-transform">
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-cyan-400" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 font-extrabold text-sm flex items-center justify-center border border-cyan-500/30 shrink-0">
+                          {emp.fullName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-slate-100 truncate">{emp.fullName}</h4>
+                          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                            <span className="font-mono text-cyan-400">{emp.employeeCode}</span>
+                            <span>•</span>
+                            <span className="truncate">{emp.departmentName}</span>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Summary Metrics & Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2.5 text-xs font-mono pl-8 sm:pl-0">
+                        <span className="px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700">
+                          Sessions: <strong className="text-white">{emp.sessionCount}</strong>
+                        </span>
+                        <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
+                          Total: <strong className="text-emerald-300">{formatWorkingHours(emp.totalHours)}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const filename = `Attendance_${emp.employeeCode}_${activeDateRange.startDate}_to_${activeDateRange.endDate}.xlsx`;
+                              await apiDownload(`/attendance/export/${emp.id}?startDate=${activeDateRange.startDate}&endDate=${activeDateRange.endDate}`, {}, filename);
+                            } catch (err: any) {
+                              alert(err.message || 'Export failed.');
+                            }
+                          }}
+                          className="px-2.5 py-1.5 bg-cyan-600/90 hover:bg-cyan-500 text-white rounded-lg font-sans font-semibold text-xs flex items-center gap-1 shadow transition cursor-pointer"
+                          title="Download Excel for selected range"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Excel</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Detailed Attendance Table (Rendered only when expanded) */}
+                    {isExpanded && (
+                      <div className="border-t border-slate-800/80 p-3 sm:p-4 bg-slate-950/40 space-y-3">
+                        {details?.loading ? (
+                          <div className="py-8 flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
+                            <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+                            <span>Loading attendance history (newest first)...</span>
+                          </div>
+                        ) : details?.error ? (
+                          <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between">
+                            <span>{details.error}</span>
+                            <button
+                              type="button"
+                              onClick={() => fetchEmployeeDetails(emp.id, 1, false)}
+                              className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : (details?.records || []).length === 0 ? (
+                          <div className="py-6 text-center text-slate-500 text-xs italic">
+                            No attendance records found for this period.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="overflow-x-auto rounded-xl border border-slate-800/60">
+                              <table className="w-full text-left text-xs text-slate-300">
+                                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800/80">
+                                  <tr>
+                                    <th className="px-4 py-2.5">Date</th>
+                                    <th className="px-4 py-2.5">Check In</th>
+                                    <th className="px-4 py-2.5">Check Out</th>
+                                    <th className="px-4 py-2.5">Hours</th>
+                                    <th className="px-4 py-2.5">Status</th>
+                                    <th className="px-4 py-2.5 text-right">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/40">
+                                  {details.records.map((a: any, sIdx: number) => {
+                                    const dateStr = a.date ? (typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0]) : 'N/A';
+                                    const isAbsent = a.status === 'ABSENT' || a.status === 'ABSENT → Regularize';
+                                    const canReg = a.canRegularize || isAbsent;
+
+                                    return (
+                                      <tr key={a.id || sIdx} className="hover:bg-slate-800/30">
+                                        <td className="px-4 py-3 font-mono font-medium text-slate-200">{dateStr}</td>
+                                        <td className="px-4 py-3 font-mono text-emerald-400">
+                                          {a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                        </td>
+                                        <td className="px-4 py-3 font-mono text-rose-400">
+                                          {a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                        </td>
+                                        <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
+                                        <td className="px-4 py-3">
+                                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                            isAbsent || a.status === 'ABSENT'
+                                              ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                                              : a.status?.includes('SHORT LEAVE')
+                                              ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
+                                              : a.status?.includes('LATE PRESENT')
+                                              ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
+                                              : a.status === 'HALF DAY'
+                                              ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60'
+                                              : a.status === 'HOLIDAY'
+                                              ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
+                                              : a.status === 'PRESENT'
+                                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                                          }`}>
+                                            {a.status || 'PRESENT'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                          <div className="flex items-center justify-end gap-2">
+                                            {canReg && (
+                                              <button
+                                                type="button"
+                                                onClick={() => openRegularizeForDate(dateStr)}
+                                                className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                              >
+                                                <span>Regularize</span>
+                                              </button>
+                                            )}
+                                            {!a.isSynthesized && (
+                                              <button
+                                                type="button"
+                                                onClick={() => setSelectedSession(a)}
+                                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                              >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>GPS Details</span>
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Incremental Pagination: Load Older Attendance Button */}
+                            {details.hasMore && (
+                              <div className="pt-2 flex justify-center">
+                                <button
+                                  type="button"
+                                  disabled={details.loadingMore}
+                                  onClick={() => fetchEmployeeDetails(emp.id, details.page + 1, true)}
+                                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-cyan-300 border border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                                >
+                                  {details.loadingMore ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      <span>Loading older attendance...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                      <span>Load Older Attendance</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Attendance Calendar (Preserved) */}
       <SharedCalendar
         events={calendarEvents}
         initialYear={currentYear}
@@ -424,148 +1008,7 @@ export const Attendance: React.FC = () => {
         title="Attendance Calendar"
         subtitle="Visualizing daily attendance check-ins, multi-sessions, and working calendar holidays"
         attendanceOnly={true}
-        summaryOverride={monthSummary ? { present: monthSummary.totalPresentDays, absent: monthSummary.totalAbsentDays } : undefined}
       />
-
-      {/* Grouped Employee Attendance Logs */}
-      {attendanceList.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-4 p-6">
-          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-sm text-white">Workforce Attendance Logs</h3>
-              <p className="text-xs text-slate-400">Attendance history grouped by employee</p>
-            </div>
-          </div>
-
-          {(() => {
-            const groupedMap = new Map<string, { empName: string; empCode: string; empId: string; sessions: any[]; totalHours: number }>();
-            attendanceList.forEach(a => {
-              const key = a.employee_id || a.employee_code || a.employee_name || 'Unassigned';
-              if (!groupedMap.has(key)) {
-                groupedMap.set(key, {
-                  empId: a.employee_id,
-                  empName: a.employee_name || 'Employee',
-                  empCode: a.employee_code || 'EMP',
-                  sessions: [],
-                  totalHours: 0
-                });
-              }
-              const group = groupedMap.get(key)!;
-              group.sessions.push(a);
-              group.totalHours += parseFloat(a.working_hours || 0);
-            });
-
-            return Array.from(groupedMap.values()).map((group, gIdx) => (
-              <div key={gIdx} className="bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden shadow-sm space-y-2">
-                <div className="p-4 bg-slate-900/60 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 font-extrabold text-sm flex items-center justify-center border border-cyan-500/30">
-                      {group.empName.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-100">{group.empName}</h4>
-                      <span className="text-xs font-mono text-cyan-400 font-medium">Code: {group.empCode}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className="px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700">
-                      Sessions: <strong className="text-white">{group.sessions.length}</strong>
-                    </span>
-                    <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
-                      Total Hours: <strong className="text-emerald-300">{formatWorkingHours(group.totalHours)}</strong>
-                    </span>
-                    <button
-                      onClick={async () => {
-                        if (!group.empId) return;
-                        try {
-                          const filename = `Attendance_${group.empCode}_${currentYear}_${currentMonth + 1}.xlsx`;
-                          await apiDownload(`/attendance/export/${group.empId}?year=${currentYear}&month=${currentMonth + 1}`, {}, filename);
-                        } catch (err: any) {
-                          alert(err.message || 'Export failed.');
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-sans font-semibold text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download Excel</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800/80">
-                      <tr>
-                        <th className="px-4 py-2.5">Date</th>
-                        <th className="px-4 py-2.5">Check In</th>
-                        <th className="px-4 py-2.5">Check Out</th>
-                        <th className="px-4 py-2.5">Hours</th>
-                        <th className="px-4 py-2.5">Status</th>
-                        <th className="px-4 py-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/40">
-                      {group.sessions.map((a, sIdx) => {
-                        const dateStr = a.date ? (typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0]) : 'N/A';
-                        const isAbsent = a.status === 'ABSENT' || a.status === 'ABSENT → Regularize';
-                        const canReg = a.canRegularize || isAbsent;
-
-                        return (
-                          <tr key={a.id || sIdx} className="hover:bg-slate-800/30">
-                            <td className="px-4 py-3 font-mono font-medium">{dateStr}</td>
-                            <td className="px-4 py-3 font-mono text-emerald-400">{a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                            <td className="px-4 py-3 font-mono text-rose-400">{a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                            <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                isAbsent || a.status === 'ABSENT'
-                                  ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                                  : a.status?.includes('SHORT LEAVE')
-                                  ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
-                                  : a.status?.includes('LATE PRESENT')
-                                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
-                                  : a.status === 'HALF DAY'
-                                  ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60'
-                                  : a.status === 'HOLIDAY'
-                                  ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
-                                  : a.status === 'PRESENT'
-                                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                                  : 'bg-slate-800 text-slate-300 border border-slate-700'
-                              }`}>
-                                {a.status || 'PRESENT'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
-                              {canReg && (
-                                <button
-                                  onClick={() => openRegularizeForDate(dateStr)}
-                                  className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <span>Regularize</span>
-                                </button>
-                              )}
-                              {!a.isSynthesized && (
-                                <button
-                                  onClick={() => setSelectedSession(a)}
-                                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>GPS Details</span>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-      )}
 
       {/* Attendance Regularization Queue Table */}
       {regularizations.length > 0 && (
@@ -573,7 +1016,7 @@ export const Attendance: React.FC = () => {
           <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-100 flex items-center justify-between">
             <span className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-indigo-400" />
-              <span>{['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') ? 'Attendance Regularization Requests Queue' : 'My Regularization Requests History'}</span>
+              <span>{isManagerOrAdmin ? 'Attendance Regularization Requests Queue' : 'My Regularization Requests History'}</span>
             </span>
             <span className="px-2 py-0.5 text-xs bg-slate-800 text-indigo-400 rounded-full font-mono font-semibold">
               {regularizations.length}
@@ -620,15 +1063,17 @@ export const Attendance: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-right">
-                      {['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '') && r.status === 'PENDING' && r.employee_id !== user?.employeeId ? (
+                      {isManagerOrAdmin && r.status === 'PENDING' && r.employee_id !== user?.employeeId ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => handleApproveReg(r.id)}
                             className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                           >
                             Approve
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleRejectReg(r.id)}
                             className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                           >
@@ -637,6 +1082,7 @@ export const Attendance: React.FC = () => {
                         </div>
                       ) : r.status === 'PENDING' && r.employee_id === user?.employeeId ? (
                         <button
+                          type="button"
                           onClick={() => handleWithdrawReg(r.id)}
                           className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                         >

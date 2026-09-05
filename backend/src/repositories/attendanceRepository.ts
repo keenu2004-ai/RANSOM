@@ -7,12 +7,20 @@ export class AttendanceRepository {
    * Helper: Get Organization Timezone from settings (default 'Asia/Kolkata')
    */
   static async getOrganizationTimeZone(organizationId: string, client?: any): Promise<string> {
-    const db = client || { query };
-    const res = await db.query(
-      `SELECT time_zone FROM organization_settings WHERE organization_id = $1 LIMIT 1`,
-      [organizationId]
-    );
-    return res.rows[0]?.time_zone || 'Asia/Kolkata';
+    try {
+      const db = client || { query };
+      const tableCheck = await db.query(`SELECT to_regclass('public.organization_settings') as tbl`);
+      if (!tableCheck.rows[0]?.tbl) {
+        return 'Asia/Kolkata';
+      }
+      const res = await db.query(
+        `SELECT time_zone FROM organization_settings WHERE organization_id = $1 LIMIT 1`,
+        [organizationId]
+      );
+      return res.rows[0]?.time_zone || 'Asia/Kolkata';
+    } catch {
+      return 'Asia/Kolkata';
+    }
   }
 
   /**
@@ -198,27 +206,27 @@ export class AttendanceRepository {
       const leaveRes = await client.query(
         `SELECT lr.id, lr.status, lt.name as leave_type_name, lt.code as leave_type_code
          FROM leave_requests lr
-         JOIN leave_types lt ON lr.leave_type_id = lt.id
-         WHERE lr.employee_id = $1 AND lr.organization_id = $2
+         JOIN leave_types lt ON lr.leave_type_id::text = lt.id::text
+         WHERE lr.employee_id::text = $1::text AND lr.organization_id::text = $2::text
            AND lr.status = 'APPROVED'
            AND $3 BETWEEN lr.start_date AND lr.end_date
          LIMIT 1`,
-        [employeeId, organizationId, targetDateStr]
+        [String(employeeId), String(organizationId), targetDateStr]
       );
       const approvedLeave = leaveRes.rows[0] || null;
 
       // Check Holiday status for date
       const holidayRes = await client.query(
-        `SELECT title, holiday_type FROM holidays WHERE organization_id = $1 AND date = $2 LIMIT 1`,
-        [organizationId, targetDateStr]
+        `SELECT title, holiday_type FROM holidays WHERE organization_id::text = $1::text AND date = $2 LIMIT 1`,
+        [String(organizationId), targetDateStr]
       );
       const holiday = holidayRes.rows[0] || null;
 
       // Check Pending Regularization
       const regRes = await client.query(
         `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations
-         WHERE employee_id = $1 AND organization_id = $2 AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
-        [employeeId, organizationId, targetDateStr]
+         WHERE employee_id::text = $1::text AND organization_id::text = $2::text AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
+        [String(employeeId), String(organizationId), targetDateStr]
       );
       const pendingReg = regRes.rows[0] || null;
 
@@ -901,13 +909,13 @@ export class AttendanceRepository {
     // 2. Fetch Attendance Sessions for date range
     const attSql = `
       SELECT
-        a.id, a.organization_id, a.employee_id, a.date::text as date, a.check_in, a.check_out,
+        a.id, a.employee_id, a.date::text as date, a.check_in, a.check_out,
         a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
         a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
         a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
-      WHERE a.organization_id = $1 AND a.date BETWEEN $2 AND $3
+      WHERE e.organization_id = $1 AND a.date BETWEEN $2 AND $3
       ORDER BY a.date ASC, a.check_in ASC
     `;
     const attRes = await query(attSql, [organizationId, startDateStr, endDateStr]);
@@ -922,12 +930,12 @@ export class AttendanceRepository {
     const leaveSql = `
       SELECT l.employee_id, l.start_date::text as start_date, l.end_date::text as end_date, lt.name as leave_type_name
       FROM leave_requests l
-      JOIN leave_types lt ON l.leave_type_id = lt.id
-      JOIN employees e ON l.employee_id = e.id
-      WHERE l.organization_id = $1 AND l.status = 'APPROVED'
+      JOIN leave_types lt ON l.leave_type_id::text = lt.id::text
+      JOIN employees e ON l.employee_id::text = e.id::text
+      WHERE l.organization_id::text = $1::text AND l.status = 'APPROVED'
         AND (l.start_date <= $3 AND l.end_date >= $2)
     `;
-    const leaveRes = await query(leaveSql, [organizationId, startDateStr, endDateStr]);
+    const leaveRes = await query(leaveSql, [String(organizationId), startDateStr, endDateStr]);
     const leavesMap = new Map<string, { leave_type_name: string }>();
     for (const l of leaveRes.rows) {
       const [sY, sM, sD] = l.start_date.split('-').map(Number);
@@ -945,9 +953,9 @@ export class AttendanceRepository {
     const holSql = `
       SELECT title, date::text as date, holiday_type
       FROM holidays
-      WHERE organization_id = $1 AND date BETWEEN $2 AND $3
+      WHERE organization_id::text = $1::text AND date BETWEEN $2 AND $3
     `;
-    const holRes = await query(holSql, [organizationId, startDateStr, endDateStr]);
+    const holRes = await query(holSql, [String(organizationId), startDateStr, endDateStr]);
     const holidaysMap = new Map<string, { title: string; holiday_type?: string }>();
     for (const h of holRes.rows) {
       holidaysMap.set(h.date, { title: h.title, holiday_type: h.holiday_type });
@@ -957,9 +965,9 @@ export class AttendanceRepository {
     const regSql = `
       SELECT employee_id, attendance_date::text as attendance_date, status
       FROM attendance_regularizations
-      WHERE organization_id = $1 AND status = 'PENDING' AND attendance_date BETWEEN $2 AND $3
+      WHERE organization_id::text = $1::text AND status = 'PENDING' AND attendance_date BETWEEN $2 AND $3
     `;
-    const regRes = await query(regSql, [organizationId, startDateStr, endDateStr]);
+    const regRes = await query(regSql, [String(organizationId), startDateStr, endDateStr]);
     const regsMap = new Map<string, any>();
     for (const r of regRes.rows) {
       regsMap.set(`${r.employee_id}_${r.attendance_date}`, r);
@@ -1100,5 +1108,322 @@ export class AttendanceRepository {
     `;
     const res = await query(text, [organizationId]);
     return res.rows;
+  }
+
+  static async getWorkforceEmployeeSummaries(
+    organizationId: string,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      departmentId?: string;
+      search?: string;
+      year?: number;
+      month?: number;
+    }
+  ) {
+    const tz = await this.getOrganizationTimeZone(organizationId);
+    let startDateStr = filters.startDate;
+    let endDateStr = filters.endDate;
+
+    if (filters.year && filters.month) {
+      const y = filters.year;
+      const m = String(filters.month).padStart(2, '0');
+      const lastDay = new Date(y, filters.month, 0).getDate();
+      startDateStr = `${y}-${m}-01`;
+      endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+    } else if (!startDateStr || !endDateStr) {
+      const now = new Date();
+      const endD = new Date(now);
+      const startD = new Date(now);
+      startD.setDate(startD.getDate() - 6);
+      startDateStr = this.getOrgDateStr(startD, tz);
+      endDateStr = this.getOrgDateStr(endD, tz);
+    }
+
+    let sql = `
+      SELECT
+        e.id,
+        e.employee_code,
+        e.first_name,
+        e.last_name,
+        e.status,
+        d.id as department_id,
+        d.name as department_name,
+        COALESCE(att_agg.session_count, 0)::int as session_count,
+        COALESCE(att_agg.total_hours, 0)::numeric as total_hours,
+        COALESCE(att_agg.present_days, 0)::int as present_days,
+        att_agg.latest_attendance_date,
+        att_agg.latest_check_in,
+        att_agg.latest_status
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN (
+        SELECT
+          a.employee_id,
+          COUNT(a.id) as session_count,
+          SUM(COALESCE(a.working_hours, 0)) as total_hours,
+          COUNT(DISTINCT a.date) as present_days,
+          MAX(a.date::text) as latest_attendance_date,
+          MAX(a.check_in) as latest_check_in,
+          (
+            ARRAY_AGG(a.status ORDER BY a.date DESC, a.check_in DESC, a.id DESC)
+          )[1] as latest_status
+        FROM attendance a
+        JOIN employees emp_sub ON a.employee_id = emp_sub.id
+        WHERE emp_sub.organization_id = $1
+          AND a.date BETWEEN $2 AND $3
+        GROUP BY a.employee_id
+      ) att_agg ON e.id = att_agg.employee_id
+      WHERE e.organization_id = $1 AND e.status = 'ACTIVE'
+    `;
+
+    const params: any[] = [organizationId, startDateStr, endDateStr];
+    let pIdx = 4;
+
+    if (filters.departmentId) {
+      sql += ` AND e.department_id = $${pIdx}`;
+      params.push(filters.departmentId);
+      pIdx++;
+    }
+
+    if (filters.search && filters.search.trim() !== '') {
+      const s = `%${filters.search.trim()}%`;
+      sql += ` AND (
+        CONCAT(e.first_name, ' ', e.last_name) ILIKE $${pIdx}
+        OR e.employee_code ILIKE $${pIdx}
+        OR e.email ILIKE $${pIdx}
+      )`;
+      params.push(s);
+      pIdx++;
+    }
+
+    sql += ` ORDER BY e.first_name ASC, e.last_name ASC`;
+
+    const res = await query(sql, params);
+    return {
+      employees: res.rows.map(r => ({
+        id: r.id,
+        employeeCode: r.employee_code,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        fullName: `${r.first_name} ${r.last_name}`.trim(),
+        status: r.status,
+        departmentId: r.department_id,
+        departmentName: r.department_name || 'Unassigned',
+        sessionCount: Number(r.session_count || 0),
+        totalHours: Number(Number(r.total_hours || 0).toFixed(2)),
+        presentDays: Number(r.present_days || 0),
+        latestAttendanceDate: r.latest_attendance_date || null,
+        latestCheckIn: r.latest_check_in || null,
+        latestStatus: r.latest_status || null
+      })),
+      startDate: startDateStr,
+      endDate: endDateStr,
+      totalEmployees: res.rows.length
+    };
+  }
+
+  static async getEmployeeAttendanceDetails(
+    organizationId: string,
+    employeeId: string,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      year?: number;
+      month?: number;
+      page?: number;
+      limit?: number;
+    }
+  ) {
+    const tz = await this.getOrganizationTimeZone(organizationId);
+    const todayStr = this.getOrgDateStr(new Date(), tz);
+
+    let startDateStr = filters.startDate;
+    let endDateStr = filters.endDate;
+
+    if (filters.year && filters.month) {
+      const y = filters.year;
+      const m = String(filters.month).padStart(2, '0');
+      const lastDay = new Date(y, filters.month, 0).getDate();
+      startDateStr = `${y}-${m}-01`;
+      endDateStr = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+    } else if (!startDateStr || !endDateStr) {
+      const now = new Date();
+      const endD = new Date(now);
+      const startD = new Date(now);
+      startD.setDate(startD.getDate() - 6);
+      startDateStr = this.getOrgDateStr(startD, tz);
+      endDateStr = this.getOrgDateStr(endD, tz);
+    }
+
+    const empRes = await query(
+      `SELECT e.id, e.employee_code, e.first_name, e.last_name, e.status, d.name as department_name
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE e.id = $1 AND e.organization_id = $2 LIMIT 1`,
+      [employeeId, organizationId]
+    );
+    const emp = empRes.rows[0];
+    if (!emp) {
+      throw new Error('Employee not found or access denied.');
+    }
+    const fullName = `${emp.first_name} ${emp.last_name}`;
+
+    const attSql = `
+      SELECT
+        a.id, a.employee_id, a.date::text as date, a.check_in, a.check_out,
+        a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
+        a.punch_out_lat, a.punch_out_lng, a.punch_out_accuracy, a.punch_out_location_name,
+        a.break_duration_mins, a.shift_name, a.status, a.session_state, a.working_hours
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      WHERE e.id = $1 AND e.organization_id = $2 AND a.date BETWEEN $3 AND $4
+      ORDER BY a.date DESC, a.check_in DESC, a.id DESC
+    `;
+    const attRes = await query(attSql, [employeeId, organizationId, startDateStr, endDateStr]);
+    const sessionsByDate = new Map<string, any[]>();
+    for (const s of attRes.rows) {
+      if (!sessionsByDate.has(s.date)) sessionsByDate.set(s.date, []);
+      sessionsByDate.get(s.date)!.push(s);
+    }
+
+    const leaveSql = `
+      SELECT l.start_date::text as start_date, l.end_date::text as end_date, lt.name as leave_type_name
+      FROM leave_requests l
+      JOIN leave_types lt ON l.leave_type_id::text = lt.id::text
+      WHERE l.employee_id::text = $1::text AND l.organization_id::text = $2::text AND l.status = 'APPROVED'
+        AND (l.start_date <= $4 AND l.end_date >= $3)
+    `;
+    const leaveRes = await query(leaveSql, [String(employeeId), String(organizationId), startDateStr, endDateStr]);
+    const leavesMap = new Map<string, { leave_type_name: string }>();
+    for (const l of leaveRes.rows) {
+      const [sY, sM, sD] = l.start_date.split('-').map(Number);
+      const [eY, eM, eD] = l.end_date.split('-').map(Number);
+      let curr = new Date(Date.UTC(sY, sM - 1, sD));
+      const end = new Date(Date.UTC(eY, eM - 1, eD));
+      while (curr <= end) {
+        const dStr = curr.toISOString().split('T')[0];
+        leavesMap.set(dStr, { leave_type_name: l.leave_type_name || 'APPROVED LEAVE' });
+        curr.setUTCDate(curr.getUTCDate() + 1);
+      }
+    }
+
+    const holSql = `
+      SELECT title, date::text as date, holiday_type
+      FROM holidays
+      WHERE organization_id::text = $1::text AND date BETWEEN $2 AND $3
+    `;
+    const holRes = await query(holSql, [String(organizationId), startDateStr, endDateStr]);
+    const holidaysMap = new Map<string, { title: string; holiday_type?: string }>();
+    for (const h of holRes.rows) {
+      holidaysMap.set(h.date, { title: h.title, holiday_type: h.holiday_type });
+    }
+
+    const regSql = `
+      SELECT attendance_date::text as attendance_date, status, reason, requested_punch_in, requested_punch_out
+      FROM attendance_regularizations
+      WHERE employee_id::text = $1::text AND organization_id::text = $2::text AND status = 'PENDING' AND attendance_date BETWEEN $3 AND $4
+    `;
+    const regRes = await query(regSql, [String(employeeId), String(organizationId), startDateStr, endDateStr]);
+    const regsMap = new Map<string, any>();
+    for (const r of regRes.rows) {
+      regsMap.set(r.attendance_date, r);
+    }
+
+    const [sY, sM, sD] = startDateStr.split('-').map(Number);
+    const [eY, eM, eD] = endDateStr.split('-').map(Number);
+    const allDatesDesc: string[] = [];
+    let curr = new Date(Date.UTC(eY, eM - 1, eD));
+    const start = new Date(Date.UTC(sY, sM - 1, sD));
+    while (curr >= start) {
+      allDatesDesc.push(curr.toISOString().split('T')[0]);
+      curr.setUTCDate(curr.getUTCDate() - 1);
+    }
+
+    const page = Math.max(1, filters.page || 1);
+    const limit = filters.limit ? Math.min(100, Math.max(1, filters.limit)) : 30;
+    const startIndex = (page - 1) * limit;
+    const pagedDates = allDatesDesc.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < allDatesDesc.length;
+
+    const detailedRecords: any[] = [];
+    let totalWorkingHours = 0;
+    let presentDaysCount = 0;
+
+    for (const dStr of pagedDates) {
+      const daySessions = sessionsByDate.get(dStr) || [];
+      const dayLeave = leavesMap.get(dStr) || null;
+      const dayHoliday = holidaysMap.get(dStr) || null;
+      const dayReg = regsMap.get(dStr) || null;
+
+      const resolved = AttendanceStatusService.resolveDayStatus({
+        dateStr: dStr,
+        todayStr,
+        sessions: daySessions,
+        holiday: dayHoliday,
+        leave: dayLeave,
+        pendingRegularization: dayReg,
+        timeZone: tz
+      });
+
+      if (['PRESENT', 'LATE PRESENT', 'EARLY CHECKOUT', 'LATE PRESENT / EARLY CHECKOUT', 'ACTIVE'].includes(resolved.status)) {
+        presentDaysCount++;
+      }
+
+      if (daySessions.length > 0) {
+        daySessions.forEach(s => {
+          totalWorkingHours += Number(s.working_hours || 0);
+          detailedRecords.push({
+            ...s,
+            employee_name: fullName,
+            employee_code: emp.employee_code,
+            department_name: emp.department_name,
+            status: resolved.displayStatus,
+            session_state: s.session_state || resolved.sessionState,
+            working_hours: s.working_hours,
+            canRegularize: resolved.canRegularize,
+            isSynthesized: false
+          });
+        });
+      } else {
+        detailedRecords.push({
+          id: `synth_${emp.id}_${dStr}`,
+          organization_id: organizationId,
+          employee_id: emp.id,
+          employee_name: fullName,
+          employee_code: emp.employee_code,
+          department_name: emp.department_name,
+          date: dStr,
+          check_in: null,
+          check_out: null,
+          working_hours: 0,
+          status: resolved.displayStatus,
+          session_state: resolved.sessionState || (resolved.status === 'ABSENT' ? 'NO_ATTENDANCE' : undefined),
+          canRegularize: resolved.canRegularize,
+          isSynthesized: true
+        });
+      }
+    }
+
+    return {
+      employee: {
+        id: emp.id,
+        employeeCode: emp.employee_code,
+        fullName,
+        departmentName: emp.department_name || 'Unassigned'
+      },
+      records: detailedRecords,
+      totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
+      presentDays: presentDaysCount,
+      pagination: {
+        page,
+        limit,
+        totalDates: allDatesDesc.length,
+        totalPages: Math.ceil(allDatesDesc.length / limit),
+        hasMore
+      },
+      startDate: startDateStr,
+      endDate: endDateStr
+    };
   }
 }
