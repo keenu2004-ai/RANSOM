@@ -229,8 +229,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             disabled={actionLoading}
             className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer ${
               hasActiveSession
-                ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)] hover:bg-[var(--badge-warning-bg)]'
+                : 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)] hover:bg-[var(--badge-success-bg)]'
             }`}
             title={hasActiveSession ? 'Active Session - Tap to Check Out' : 'Tap to Check In'}
             aria-label={hasActiveSession ? 'Check Out Attendance' : 'Check In Attendance'}
@@ -254,19 +254,29 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-label="Select Theme"
             aria-expanded={isThemeMenuOpen}
           >
-            <span
-              className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50 shrink-0"
-              style={{ backgroundColor: currentThemeMeta.swatch.primary }}
-            />
+            <div className="flex items-center -space-x-1 shrink-0">
+              <span
+                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+                style={{ backgroundColor: currentThemeMeta.palette.bg }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+                style={{ backgroundColor: currentThemeMeta.palette.secondary }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+                style={{ backgroundColor: currentThemeMeta.palette.primary }}
+              />
+            </div>
             <span className="hidden sm:inline text-xs font-semibold">{currentThemeMeta.name}</span>
-            <Palette className="w-3.5 h-3.5 opacity-60 shrink-0" />
+            <Palette className="w-3.5 h-3.5 opacity-60 shrink-0 text-[var(--primary)]" />
           </button>
 
           {/* Theme Selector Popover */}
           {isThemeMenuOpen && (
-            <div className="absolute right-0 mt-2.5 w-60 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 p-2 space-y-1">
+            <div className="absolute right-0 mt-2.5 w-72 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 p-2 space-y-1.5">
               <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                Color Theme
+                Select Color Palette
               </div>
               {themes.map(t => {
                 const isActive = theme === t.id;
@@ -278,26 +288,30 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                       setTheme(t.id as Theme);
                       setIsThemeMenuOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                        ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--primary)] shadow-sm'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex items-center -space-x-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center -space-x-1.5 shrink-0">
                         <span
-                          className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: t.swatch.bg }}
+                          className="w-4 h-4 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: t.palette.bg }}
                         />
                         <span
-                          className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: t.swatch.primary }}
+                          className="w-4 h-4 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: t.palette.secondary }}
+                        />
+                        <span
+                          className="w-4 h-4 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: t.palette.primary }}
                         />
                       </div>
                       <div>
-                        <p className="font-bold text-xs">{t.name}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.description}</p>
+                        <p className="font-bold text-xs text-[var(--text-primary)]">{t.name}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.subtitle}</p>
                       </div>
                     </div>
                     {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
@@ -481,7 +495,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   type="button"
                   onClick={handleLogout}
                   disabled={logoutLoading}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-semibold text-rose-700 hover:bg-[var(--action-danger-soft)] transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {logoutLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

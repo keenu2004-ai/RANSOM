@@ -154,15 +154,15 @@ export const AdminControl: React.FC = () => {
     <div className="space-y-6">
       {/* Success Notification Banner */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+        <div className="p-4 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] rounded-xl text-[var(--badge-success-text)] text-xs font-medium flex items-center justify-between shadow-sm animate-in fade-in duration-200">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-[var(--badge-success-text)] shrink-0" />
             <div className="space-y-0.5">
-              <p className="font-semibold text-emerald-900">{successMsg}</p>
-              <p className="text-[11px] text-emerald-700">User should sign in using the temporary password and change it in Settings immediately.</p>
+              <p className="font-semibold text-[var(--badge-success-text)]">{successMsg}</p>
+              <p className="text-[11px] text-[var(--badge-success-text)]">User should sign in using the temporary password and change it in Settings immediately.</p>
             </div>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-emerald-100 rounded cursor-pointer"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-[var(--badge-success-bg)] rounded cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -277,7 +277,7 @@ export const AdminControl: React.FC = () => {
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                              u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                              u.status === 'ACTIVE' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]' : 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30'
                             }`}>
                               {u.status}
                             </span>
@@ -297,7 +297,7 @@ export const AdminControl: React.FC = () => {
                               {canResetPassword && !isSelf && (
                                 <button
                                   onClick={() => handleOpenResetModal(u)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-amber-800 border border-[var(--border-subtle)] rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--badge-warning-text)] border border-[var(--border-subtle)] rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
                                   title="Reset User Password"
                                 >
                                   <KeyRound className="w-3.5 h-3.5 text-amber-600" />
@@ -352,7 +352,7 @@ export const AdminControl: React.FC = () => {
             </div>
 
             {editError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[var(--action-danger-bg)] text-xs flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{editError}</span>
               </div>
@@ -365,7 +365,7 @@ export const AdminControl: React.FC = () => {
               </div>
 
               {editingUser.id === currentUser?.userId && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px]">
+                <div className="p-3 bg-[var(--badge-warning-bg)] border border-[var(--badge-warning-border)] rounded-xl text-[var(--badge-warning-text)] text-[11px]">
                   ⚠️ Note: You are viewing your own user account. Self-role modification is strictly forbidden by policy.
                 </div>
               )}
@@ -437,7 +437,7 @@ export const AdminControl: React.FC = () => {
             </div>
 
             {resetErrorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[var(--action-danger-bg)] text-xs flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{resetErrorMsg}</span>
               </div>
@@ -446,7 +446,7 @@ export const AdminControl: React.FC = () => {
             <form onSubmit={handleAdminResetPasswordSubmit} className="space-y-4">
               <div className="p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-subtle)] text-xs space-y-1">
                 <p className="text-[var(--text-secondary)] font-medium">Target Account: <span className="text-[var(--text-primary)] font-bold">{resettingUser.email}</span></p>
-                <p className="text-[var(--text-secondary)] font-medium">Linked Employee: <span className="text-amber-800 font-mono">{resettingUser.employee_name ? `${resettingUser.employee_name} (${resettingUser.employee_code})` : 'Management Only'}</span></p>
+                <p className="text-[var(--text-secondary)] font-medium">Linked Employee: <span className="text-[var(--badge-warning-text)] font-mono">{resettingUser.employee_name ? `${resettingUser.employee_name} (${resettingUser.employee_code})` : 'Management Only'}</span></p>
               </div>
 
               <div>
@@ -467,7 +467,7 @@ export const AdminControl: React.FC = () => {
                     value={tempPasswordInput}
                     onChange={e => setTempPasswordInput(e.target.value)}
                     placeholder="Enter or generate temporary password..."
-                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-amber-800 font-mono text-xs pl-3 pr-20 py-2.5 rounded-xl focus:border-amber-500 outline-none shadow-sm"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--badge-warning-text)] font-mono text-xs pl-3 pr-20 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none shadow-sm"
                   />
                   <div className="absolute right-2 top-2 flex items-center gap-1">
                     <button
@@ -484,7 +484,7 @@ export const AdminControl: React.FC = () => {
                       className="p-1 text-[var(--primary)] hover:opacity-80 rounded cursor-pointer"
                       title="Copy temporary password"
                     >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? <Check className="w-3.5 h-3.5 text-[var(--badge-success-text)]" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>

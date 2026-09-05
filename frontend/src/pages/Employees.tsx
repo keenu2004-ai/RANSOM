@@ -278,12 +278,12 @@ export const Employees: React.FC = () => {
     <div className="space-y-6">
       {/* Success Notification Alert */}
       {successMsg && (
-        <div className="p-4 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center justify-between shadow-lg">
+        <div className="p-4 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] text-xs rounded-2xl flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--badge-success-text)]" />
             <span className="font-semibold">{successMsg}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-emerald-900 rounded"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSuccessMsg(null)} className="p-1 hover:bg-[var(--badge-success-bg)] rounded"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -291,23 +291,23 @@ export const Employees: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-cyan-400 shrink-0" />
+            <Users className="w-6 h-6 text-[var(--primary)] shrink-0" />
             <span>Employee Directory</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Manage organizational personnel, department assignments, and designations</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Manage organizational personnel, department assignments, and designations</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex items-center gap-1 text-xs font-semibold justify-center">
+          <div className="bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] p-1 rounded-xl flex items-center gap-1 text-xs font-semibold justify-center">
             <button
               onClick={() => setActiveTab('list')}
-              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all ${activeTab === 'list' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'list' ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
               Employee List
             </button>
             <button
               onClick={() => setActiveTab('orgChart')}
-              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all ${activeTab === 'orgChart' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 sm:flex-none text-center px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'orgChart' ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
               Org Chart
             </button>
@@ -316,7 +316,7 @@ export const Employees: React.FC = () => {
           {hasPermission(user?.role, 'EMPLOYEE_CREATE') && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-semibold text-xs rounded-xl shadow-sm transition-all w-full sm:w-auto cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Employee</span>
@@ -328,22 +328,22 @@ export const Employees: React.FC = () => {
       {activeTab === 'list' && (
         <>
           {/* Filters Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-sm">
             <div className="relative flex-1 w-full min-w-0">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+              <Search className="w-4 h-4 absolute left-3 top-3 text-[var(--text-muted)]" />
               <input
                 type="text"
                 placeholder="Search name, code, email..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                className="w-full pl-9 pr-4 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
 
             <select
               value={filterDepartmentId}
               onChange={e => { setFilterDepartmentId(e.target.value); setPage(1); }}
-              className="w-full sm:w-auto px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full sm:w-auto px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] cursor-pointer"
             >
               <option value="">All Departments</option>
               {departments.map(d => (
@@ -354,23 +354,23 @@ export const Employees: React.FC = () => {
             <select
               value={status}
               onChange={e => { setStatus(e.target.value); setPage(1); }}
-              className="w-full sm:w-auto px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full sm:w-auto px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] cursor-pointer"
             >
               <option value="">All Statuses</option>
               <option value="ACTIVE">Active Only</option>
               <option value="INACTIVE">Inactive Only</option>
             </select>
 
-            <button type="submit" className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-xl transition-all">
+            <button type="submit" className="w-full sm:w-auto px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] font-semibold text-xs rounded-xl transition-all cursor-pointer shadow-sm">
               Filter
             </button>
           </form>
 
           {/* Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+              <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase tracking-wider border-b border-[var(--border-default)]">
                   <tr>
                     <th className="px-6 py-3.5">Code</th>
                     <th className="px-6 py-3.5">Employee</th>
@@ -382,72 +382,72 @@ export const Employees: React.FC = () => {
                     <th className="px-6 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-slate-500">Fetching employee records...</td>
+                      <td colSpan={8} className="px-6 py-8 text-center text-[var(--text-muted)] italic">Fetching employee records...</td>
                     </tr>
                   ) : employees.length > 0 ? (
                     employees.map(emp => (
-                      <tr key={emp.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="px-6 py-4 font-mono font-semibold text-cyan-400">{emp.employee_code}</td>
+                      <tr key={emp.id} className="hover:bg-[var(--bg-surface-hover)] transition-colors">
+                        <td className="px-6 py-4 font-mono font-bold text-[var(--primary)]">{emp.employee_code}</td>
                         <td className="px-6 py-4">
-                          <div className="font-semibold text-slate-100">{emp.first_name} {emp.last_name}</div>
-                          <div className="text-[11px] text-slate-500">{emp.email}</div>
-                          {emp.phone && <div className="text-[10px] text-slate-500 font-mono">{emp.phone}</div>}
+                          <div className="font-semibold text-[var(--text-primary)]">{emp.first_name} {emp.last_name}</div>
+                          <div className="text-[11px] text-[var(--text-secondary)]">{emp.email}</div>
+                          {emp.phone && <div className="text-[10px] text-[var(--text-muted)] font-mono">{emp.phone}</div>}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-200">
-                            <Building2 className="w-3.5 h-3.5 text-cyan-500" />
+                          <span className="inline-flex items-center gap-1 font-medium text-[var(--text-secondary)]">
+                            <Building2 className="w-3.5 h-3.5 text-[var(--secondary)]" />
                             {emp.department_name || 'Unassigned'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-300">
-                            <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="inline-flex items-center gap-1 font-medium text-[var(--text-secondary)]">
+                            <Briefcase className="w-3.5 h-3.5 text-[var(--secondary)]" />
                             {emp.designation_name || 'Unassigned'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           {emp.region === 'NORTH' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">NORTH</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/30">NORTH</span>
                           ) : emp.region === 'SOUTH' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">SOUTH</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--secondary-soft)] text-[var(--text-heading)] border border-[var(--secondary)]">SOUTH</span>
                           ) : (
-                            <span className="text-[11px] text-slate-500 italic">Unassigned</span>
+                            <span className="text-[11px] text-[var(--text-muted)] italic">Unassigned</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
                             {emp.employment_type}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           {emp.status === 'ACTIVE' ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--status-present-bg)] text-[var(--status-present-text)] border border-[var(--status-present-border)]">ACTIVE</span>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">INACTIVE</span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--status-absent-bg)] text-[var(--status-absent-text)] border border-[var(--status-absent-border)]">INACTIVE</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2">
                           <button
                             onClick={() => openEditModal(emp)}
-                            className="px-2.5 py-1 text-[11px] font-medium bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/50 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer shadow-sm"
                           >
-                            <Edit3 className="w-3 h-3" />
+                            <Edit3 className="w-3 h-3 text-[var(--primary)]" />
                             <span>Edit</span>
                           </button>
                           {emp.status === 'ACTIVE' ? (
                             <button
                               onClick={() => handleDeactivate(emp)}
-                              className="px-2.5 py-1 text-[11px] font-medium bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-lg transition-all cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--action-danger-soft)] hover:bg-[var(--action-danger-bg)] text-[var(--action-danger-bg)] hover:text-[var(--action-danger-text)] border border-[var(--action-danger-bg)]/30 rounded-lg transition-all cursor-pointer shadow-sm"
                             >
                               Deactivate
                             </button>
                           ) : (
                             <button
                               onClick={() => handleRestore(emp.id)}
-                              className="px-2.5 py-1 text-[11px] font-medium bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/50 rounded-lg transition-all cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--status-present-bg)] text-[var(--status-present-text)] border border-[var(--status-present-border)] rounded-lg transition-all cursor-pointer shadow-sm"
                             >
                               Restore
                             </button>
@@ -455,7 +455,7 @@ export const Employees: React.FC = () => {
                           {user?.role === 'SUPER_ADMIN' && (
                             <button
                               onClick={() => { setDeleteConfirmEmp(emp); setDeleteConfirmCodeInput(''); }}
-                              className="px-2.5 py-1 text-[11px] font-medium bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--action-danger-bg)] hover:opacity-90 text-[var(--action-danger-text)] border border-[var(--action-danger-bg)] rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer shadow-sm"
                               title="Permanently Delete Employee Profile & Login Account"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -467,7 +467,7 @@ export const Employees: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-slate-500">No employee records found.</td>
+                      <td colSpan={8} className="px-6 py-8 text-center text-[var(--text-muted)] italic">No employee records found.</td>
                     </tr>
                   )}
                 </tbody>
@@ -476,20 +476,20 @@ export const Employees: React.FC = () => {
 
             {/* Pagination controls */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 bg-slate-950/60 border-t border-slate-800 text-xs">
-                <span className="text-slate-400">Page {pagination.page} of {pagination.totalPages} ({pagination.total} Total Employees)</span>
+              <div className="flex items-center justify-between px-6 py-4 bg-[var(--bg-surface-muted)] border-t border-[var(--border-default)] text-xs">
+                <span className="text-[var(--text-secondary)]">Page {pagination.page} of {pagination.totalPages} ({pagination.total} Total Employees)</span>
                 <div className="flex items-center gap-2">
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
-                    className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-40"
+                    className="p-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] disabled:opacity-40 cursor-pointer shadow-sm"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
                     disabled={page >= pagination.totalPages}
                     onClick={() => setPage(page + 1)}
-                    className="p-1.5 bg-slate-900 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-40"
+                    className="p-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] disabled:opacity-40 cursor-pointer shadow-sm"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -501,18 +501,18 @@ export const Employees: React.FC = () => {
       )}
 
       {activeTab === 'orgChart' && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h3 className="font-semibold text-sm text-slate-200 flex items-center gap-2">
-            <Network className="w-4 h-4 text-cyan-400" />
+        <div className="p-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-4 shadow-sm">
+          <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
+            <Network className="w-4 h-4 text-[var(--primary)]" />
             <span>Company Reporting Hierarchy</span>
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
             {orgChart.map(emp => (
-              <div key={emp.id} className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1">
-                <div className="font-mono text-[10px] text-cyan-400 font-bold">{emp.employee_code}</div>
-                <div className="font-bold text-slate-100 text-sm">{emp.first_name} {emp.last_name}</div>
-                <div className="text-xs text-slate-400">{emp.designation_name || 'Staff'}</div>
-                <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-800/80">{emp.department_name || 'General'}</div>
+              <div key={emp.id} className="p-4 bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-xl space-y-1 shadow-sm">
+                <div className="font-mono text-[10px] text-[var(--primary)] font-bold">{emp.employee_code}</div>
+                <div className="font-bold text-[var(--text-primary)] text-sm">{emp.first_name} {emp.last_name}</div>
+                <div className="text-xs text-[var(--text-secondary)]">{emp.designation_name || 'Staff'}</div>
+                <div className="text-[11px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-subtle)]">{emp.department_name || 'General'}</div>
               </div>
             ))}
           </div>
@@ -521,97 +521,97 @@ export const Employees: React.FC = () => {
 
       {/* Add Employee Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white">Create New Employee</h3>
-              <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="font-bold text-lg text-[var(--text-primary)]">Create New Employee</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
-            {formError && <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{formError}</div>}
+            {formError && <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl">{formError}</div>}
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
-              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
+              <div className="text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">First Name *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">First Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.first_name}
                     onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                     placeholder="John"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Last Name *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Last Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.last_name}
                     onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                     placeholder="Doe"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Work Email *</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Work Email *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   placeholder="employee@theiakshi.com"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Initial Password</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Initial Password</label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                     placeholder="Leave blank for default"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Confirm Password</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Confirm Password</label>
                   <input
                     type="password"
                     value={formData.confirm_password}
                     onChange={e => setFormData({ ...formData, confirm_password: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                     placeholder="Confirm initial password"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Phone Number</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Phone Number</label>
                 <input
                   type="text"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   placeholder="+91 98765 43210"
                 />
               </div>
 
-              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
+              <div className="text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-[var(--border-subtle)]">Organization & Role</div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Department</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Department</label>
                   <select
                     value={formData.department_id}
                     onChange={e => handleCreateDeptChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     <option value="">Select Department...</option>
                     {departments.map(d => (
@@ -620,11 +620,11 @@ export const Employees: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Designation</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Designation</label>
                   <select
                     value={formData.designation_id}
                     onChange={e => setFormData({ ...formData, designation_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     <option value="">Select Designation...</option>
                     {createAvailableDesignations.map(d => (
@@ -635,11 +635,11 @@ export const Employees: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Region / Location</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Region / Location</label>
                 <select
                   value={formData.region}
                   onChange={e => setFormData({ ...formData, region: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   <option value="">Unassigned (No Region)</option>
                   <option value="NORTH">North Region</option>
@@ -648,11 +648,11 @@ export const Employees: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Employment Type</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Employment Type</label>
                 <select
                   value={formData.employment_type}
                   onChange={e => setFormData({ ...formData, employment_type: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   <option value="FULL_TIME">Full-Time</option>
                   <option value="PART_TIME">Part-Time</option>
@@ -662,30 +662,30 @@ export const Employees: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">System Permission Role</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">System Permission Role</label>
                 <select
                   value={formData.system_role}
                   onChange={e => setFormData({ ...formData, system_role: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   {allowedRolesForActor.map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-500 mt-0.5">Determines application access permissions (independent of designation)</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Determines application access permissions (independent of designation)</p>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-xl font-semibold border border-[var(--border-default)] shadow-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow"
+                  className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl font-semibold shadow-sm cursor-pointer"
                 >
                   Create Employee
                 </button>
@@ -697,73 +697,73 @@ export const Employees: React.FC = () => {
 
       {/* Edit Employee Modal */}
       {editingEmployee && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div>
-                <h3 className="font-bold text-lg text-white">Edit Employee Profile</h3>
-                <p className="text-xs text-cyan-400 font-mono">Code: {editingEmployee.employee_code}</p>
+                <h3 className="font-bold text-lg text-[var(--text-primary)]">Edit Employee Profile</h3>
+                <p className="text-xs text-[var(--primary)] font-mono font-bold">Code: {editingEmployee.employee_code}</p>
               </div>
-              <button type="button" onClick={() => setEditingEmployee(null)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setEditingEmployee(null)} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
-            {editFormError && <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">{editFormError}</div>}
+            {editFormError && <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl">{editFormError}</div>}
 
             <form onSubmit={handleEditSave} className="space-y-4 text-xs">
-              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
+              <div className="text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px]">Personal Information</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">First Name *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">First Name *</label>
                   <input
                     type="text"
                     required
                     value={editFormData.first_name}
                     onChange={e => setEditFormData({ ...editFormData, first_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Last Name *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Last Name *</label>
                   <input
                     type="text"
                     required
                     value={editFormData.last_name}
                     onChange={e => setEditFormData({ ...editFormData, last_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Work Email *</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Work Email *</label>
                 <input
                   type="email"
                   required
                   value={editFormData.email}
                   onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Phone Number</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Phone Number</label>
                 <input
                   type="text"
                   value={editFormData.phone}
                   onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 />
               </div>
 
-              <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-slate-800">Organization & Role</div>
+              <div className="text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px] pt-2 border-t border-[var(--border-subtle)]">Organization & Role</div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Department</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Department</label>
                   <select
                     value={editFormData.department_id}
                     onChange={e => handleEditDeptChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     <option value="">Select Department...</option>
                     {departments.map(d => (
@@ -772,11 +772,11 @@ export const Employees: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Designation</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Designation</label>
                   <select
                     value={editFormData.designation_id}
                     onChange={e => setEditFormData({ ...editFormData, designation_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                   >
                     <option value="">Select Designation...</option>
                     {editAvailableDesignations.map(d => (
@@ -787,11 +787,11 @@ export const Employees: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Region / Location</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Region / Location</label>
                 <select
                   value={editFormData.region}
                   onChange={e => setEditFormData({ ...editFormData, region: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   <option value="">Unassigned (No Region)</option>
                   <option value="NORTH">North Region</option>
@@ -800,11 +800,11 @@ export const Employees: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Employment Type</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Employment Type</label>
                 <select
                   value={editFormData.employment_type}
                   onChange={e => setEditFormData({ ...editFormData, employment_type: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   <option value="FULL_TIME">Full-Time</option>
                   <option value="PART_TIME">Part-Time</option>
@@ -813,15 +813,15 @@ export const Employees: React.FC = () => {
                 </select>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 space-y-2">
-                <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] flex items-center justify-between">
+              <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
+                <div className="text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px] flex items-center justify-between">
                   <span>Assigned Company Assets</span>
-                  <span className="text-[10px] text-cyan-400 font-mono">Total: {empAssets.length}</span>
+                  <span className="text-[10px] text-[var(--primary)] font-mono font-bold">Total: {empAssets.length}</span>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-800 rounded-xl max-h-36 overflow-y-auto">
-                  <table className="w-full text-left text-[11px] text-slate-300">
-                    <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[9px] sticky top-0">
+                <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl max-h-36 overflow-y-auto">
+                  <table className="w-full text-left text-[11px] text-[var(--text-primary)]">
+                    <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase text-[9px] sticky top-0 border-b border-[var(--border-default)]">
                       <tr>
                         <th className="p-2">Code & Name</th>
                         <th className="p-2">Category</th>
@@ -831,19 +831,19 @@ export const Employees: React.FC = () => {
                         <th className="p-2">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
                       {empAssets.map(ast => (
-                        <tr key={ast.id} className="hover:bg-slate-800/30">
-                          <td className="p-2 font-bold text-white">
+                        <tr key={ast.id} className="hover:bg-[var(--bg-surface-hover)]">
+                          <td className="p-2 font-bold text-[var(--text-primary)]">
                             <div>{ast.asset_code}</div>
-                            <span className="text-[10px] text-slate-400 font-normal">{ast.asset_name}</span>
+                            <span className="text-[10px] text-[var(--text-muted)] font-normal">{ast.asset_name}</span>
                           </td>
-                          <td className="p-2 text-slate-300">{ast.category_name}</td>
-                          <td className="p-2 font-mono text-slate-400">{ast.serial_number || '-'}</td>
-                          <td className="p-2"><span className="px-1.5 py-0.5 bg-slate-950 rounded text-[9px] font-mono">{ast.condition}</span></td>
-                          <td className="p-2 font-mono text-slate-400">{ast.assigned_date ? ast.assigned_date.split('T')[0] : '-'}</td>
+                          <td className="p-2 text-[var(--text-secondary)]">{ast.category_name}</td>
+                          <td className="p-2 font-mono text-[var(--text-muted)]">{ast.serial_number || '-'}</td>
+                          <td className="p-2"><span className="px-1.5 py-0.5 bg-[var(--bg-surface-muted)] rounded text-[9px] font-mono text-[var(--text-secondary)] border border-[var(--border-subtle)]">{ast.condition}</span></td>
+                          <td className="p-2 font-mono text-[var(--text-muted)]">{ast.assigned_date ? ast.assigned_date.split('T')[0] : '-'}</td>
                           <td className="p-2">
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/30">
                               {ast.status}
                             </span>
                           </td>
@@ -851,7 +851,7 @@ export const Employees: React.FC = () => {
                       ))}
                       {empAssets.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="p-4 text-center text-slate-500 italic">
+                          <td colSpan={6} className="p-4 text-center text-[var(--text-muted)] italic">
                             No company assets currently assigned to this employee.
                           </td>
                         </tr>
@@ -861,18 +861,18 @@ export const Employees: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setEditingEmployee(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-xl font-semibold border border-[var(--border-default)] shadow-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={editLoading}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-semibold shadow disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl font-semibold shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {editLoading ? 'Saving Changes...' : 'Save Changes'}
                 </button>

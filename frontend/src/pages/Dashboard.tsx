@@ -72,7 +72,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
 
       <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
         {trendText && (
-          <span className="font-semibold text-emerald-700 text-[11px] inline-flex items-center gap-1">
+          <span className="font-semibold text-[var(--primary)] text-[11px] inline-flex items-center gap-1">
             {trendText}
           </span>
         )}
@@ -204,9 +204,8 @@ export const Dashboard: React.FC = () => {
 
   // Chart theme color resolver
   const getThemeChartColor = () => {
-    if (theme === 'sage') return '#5A7D65';
-    if (theme === 'neutral') return '#8D7B68';
-    return '#D47A74'; // pastel
+    if (theme === 'merino') return '#16587B'; // Venice Blue
+    return '#5D0D18'; // Bloodstone (Vanilla default)
   };
 
   return (
@@ -511,10 +510,10 @@ export const Dashboard: React.FC = () => {
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             (req.status || 'PENDING') === 'PENDING'
-                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)]'
                               : (req.status || '') === 'APPROVED'
-                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-800 border border-rose-200'
+                              ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]'
+                              : 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30'
                           }`}
                         >
                           {req.status || 'PENDING'}

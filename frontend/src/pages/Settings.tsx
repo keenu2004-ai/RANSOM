@@ -60,7 +60,7 @@ export const Settings: React.FC = () => {
             </div>
             <div className="p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-subtle)]">
               <span className="text-[var(--text-muted)] font-medium">Base Currency</span>
-              <p className="font-mono font-bold text-emerald-700 mt-1">₹ {org.currency}</p>
+              <p className="font-mono font-bold text-[var(--badge-success-text)] mt-1">₹ {org.currency}</p>
             </div>
           </div>
         </div>

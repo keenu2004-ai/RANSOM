@@ -192,16 +192,26 @@ export const Login: React.FC = () => {
           title={`Theme: ${currentThemeMeta.name}`}
           aria-label="Select Theme"
         >
-          <span
-            className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50 shrink-0"
-            style={{ backgroundColor: currentThemeMeta.swatch.primary }}
-          />
+          <div className="flex items-center -space-x-1 shrink-0">
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+              style={{ backgroundColor: currentThemeMeta.palette.bg }}
+            />
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+              style={{ backgroundColor: currentThemeMeta.palette.secondary }}
+            />
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
+              style={{ backgroundColor: currentThemeMeta.palette.primary }}
+            />
+          </div>
           <span className="text-xs font-semibold">{currentThemeMeta.name}</span>
-          <Palette className="w-3.5 h-3.5 opacity-60 shrink-0" />
+          <Palette className="w-3.5 h-3.5 opacity-60 shrink-0 text-[var(--primary)]" />
         </button>
 
         {isThemeMenuOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 p-2 space-y-1">
+          <div className="absolute right-0 mt-2.5 w-64 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 p-2 space-y-1">
             <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Color Theme
             </div>
@@ -215,18 +225,31 @@ export const Login: React.FC = () => {
                     setTheme(t.id as Theme);
                     setIsThemeMenuOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                      ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--primary)] shadow-sm'
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                      style={{ backgroundColor: t.swatch.primary }}
-                    />
-                    <span>{t.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center -space-x-1 shrink-0">
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                        style={{ backgroundColor: t.palette.bg }}
+                      />
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                        style={{ backgroundColor: t.palette.secondary }}
+                      />
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                        style={{ backgroundColor: t.palette.primary }}
+                      />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-[var(--text-primary)]">{t.name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.subtitle}</p>
+                    </div>
                   </div>
                   {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
                 </button>
@@ -263,26 +286,26 @@ export const Login: React.FC = () => {
 
         {/* Dedicated Unlinked Account Status Card */}
         {isUnlinkedAccountError ? (
-          <div className="p-5 bg-rose-50 border border-rose-200 rounded-2xl space-y-4 text-left">
+          <div className="p-5 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl space-y-4 text-left">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-rose-100 border border-rose-200 rounded-xl shrink-0 text-rose-700">
+              <div className="p-2.5 bg-rose-100 border border-[var(--action-danger-bg)]/30 rounded-xl shrink-0 text-rose-700">
                 <UserX className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-rose-900 uppercase tracking-wide">
+                <h3 className="text-xs font-bold text-[var(--action-danger-bg)] uppercase tracking-wide">
                   Microsoft Identity Not Linked
                 </h3>
-                <p className="text-xs text-rose-800 leading-relaxed">
+                <p className="text-xs text-[var(--action-danger-bg)] leading-relaxed">
                   Your Microsoft account was authenticated successfully, but it is not currently linked to an authorized Theiakshi account.
                 </p>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-rose-200 flex flex-col sm:flex-row items-center gap-2.5">
+            <div className="pt-2 border-t border-[var(--action-danger-bg)]/30 flex flex-col sm:flex-row items-center gap-2.5">
               <button
                 type="button"
                 onClick={handleSelectAccountSignIn}
-                className="w-full sm:w-auto px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-rose-700 hover:opacity-90 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Use Another Microsoft Account</span>
@@ -294,9 +317,9 @@ export const Login: React.FC = () => {
                   clearError();
                   setActiveTab('password');
                 }}
-                className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] text-[var(--text-primary)] font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+                <KeyRound className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                 <span>Sign in with Password</span>
               </button>
             </div>
@@ -304,10 +327,10 @@ export const Login: React.FC = () => {
         ) : (
           /* Standard Error Messages */
           currentErrorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5 shadow-sm">
+            <div className="p-3.5 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] text-xs flex items-start gap-2.5 shadow-sm">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <p className="font-bold text-rose-900">Authentication Error</p>
+                <p className="font-bold text-[var(--action-danger-bg)]">Authentication Error</p>
                 <p className="text-rose-700 leading-relaxed">{currentErrorMessage}</p>
               </div>
             </div>

@@ -33,8 +33,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-cyan-400 font-medium text-xs">
-        <RefreshCw className="w-6 h-6 animate-spin text-cyan-400" />
+      <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center gap-3 text-[var(--primary)] font-medium text-xs">
+        <RefreshCw className="w-6 h-6 animate-spin text-[var(--primary)]" />
         <span>Loading...</span>
       </div>
     );
@@ -47,7 +47,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   if (requiredPermission && !hasPermission(user.role, requiredPermission)) {
     return (
       <Layout>
-        <div className="p-8 bg-rose-950/40 border border-rose-800 rounded-2xl text-rose-300 space-y-2">
+        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-2">
           <h2 className="text-lg font-bold">403 Forbidden</h2>
           <p className="text-xs">You do not have permission to access this module ({requiredPermission}).</p>
         </div>
@@ -58,7 +58,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   if (allowedRoles && !allowedRoles.map(r => normalizeRole(r)).includes(normalizeRole(user.role))) {
     return (
       <Layout>
-        <div className="p-8 bg-rose-950/40 border border-rose-800 rounded-2xl text-rose-300 space-y-2">
+        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-2">
           <h2 className="text-lg font-bold">403 Forbidden</h2>
           <p className="text-xs">You do not have permission to access this module. Required role: {allowedRoles.join(' or ')}.</p>
         </div>

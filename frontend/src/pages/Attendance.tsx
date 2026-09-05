@@ -302,7 +302,6 @@ export const Attendance: React.FC = () => {
       setExpandedEmpId(null);
     } else {
       setExpandedEmpId(empId);
-      // If not yet loaded in current date range, fetch page 1
       if (!empDetailsMap[empId] || empDetailsMap[empId].records.length === 0) {
         fetchEmployeeDetails(empId, 1, false);
       }
@@ -450,14 +449,14 @@ export const Attendance: React.FC = () => {
   return (
     <div className="space-y-6">
       {attFetchError && (
-        <div className="p-4 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between shadow-lg">
+        <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{attFetchError}</span>
+            <Shield className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
+            <span className="font-semibold">{attFetchError}</span>
           </div>
           <button
             onClick={() => fetchWorkforceSummaries()}
-            className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
+            className="px-3 py-1 bg-[var(--action-danger-bg)] hover:opacity-90 text-[var(--action-danger-text)] rounded-lg text-xs font-semibold cursor-pointer"
           >
             Retry
           </button>
@@ -465,8 +464,8 @@ export const Attendance: React.FC = () => {
       )}
 
       {regSuccess && (
-        <div className="p-4 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center gap-2 shadow-lg">
-          <CheckCircle className="w-4 h-4 text-emerald-400" />
+        <div className="p-4 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] text-xs rounded-2xl flex items-center gap-2 shadow-xs">
+          <CheckCircle className="w-4 h-4 text-[var(--badge-success-text)] shrink-0" />
           <span className="font-semibold">{regSuccess}</span>
         </div>
       )}
@@ -474,29 +473,29 @@ export const Attendance: React.FC = () => {
       {/* Header Block */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <Clock className="w-6 h-6 text-cyan-400 shrink-0" />
+          <h1 className="text-xl font-black text-[var(--text-heading)] flex items-center gap-2">
+            <Clock className="w-6 h-6 text-[var(--primary)] shrink-0" />
             <span>Attendance Management</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Employee attendance records, multi-session punches, and workforce management</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Employee attendance records, multi-session punches, and workforce management</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Master Policy Status Badges Legend */}
-          <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-slate-300 bg-slate-900/80 p-2 sm:px-3 sm:py-1.5 border border-slate-800 rounded-xl flex-wrap">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Present</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Short Leave</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-cyan-400"></span> Late</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> Half Day</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Absent</span>
+          <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-surface)] p-2 sm:px-3 sm:py-1.5 border border-[var(--border-default)] rounded-xl flex-wrap shadow-xs">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--badge-success-text)]"></span> Present</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--badge-warning-text)]"></span> Short Leave</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--badge-info-text)]"></span> Late</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--secondary)]"></span> Half Day</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--badge-danger-text)]"></span> Absent</span>
           </div>
 
           {user?.employeeId && (
             <button
               onClick={() => openRegularizeForDate(new Date().toISOString().split('T')[0])}
-              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl shadow flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+              className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] font-semibold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto transition-colors"
             >
-              <CalendarIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+              <CalendarIcon className="w-4 h-4 text-[var(--primary)] shrink-0" />
               <span>Regularize Attendance</span>
             </button>
           )}
@@ -505,11 +504,11 @@ export const Attendance: React.FC = () => {
 
       {/* Employee Personal Attendance Section (Check In / Out Control) */}
       {user?.employeeId && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-6 shadow-xl">
+        <div className="p-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-6 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h3 className="font-bold text-sm text-slate-200">Today's Attendance Control</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h3 className="font-bold text-sm text-[var(--text-heading)]">Today's Attendance Control</h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                 {activeSession
                   ? `Session in progress. Check in recorded at ${activeSession.check_in ? new Date(activeSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.`
                   : (todaySummary?.completedSessionCount || 0) > 0
@@ -523,16 +522,16 @@ export const Attendance: React.FC = () => {
                 <button
                   onClick={handleCheckOut}
                   disabled={actionLoading}
-                  className="px-6 py-3 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3 bg-[var(--action-danger-soft)] hover:bg-[var(--action-danger-bg)] text-[var(--action-danger-bg)] hover:text-[var(--action-danger-text)] border border-[var(--action-danger-bg)]/40 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {actionLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <Loader2 className="w-4 h-4 animate-spin text-current" />
                       <span>Checking Out...</span>
                     </>
                   ) : (
                     <>
-                      <Square className="w-4 h-4 fill-white" />
+                      <Square className="w-4 h-4 fill-current" />
                       <span>Check Out Active Session</span>
                     </>
                   )}
@@ -541,16 +540,16 @@ export const Attendance: React.FC = () => {
                 <button
                   onClick={handleCheckIn}
                   disabled={actionLoading || todaySummary?.canCheckIn === false}
-                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {actionLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <Loader2 className="w-4 h-4 animate-spin text-[var(--primary-text)]" />
                       <span>Checking In...</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 fill-white" />
+                      <Play className="w-4 h-4 fill-[var(--primary-text)]" />
                       <span>Start New Session (Check In)</span>
                     </>
                   )}
@@ -562,13 +561,13 @@ export const Attendance: React.FC = () => {
           {/* Sessions Table for Today */}
           {sessions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-cyan-400" />
+              <h4 className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[var(--primary)]" />
                 <span>Today's Work Sessions Log ({sessions.length})</span>
               </h4>
-              <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+              <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl">
+                <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                  <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)]">
                     <tr>
                       <th className="px-4 py-2.5">Session</th>
                       <th className="px-4 py-2.5">Check In</th>
@@ -578,31 +577,31 @@ export const Attendance: React.FC = () => {
                       <th className="px-4 py-2.5">Duration</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {sessions.map((s: any, idx: number) => (
-                      <tr key={s.id || idx} className={s.check_out ? 'hover:bg-slate-800/30' : 'bg-cyan-950/20 border-l-2 border-l-cyan-400'}>
-                        <td className="px-4 py-3 font-semibold text-slate-200">Session #{idx + 1}</td>
-                        <td className="px-4 py-3 font-mono text-emerald-400">
+                      <tr key={s.id || idx} className={s.check_out ? 'hover:bg-[var(--bg-surface-hover)]' : 'bg-[var(--primary)]/5 border-l-2 border-l-[var(--primary)]'}>
+                        <td className="px-4 py-3 font-semibold text-[var(--text-heading)]">Session #{idx + 1}</td>
+                        <td className="px-4 py-3 font-mono font-medium text-[var(--badge-success-text)]">
                           {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
-                        <td className="px-4 py-3 font-mono text-rose-400">
+                        <td className="px-4 py-3 font-mono font-medium text-[var(--action-danger-bg)]">
                           {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (
-                            <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-[10px] font-bold">IN PROGRESS</span>
+                            <span className="px-2 py-0.5 bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded text-[10px] font-bold">IN PROGRESS</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-[11px] text-slate-300">
-                          {s.punch_in_location_name && <div className="font-semibold text-slate-200">{s.punch_in_location_name}</div>}
-                          <div className="font-mono text-[10px] text-slate-400">
+                        <td className="px-4 py-3 text-[11px] text-[var(--text-primary)]">
+                          {s.punch_in_location_name && <div className="font-semibold text-[var(--text-heading)]">{s.punch_in_location_name}</div>}
+                          <div className="font-mono text-[10px] text-[var(--text-muted)]">
                             {formatCoord(s.punch_in_lat) !== 'N/A' ? `${formatCoord(s.punch_in_lat)}, ${formatCoord(s.punch_in_lng)}` : 'N/A'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-[11px] text-slate-300">
-                          {s.punch_out_location_name && <div className="font-semibold text-slate-200">{s.punch_out_location_name}</div>}
-                          <div className="font-mono text-[10px] text-slate-400">
+                        <td className="px-4 py-3 text-[11px] text-[var(--text-primary)]">
+                          {s.punch_out_location_name && <div className="font-semibold text-[var(--text-heading)]">{s.punch_out_location_name}</div>}
+                          <div className="font-mono text-[10px] text-[var(--text-muted)]">
                             {formatCoord(s.punch_out_lat) !== 'N/A' ? `${formatCoord(s.punch_out_lat)}, ${formatCoord(s.punch_out_lng)}` : 'N/A'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-mono font-semibold text-slate-200">
+                        <td className="px-4 py-3 font-mono font-semibold text-[var(--text-heading)]">
                           {s.working_hours ? `${s.working_hours} hrs` : '--'}
                         </td>
                       </tr>
@@ -618,49 +617,49 @@ export const Attendance: React.FC = () => {
       {/* Workforce KPI Summary Cards (For Management) */}
       {isManagerOrAdmin && workforceKpi && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-1 shadow-xs">
+            <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs">
               <span>Total Workforce</span>
-              <Users className="w-4 h-4 text-cyan-400" />
+              <Users className="w-4 h-4 text-[var(--primary)]" />
             </div>
-            <div className="text-2xl font-black text-white font-mono">{workforceKpi.totalEmployees || 0}</div>
+            <div className="text-2xl font-black text-[var(--text-heading)] font-mono">{workforceKpi.totalEmployees || 0}</div>
           </div>
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-1 shadow-xs">
+            <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs">
               <span>Present Today</span>
-              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <UserCheck className="w-4 h-4 text-[var(--badge-success-text)]" />
             </div>
-            <div className="text-2xl font-black text-emerald-400 font-mono">{workforceKpi.presentToday || 0}</div>
+            <div className="text-2xl font-black text-[var(--badge-success-text)] font-mono">{workforceKpi.presentToday || 0}</div>
           </div>
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-1 shadow-xs">
+            <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs">
               <span>On Leave Today</span>
-              <CalendarDays className="w-4 h-4 text-indigo-400" />
+              <CalendarDays className="w-4 h-4 text-[var(--secondary)]" />
             </div>
-            <div className="text-2xl font-black text-indigo-400 font-mono">{workforceKpi.onLeaveToday || 0}</div>
+            <div className="text-2xl font-black text-[var(--secondary)] font-mono">{workforceKpi.onLeaveToday || 0}</div>
           </div>
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-1">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-1 shadow-xs">
+            <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs">
               <span>Absent Today</span>
-              <UserX className="w-4 h-4 text-rose-400" />
+              <UserX className="w-4 h-4 text-[var(--badge-danger-text)]" />
             </div>
-            <div className="text-2xl font-black text-rose-400 font-mono">{workforceKpi.absentToday || 0}</div>
+            <div className="text-2xl font-black text-[var(--badge-danger-text)] font-mono">{workforceKpi.absentToday || 0}</div>
           </div>
         </div>
       )}
 
       {/* WORKFORCE ATTENDANCE SECTION (Collapsible & Lazy-Loaded Architecture) */}
       {isManagerOrAdmin && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-5 p-5 sm:p-6">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-xs space-y-5 p-5 sm:p-6">
           {/* Top Bar: Title + Date Range Presets */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--border-default)] pb-4">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-base font-bold text-[var(--text-heading)] flex items-center gap-2">
+                <Users className="w-5 h-5 text-[var(--primary)]" />
                 <span>Workforce Attendance</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Showing summary from <span className="font-mono text-cyan-300 font-semibold">{activeDateRange.startDate}</span> to <span className="font-mono text-cyan-300 font-semibold">{activeDateRange.endDate}</span>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Showing summary from <span className="font-mono text-[var(--primary)] font-semibold">{activeDateRange.startDate}</span> to <span className="font-mono text-[var(--primary)] font-semibold">{activeDateRange.endDate}</span>
               </p>
             </div>
 
@@ -683,8 +682,8 @@ export const Attendance: React.FC = () => {
                     onClick={() => setSelectedPreset(preset)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors cursor-pointer ${
                       isActive
-                        ? 'bg-cyan-600 text-white shadow-sm'
-                        : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                        ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-xs'
+                        : 'bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                     }`}
                   >
                     {labels[preset]}
@@ -696,24 +695,24 @@ export const Attendance: React.FC = () => {
 
           {/* Custom Date Pickers (if CUSTOM selected) */}
           {selectedPreset === 'CUSTOM' && (
-            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-wrap items-center gap-3 text-xs">
-              <span className="text-slate-400 font-medium">Custom Range:</span>
+            <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl flex flex-wrap items-center gap-3 text-xs">
+              <span className="text-[var(--text-secondary)] font-medium">Custom Range:</span>
               <div className="flex items-center gap-2">
-                <label className="text-slate-400">Start:</label>
+                <label className="text-[var(--text-secondary)]">Start:</label>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                  className="px-2.5 py-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg text-[var(--input-text)] font-mono text-xs"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-slate-400">End:</label>
+                <label className="text-[var(--text-secondary)]">End:</label>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs"
+                  className="px-2.5 py-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg text-[var(--input-text)] font-mono text-xs"
                 />
               </div>
             </div>
@@ -722,19 +721,19 @@ export const Attendance: React.FC = () => {
           {/* Search & Department Filters */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             <div className="sm:col-span-8 relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search employee by name or code..."
-                className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-hidden"
+                className="w-full pl-9 pr-8 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--input-text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-hidden"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -742,18 +741,18 @@ export const Attendance: React.FC = () => {
             </div>
 
             <div className="sm:col-span-4 relative">
-              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Filter className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white appearance-none focus:border-cyan-500 focus:outline-hidden cursor-pointer"
+                className="w-full pl-9 pr-8 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--input-text)] appearance-none focus:border-[var(--primary)] focus:outline-hidden cursor-pointer"
               >
                 <option value="ALL">All Departments ({workforceEmployees.length})</option>
                 {uniqueDepartments.map(d => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
@@ -761,34 +760,34 @@ export const Attendance: React.FC = () => {
           {loadingWorkforce ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(n => (
-                <div key={n} className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl animate-pulse flex items-center justify-between">
+                <div key={n} className="p-4 bg-[var(--bg-surface-muted)]/50 border border-[var(--border-default)] rounded-xl animate-pulse flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-800" />
+                    <div className="w-9 h-9 rounded-xl bg-[var(--border-default)]" />
                     <div className="space-y-1.5">
-                      <div className="w-32 h-3.5 bg-slate-800 rounded" />
-                      <div className="w-20 h-2.5 bg-slate-800/60 rounded" />
+                      <div className="w-32 h-3.5 bg-[var(--border-default)] rounded" />
+                      <div className="w-20 h-2.5 bg-[var(--border-default)]/60 rounded" />
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-20 h-6 bg-slate-800 rounded-lg" />
-                    <div className="w-24 h-6 bg-slate-800 rounded-lg" />
+                    <div className="w-20 h-6 bg-[var(--border-default)] rounded-lg" />
+                    <div className="w-24 h-6 bg-[var(--border-default)] rounded-lg" />
                   </div>
                 </div>
               ))}
             </div>
           ) : workforceError ? (
-            <div className="p-4 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between">
-              <span>{workforceError}</span>
+            <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center justify-between">
+              <span className="font-semibold">{workforceError}</span>
               <button
                 type="button"
                 onClick={fetchWorkforceSummaries}
-                className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
+                className="px-3 py-1 bg-[var(--action-danger-bg)] hover:opacity-90 text-[var(--action-danger-text)] rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Retry
               </button>
             </div>
           ) : filteredEmployees.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+            <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-surface-muted)]/40 rounded-xl border border-dashed border-[var(--border-default)]">
               No employees found matching the search criteria.
             </div>
           ) : (
@@ -800,31 +799,31 @@ export const Attendance: React.FC = () => {
                 return (
                   <div
                     key={emp.id}
-                    className="bg-slate-950/80 border border-slate-800 hover:border-slate-700/80 rounded-xl overflow-hidden shadow-sm transition-all"
+                    className="bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--border-subtle)] rounded-xl overflow-hidden shadow-xs transition-all"
                   >
                     {/* Collapsible Header Card */}
-                    <div className="p-3.5 sm:p-4 bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-3.5 sm:p-4 bg-[var(--bg-surface)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => toggleEmployeeExpansion(emp.id)}
                         aria-expanded={isExpanded}
                         aria-label={`Toggle attendance details for ${emp.fullName}`}
-                        className="flex items-center gap-3 text-left focus:outline-hidden focus:ring-2 focus:ring-cyan-500/50 rounded-lg cursor-pointer flex-1 min-w-0"
+                        className="flex items-center gap-3 text-left focus:outline-hidden focus:ring-2 focus:ring-[var(--primary)]/30 rounded-lg cursor-pointer flex-1 min-w-0"
                       >
-                        <div className="p-1 text-slate-400 hover:text-white transition-transform">
+                        <div className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-transform">
                           {isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-cyan-400" />
+                            <ChevronDown className="w-5 h-5 text-[var(--primary)]" />
                           ) : (
-                            <ChevronRight className="w-5 h-5 text-slate-400" />
+                            <ChevronRight className="w-5 h-5 text-[var(--text-muted)]" />
                           )}
                         </div>
-                        <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 font-extrabold text-sm flex items-center justify-center border border-cyan-500/30 shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-[var(--secondary)]/15 text-[var(--secondary)] font-extrabold text-sm flex items-center justify-center border border-[var(--secondary)]/30 shrink-0">
                           {emp.fullName.charAt(0)}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-bold text-sm text-slate-100 truncate">{emp.fullName}</h4>
-                          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                            <span className="font-mono text-cyan-400">{emp.employeeCode}</span>
+                          <h4 className="font-bold text-sm text-[var(--text-heading)] truncate">{emp.fullName}</h4>
+                          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
+                            <span className="font-mono text-[var(--primary)]">{emp.employeeCode}</span>
                             <span>•</span>
                             <span className="truncate">{emp.departmentName}</span>
                           </div>
@@ -833,11 +832,11 @@ export const Attendance: React.FC = () => {
 
                       {/* Summary Metrics & Actions */}
                       <div className="flex items-center justify-between sm:justify-end gap-2.5 text-xs font-mono pl-8 sm:pl-0">
-                        <span className="px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-lg border border-slate-700">
-                          Sessions: <strong className="text-white">{emp.sessionCount}</strong>
+                        <span className="px-2.5 py-1 bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-default)]">
+                          Sessions: <strong className="text-[var(--text-heading)]">{emp.sessionCount}</strong>
                         </span>
-                        <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/60">
-                          Total: <strong className="text-emerald-300">{formatWorkingHours(emp.totalHours)}</strong>
+                        <span className="px-2.5 py-1 bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] rounded-lg border border-[var(--badge-success-border)]">
+                          Total: <strong className="font-bold">{formatWorkingHours(emp.totalHours)}</strong>
                         </span>
                         <button
                           type="button"
@@ -850,7 +849,7 @@ export const Attendance: React.FC = () => {
                               alert(err.message || 'Export failed.');
                             }
                           }}
-                          className="px-2.5 py-1.5 bg-cyan-600/90 hover:bg-cyan-500 text-white rounded-lg font-sans font-semibold text-xs flex items-center gap-1 shadow transition cursor-pointer"
+                          className="px-2.5 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-lg font-sans font-semibold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer"
                           title="Download Excel for selected range"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -861,32 +860,32 @@ export const Attendance: React.FC = () => {
 
                     {/* Detailed Attendance Table (Rendered only when expanded) */}
                     {isExpanded && (
-                      <div className="border-t border-slate-800/80 p-3 sm:p-4 bg-slate-950/40 space-y-3">
+                      <div className="border-t border-[var(--border-default)] p-3 sm:p-4 bg-[var(--bg-surface-muted)]/30 space-y-3">
                         {details?.loading ? (
-                          <div className="py-8 flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
-                            <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+                          <div className="py-8 flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)]">
+                            <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
                             <span>Loading attendance history (newest first)...</span>
                           </div>
                         ) : details?.error ? (
-                          <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center justify-between">
-                            <span>{details.error}</span>
+                          <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center justify-between">
+                            <span className="font-semibold">{details.error}</span>
                             <button
                               type="button"
                               onClick={() => fetchEmployeeDetails(emp.id, 1, false)}
-                              className="px-3 py-1 bg-rose-900/60 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold cursor-pointer"
+                              className="px-3 py-1 bg-[var(--action-danger-bg)] hover:opacity-90 text-[var(--action-danger-text)] rounded-lg text-xs font-semibold cursor-pointer"
                             >
                               Retry
                             </button>
                           </div>
                         ) : (details?.records || []).length === 0 ? (
-                          <div className="py-6 text-center text-slate-500 text-xs italic">
+                          <div className="py-6 text-center text-[var(--text-muted)] text-xs italic">
                             No attendance records found for this period.
                           </div>
                         ) : (
                           <>
-                            <div className="overflow-x-auto rounded-xl border border-slate-800/60">
-                              <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800/80">
+                            <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+                              <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                                <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase text-[10px] tracking-wider border-b border-[var(--border-default)]">
                                   <tr>
                                     <th className="px-4 py-2.5">Date</th>
                                     <th className="px-4 py-2.5">Check In</th>
@@ -896,37 +895,37 @@ export const Attendance: React.FC = () => {
                                     <th className="px-4 py-2.5 text-right">Actions</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/40">
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
                                   {details.records.map((a: any, sIdx: number) => {
                                     const dateStr = a.date ? (typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0]) : 'N/A';
                                     const isAbsent = a.status === 'ABSENT' || a.status === 'ABSENT → Regularize';
                                     const canReg = a.canRegularize || isAbsent;
 
                                     return (
-                                      <tr key={a.id || sIdx} className="hover:bg-slate-800/30">
-                                        <td className="px-4 py-3 font-mono font-medium text-slate-200">{dateStr}</td>
-                                        <td className="px-4 py-3 font-mono text-emerald-400">
+                                      <tr key={a.id || sIdx} className="hover:bg-[var(--bg-surface-hover)]">
+                                        <td className="px-4 py-3 font-mono font-medium text-[var(--text-heading)]">{dateStr}</td>
+                                        <td className="px-4 py-3 font-mono text-[var(--badge-success-text)] font-medium">
                                           {a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-rose-400">
+                                        <td className="px-4 py-3 font-mono text-[var(--badge-danger-text)] font-medium">
                                           {a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                                         </td>
-                                        <td className="px-4 py-3 font-mono font-bold text-slate-200">{formatWorkingHours(a.working_hours)}</td>
+                                        <td className="px-4 py-3 font-mono font-bold text-[var(--text-heading)]">{formatWorkingHours(a.working_hours)}</td>
                                         <td className="px-4 py-3">
                                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                             isAbsent || a.status === 'ABSENT'
-                                              ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                                              ? 'bg-[var(--badge-danger-bg)] text-[var(--badge-danger-text)] border border-[var(--badge-danger-border)]'
                                               : a.status?.includes('SHORT LEAVE')
-                                              ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
+                                              ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)]'
                                               : a.status?.includes('LATE PRESENT')
-                                              ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
+                                              ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)]'
                                               : a.status === 'HALF DAY'
-                                              ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60'
+                                              ? 'bg-[var(--secondary)]/15 text-[var(--secondary)] border border-[var(--secondary)]/30'
                                               : a.status === 'HOLIDAY'
-                                              ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
+                                              ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)]'
                                               : a.status === 'PRESENT'
-                                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                                              ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]'
+                                              : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                                           }`}>
                                             {a.status || 'PRESENT'}
                                           </span>
@@ -937,7 +936,7 @@ export const Attendance: React.FC = () => {
                                               <button
                                                 type="button"
                                                 onClick={() => openRegularizeForDate(dateStr)}
-                                                className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                                className="px-2.5 py-1 bg-[var(--primary)]/15 hover:bg-[var(--primary)]/25 text-[var(--primary)] border border-[var(--primary)]/30 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                                               >
                                                 <span>Regularize</span>
                                               </button>
@@ -946,7 +945,7 @@ export const Attendance: React.FC = () => {
                                               <button
                                                 type="button"
                                                 onClick={() => setSelectedSession(a)}
-                                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                                className="px-2.5 py-1 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] border border-[var(--border-default)] rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                                               >
                                                 <Eye className="w-3.5 h-3.5" />
                                                 <span>GPS Details</span>
@@ -968,7 +967,7 @@ export const Attendance: React.FC = () => {
                                   type="button"
                                   disabled={details.loadingMore}
                                   onClick={() => fetchEmployeeDetails(emp.id, details.page + 1, true)}
-                                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-cyan-300 border border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                                  className="px-4 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-muted)] disabled:opacity-50 text-[var(--primary)] border border-[var(--border-default)] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
                                 >
                                   {details.loadingMore ? (
                                     <>
@@ -1012,20 +1011,20 @@ export const Attendance: React.FC = () => {
 
       {/* Attendance Regularization Queue Table */}
       {regularizations.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-2">
-          <div className="px-6 py-4 border-b border-slate-800 font-semibold text-xs text-slate-100 flex items-center justify-between">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-xs space-y-2">
+          <div className="px-6 py-4 border-b border-[var(--border-default)] font-semibold text-xs text-[var(--text-heading)] flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-indigo-400" />
+              <CalendarIcon className="w-4 h-4 text-[var(--primary)]" />
               <span>{isManagerOrAdmin ? 'Attendance Regularization Requests Queue' : 'My Regularization Requests History'}</span>
             </span>
-            <span className="px-2 py-0.5 text-xs bg-slate-800 text-indigo-400 rounded-full font-mono font-semibold">
+            <span className="px-2.5 py-0.5 text-xs bg-[var(--bg-surface-muted)] text-[var(--primary)] rounded-full font-mono font-bold border border-[var(--border-default)]">
               {regularizations.length}
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-xs text-[var(--text-primary)]">
+              <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase tracking-wider border-b border-[var(--border-default)]">
                 <tr>
                   <th className="px-6 py-3">Employee</th>
                   <th className="px-6 py-3">Date</th>
@@ -1036,28 +1035,28 @@ export const Attendance: React.FC = () => {
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[var(--border-subtle)]">
                 {regularizations.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/40">
-                    <td className="px-6 py-3.5 font-semibold text-slate-200">
+                  <tr key={r.id} className="hover:bg-[var(--bg-surface-hover)]">
+                    <td className="px-6 py-3.5 font-semibold text-[var(--text-heading)]">
                       {r.employee_name}
-                      <span className="block text-[10px] text-slate-500 font-mono">{r.employee_code || 'EMP'}</span>
+                      <span className="block text-[10px] text-[var(--text-muted)] font-mono">{r.employee_code || 'EMP'}</span>
                     </td>
                     <td className="px-6 py-3.5 font-mono">{r.attendance_date ? new Date(r.attendance_date).toLocaleDateString() : 'N/A'}</td>
-                    <td className="px-6 py-3.5 font-mono text-[11px] text-slate-400">
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--text-secondary)]">
                       <div>In: {r.original_in_time ? new Date(r.original_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not Recorded'}</div>
                       <div>Out: {r.original_out_time ? new Date(r.original_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not Recorded'}</div>
                     </td>
-                    <td className="px-6 py-3.5 font-mono text-[11px] text-cyan-300">
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--primary)] font-medium">
                       <div>In: {r.requested_punch_in ? new Date(r.requested_punch_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</div>
                       <div>Out: {r.requested_punch_out ? new Date(r.requested_punch_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</div>
                     </td>
-                    <td className="px-6 py-3.5 max-w-xs truncate text-slate-400" title={r.reason}>{r.reason}</td>
+                    <td className="px-6 py-3.5 max-w-xs truncate text-[var(--text-secondary)]" title={r.reason}>{r.reason}</td>
                     <td className="px-6 py-3.5">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
-                        r.status === 'APPROVED' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60' :
-                        r.status === 'REJECTED' ? 'bg-rose-950/80 text-rose-400 border border-rose-800/60' :
-                        'bg-amber-950/80 text-amber-400 border border-amber-800/60 animate-pulse'
+                        r.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]' :
+                        r.status === 'REJECTED' ? 'bg-[var(--badge-danger-bg)] text-[var(--badge-danger-text)] border border-[var(--badge-danger-border)]' :
+                        'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)] animate-pulse'
                       }`}>
                         {r.status}
                       </span>
@@ -1068,14 +1067,14 @@ export const Attendance: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleApproveReg(r.id)}
-                            className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                            className="px-2.5 py-1 bg-[var(--badge-success-bg)] hover:opacity-90 text-[var(--badge-success-text)] border border-[var(--badge-success-border)] rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                           >
                             Approve
                           </button>
                           <button
                             type="button"
                             onClick={() => handleRejectReg(r.id)}
-                            className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                            className="px-2.5 py-1 bg-[var(--badge-danger-bg)] hover:opacity-90 text-[var(--badge-danger-text)] border border-[var(--badge-danger-border)] rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                           >
                             Reject
                           </button>
@@ -1084,12 +1083,12 @@ export const Attendance: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleWithdrawReg(r.id)}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                          className="px-2.5 py-1 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                         >
                           Withdraw
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-500 font-mono">--</span>
+                        <span className="text-[11px] text-[var(--text-muted)] font-mono">--</span>
                       )}
                     </td>
                   </tr>
@@ -1102,60 +1101,60 @@ export const Attendance: React.FC = () => {
 
       {/* GPS Inspection Modal */}
       {selectedSession && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Compass className="w-5 h-5 text-cyan-400" />
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
+              <h3 className="font-bold text-lg text-[var(--text-heading)] flex items-center gap-2">
+                <Compass className="w-5 h-5 text-[var(--primary)]" />
                 <span>Session GPS Inspection</span>
               </h3>
-              <button type="button" onClick={() => setSelectedSession(null)} className="p-1 text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setSelectedSession(null)} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="text-slate-400">Employee: <strong className="text-white">{selectedSession.employee_name}</strong></div>
-                <div className="text-slate-400">Date: <span className="font-mono text-cyan-400">{selectedSession.date}</span></div>
-                <div className="text-slate-400">Working Hours: <strong className="text-emerald-400 font-mono">{selectedSession.working_hours || 0} hrs</strong></div>
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-1">
+                <div className="text-[var(--text-secondary)]">Employee: <strong className="text-[var(--text-heading)]">{selectedSession.employee_name}</strong></div>
+                <div className="text-[var(--text-secondary)]">Date: <span className="font-mono text-[var(--primary)] font-semibold">{selectedSession.date}</span></div>
+                <div className="text-[var(--text-secondary)]">Working Hours: <strong className="text-[var(--badge-success-text)] font-mono">{selectedSession.working_hours || 0} hrs</strong></div>
               </div>
 
               {/* Check-In Location Box */}
-              <div className="p-3.5 bg-emerald-950/30 border border-emerald-800/40 rounded-xl space-y-1.5">
-                <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+              <div className="p-3.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] rounded-xl space-y-1.5">
+                <div className="font-bold text-[var(--badge-success-text)] flex items-center gap-1.5">
                   <MapPin className="w-4 h-4" />
                   <span>Check-In GPS Location</span>
                 </div>
                 {selectedSession.punch_in_location_name && (
-                  <div className="text-slate-200 font-semibold bg-emerald-950/50 p-2 rounded-lg border border-emerald-800/40">
+                  <div className="text-[var(--text-heading)] font-semibold bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--border-default)]">
                     {selectedSession.punch_in_location_name}
                   </div>
                 )}
-                <div className="text-slate-300">Timestamp: <span className="font-mono text-slate-200">{selectedSession.check_in ? new Date(selectedSession.check_in).toLocaleString() : 'N/A'}</span></div>
-                <div className="text-slate-300">Latitude: <span className="font-mono text-cyan-400">{selectedSession.punch_in_lat || 'N/A'}</span></div>
-                <div className="text-slate-300">Longitude: <span className="font-mono text-cyan-400">{selectedSession.punch_in_lng || 'N/A'}</span></div>
-                <div className="text-slate-300">Accuracy: <span className="font-mono text-slate-400">{formatAccuracy(selectedSession.punch_in_accuracy)}</span></div>
+                <div className="text-[var(--text-primary)]">Timestamp: <span className="font-mono text-[var(--text-heading)] font-semibold">{selectedSession.check_in ? new Date(selectedSession.check_in).toLocaleString() : 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Latitude: <span className="font-mono text-[var(--primary)]">{selectedSession.punch_in_lat || 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Longitude: <span className="font-mono text-[var(--primary)]">{selectedSession.punch_in_lng || 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Accuracy: <span className="font-mono text-[var(--text-muted)]">{formatAccuracy(selectedSession.punch_in_accuracy)}</span></div>
               </div>
 
               {/* Check-Out Location Box */}
-              <div className="p-3.5 bg-rose-950/30 border border-rose-800/40 rounded-xl space-y-1.5">
-                <div className="font-bold text-rose-400 flex items-center gap-1.5">
+              <div className="p-3.5 bg-[var(--badge-danger-bg)] border border-[var(--badge-danger-border)] rounded-xl space-y-1.5">
+                <div className="font-bold text-[var(--badge-danger-text)] flex items-center gap-1.5">
                   <MapPin className="w-4 h-4" />
                   <span>Check-Out GPS Location</span>
                 </div>
                 {selectedSession.punch_out_location_name && (
-                  <div className="text-slate-200 font-semibold bg-rose-950/50 p-2 rounded-lg border border-rose-800/40">
+                  <div className="text-[var(--text-heading)] font-semibold bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--border-default)]">
                     {selectedSession.punch_out_location_name}
                   </div>
                 )}
-                <div className="text-slate-300">Timestamp: <span className="font-mono text-slate-200">{selectedSession.check_out ? new Date(selectedSession.check_out).toLocaleString() : 'N/A'}</span></div>
-                <div className="text-slate-300">Latitude: <span className="font-mono text-cyan-400">{selectedSession.punch_out_lat || 'N/A'}</span></div>
-                <div className="text-slate-300">Longitude: <span className="font-mono text-cyan-400">{selectedSession.punch_out_lng || 'N/A'}</span></div>
-                <div className="text-slate-300">Accuracy: <span className="font-mono text-slate-400">{formatAccuracy(selectedSession.punch_out_accuracy)}</span></div>
+                <div className="text-[var(--text-primary)]">Timestamp: <span className="font-mono text-[var(--text-heading)] font-semibold">{selectedSession.check_out ? new Date(selectedSession.check_out).toLocaleString() : 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Latitude: <span className="font-mono text-[var(--primary)]">{selectedSession.punch_out_lat || 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Longitude: <span className="font-mono text-[var(--primary)]">{selectedSession.punch_out_lng || 'N/A'}</span></div>
+                <div className="text-[var(--text-primary)]">Accuracy: <span className="font-mono text-[var(--text-muted)]">{formatAccuracy(selectedSession.punch_out_accuracy)}</span></div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end pt-3 border-t border-slate-800">
-              <button type="button" onClick={() => setSelectedSession(null)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium cursor-pointer">Close</button>
+            <div className="flex items-center justify-end pt-3 border-t border-[var(--border-default)]">
+              <button type="button" onClick={() => setSelectedSession(null)} className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-xl text-xs font-semibold cursor-pointer">Close</button>
             </div>
           </div>
         </div>
@@ -1163,81 +1162,81 @@ export const Attendance: React.FC = () => {
 
       {/* Regularization Form Modal */}
       {showRegularizeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-indigo-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
+              <h3 className="font-bold text-lg text-[var(--text-heading)] flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-[var(--primary)]" />
                 <span>Attendance Regularization Request</span>
               </h3>
-              <button type="button" onClick={() => setShowRegularizeModal(false)} className="p-1 text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowRegularizeModal(false)} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
             {regError && (
-              <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-                <Shield className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{regError}</span>
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
+                <span className="font-semibold">{regError}</span>
               </div>
             )}
 
             <form onSubmit={handleRegularizationSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Date Being Regularized *</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Date Being Regularized *</label>
                 <input
                   type="date"
                   required
                   value={regFormData.attendanceDate}
                   onChange={(e) => setRegFormData(f => ({ ...f, attendanceDate: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-[var(--input-text)] font-mono"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Requested In Time *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Requested In Time *</label>
                   <input
                     type="time"
                     required
                     value={regFormData.requestedPunchIn}
                     onChange={(e) => setRegFormData(f => ({ ...f, requestedPunchIn: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-[var(--input-text)] font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Requested Out Time *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-medium">Requested Out Time *</label>
                   <input
                     type="time"
                     required
                     value={regFormData.requestedPunchOut}
                     onChange={(e) => setRegFormData(f => ({ ...f, requestedPunchOut: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-[var(--input-text)] font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Reason *</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-medium">Reason *</label>
                 <textarea
                   required
                   rows={3}
                   value={regFormData.reason}
                   onChange={(e) => setRegFormData(f => ({ ...f, reason: e.target.value }))}
                   placeholder="Provide a clear justification (e.g. Forgot to punch in/out on client visit)"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-[var(--input-text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-hidden"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setShowRegularizeModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] font-medium rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 cursor-pointer"
+                  className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-bold rounded-xl shadow-xs cursor-pointer"
                 >
                   Submit Request
                 </button>

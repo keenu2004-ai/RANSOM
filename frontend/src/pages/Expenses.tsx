@@ -1350,38 +1350,38 @@ export const Expenses: React.FC = () => {
   const grandTripTotal = Number(activeTrip?.total_amount || 0) || (travelTotal + accomTotal + otherTotal);
 
   return (
-    <div className="space-y-6 text-slate-100 font-sans">
+    <div className="space-y-6 text-[var(--text-heading)] font-sans">
       {/* SUCCESS BANNER */}
       {successMsg && (
-        <div className="p-4 bg-emerald-950/80 border border-emerald-800/80 rounded-2xl flex items-center justify-between text-emerald-200 text-sm shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="p-4 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] rounded-2xl flex items-center justify-between text-[var(--badge-success-text)] text-sm shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-[var(--badge-success-text)] shrink-0" />
             <span>{successMsg}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-white"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSuccessMsg(null)} className="text-[var(--badge-success-text)] hover:text-white"><X className="w-4 h-4" /></button>
         </div>
       )}
 
       {/* TOP PAGE HEADER */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 backdrop-blur-md shadow-lg">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[var(--bg-surface)] p-5 rounded-2xl border border-[var(--border-default)] backdrop-blur-md shadow-lg">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <Receipt className="w-7 h-7 text-cyan-400" />
+            <Receipt className="w-7 h-7 text-[var(--primary)]" />
             <span>Expense Management</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Track, approve and analyze employee business expenses, local travel and outstation trips</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Track, approve and analyze employee business expenses, local travel and outstation trips</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Main View Mode Selector (For HR/Super Admin) */}
           {isManagerOrAdmin && (
-            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center bg-[var(--bg-surface-muted)] p-1 rounded-xl border border-[var(--border-default)] text-xs">
               <button
                 onClick={() => setMainViewMode('MANAGEMENT')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                   mainViewMode === 'MANAGEMENT'
-                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-md shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-white'
                 }`}
               >
                 <PieChart className="w-3.5 h-3.5" />
@@ -1396,8 +1396,8 @@ export const Expenses: React.FC = () => {
                 }}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                   mainViewMode === 'PERSONAL'
-                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[var(--primary)] text-[var(--primary-text)] shadow-md shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-white'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -1408,21 +1408,21 @@ export const Expenses: React.FC = () => {
 
           {/* FY Selector */}
           {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
-            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1 text-xs">
+            <div className="flex items-center gap-1 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl p-1 text-xs">
               <button
                 onClick={() => setSelectedStartYear(prev => prev - 1)}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="p-1.5 hover:bg-[var(--bg-surface-muted)] rounded-lg text-[var(--text-secondary)] hover:text-white transition-colors"
                 title="Previous FY"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <div className="px-3 text-center">
-                <div className="font-bold text-cyan-400">{currentFy.label}</div>
-                <div className="text-[10px] text-slate-400">{currentFy.displayRange}</div>
+                <div className="font-bold text-[var(--primary)]">{currentFy.label}</div>
+                <div className="text-[10px] text-[var(--text-secondary)]">{currentFy.displayRange}</div>
               </div>
               <button
                 onClick={() => setSelectedStartYear(prev => prev + 1)}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="p-1.5 hover:bg-[var(--bg-surface-muted)] rounded-lg text-[var(--text-secondary)] hover:text-white transition-colors"
                 title="Next FY"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -1436,7 +1436,7 @@ export const Expenses: React.FC = () => {
               <button
                 ref={downloadBtnRef}
                 onClick={() => setShowDownloadDropdown(prev => !prev)}
-                className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer"
+                className="px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Expense Report</span>
@@ -1446,16 +1446,16 @@ export const Expenses: React.FC = () => {
                 <div
                   ref={downloadDropdownRef}
                   style={dropdownStyle}
-                  className="w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-[1000] animate-in fade-in zoom-in-95 duration-100"
+                  className="w-44 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl shadow-2xl overflow-hidden z-[1000] animate-in fade-in zoom-in-95 duration-100"
                 >
                   <button
                     onClick={() => {
                       setShowDownloadDropdown(false);
                       handleDownloadReport('xlsx');
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium cursor-pointer"
+                    className="w-full px-4 py-2.5 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] flex items-center gap-2 font-medium cursor-pointer"
                   >
-                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <FileText className="w-4 h-4 text-[var(--badge-success-text)]" />
                     <span>Excel Workbook (.xlsx)</span>
                   </button>
                   <button
@@ -1463,9 +1463,9 @@ export const Expenses: React.FC = () => {
                       setShowDownloadDropdown(false);
                       handleDownloadReport('csv');
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 font-medium border-t border-slate-800 cursor-pointer"
+                    className="w-full px-4 py-2.5 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] flex items-center gap-2 font-medium border-t border-[var(--border-default)] cursor-pointer"
                   >
-                    <FileText className="w-4 h-4 text-amber-400" />
+                    <FileText className="w-4 h-4 text-[var(--badge-warning-text)]" />
                     <span>CSV File (.csv)</span>
                   </button>
                 </div>,
@@ -1480,17 +1480,17 @@ export const Expenses: React.FC = () => {
       {mainViewMode === 'MANAGEMENT' && isManagerOrAdmin && (
         <div className="space-y-4">
           {loadingMgmt && (
-            <div className="p-12 text-center bg-[#0d1322] rounded-xl border border-slate-800/80">
-              <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
-              <p className="text-xs font-medium text-slate-400">Loading Expense Analytics & Overview for {currentFy.label}...</p>
+            <div className="p-12 text-center bg-[var(--bg-surface)] rounded-xl border border-[var(--border-default)]">
+              <RefreshCw className="w-8 h-8 text-[var(--primary)] animate-spin mx-auto mb-3" />
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Loading Expense Analytics & Overview for {currentFy.label}...</p>
             </div>
           )}
 
           {mgmtError && !loadingMgmt && (
-            <div className="p-6 bg-rose-950/40 border border-rose-900/60 rounded-xl text-center space-y-3">
-              <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-              <p className="text-xs font-semibold text-rose-200">{mgmtError}</p>
-              <button onClick={fetchManagementData} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold cursor-pointer">Retry</button>
+            <div className="p-6 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-center space-y-3">
+              <AlertTriangle className="w-8 h-8 text-[var(--action-danger-bg)] mx-auto" />
+              <p className="text-xs font-semibold text-[var(--action-danger-bg)]">{mgmtError}</p>
+              <button onClick={fetchManagementData} className="px-3 py-1.5 bg-[var(--action-danger-bg)] text-white rounded-lg text-xs font-bold cursor-pointer">Retry</button>
             </div>
           )}
 
@@ -1507,51 +1507,51 @@ export const Expenses: React.FC = () => {
                       const el = document.getElementById('employee-overview-table');
                       if (el) el.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className={`bg-[#0f172a]/90 border rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                      mgmtStatusFilter === '' ? 'border-cyan-500/70 ring-1 ring-cyan-500/30' : 'border-slate-800/90 hover:border-cyan-500/40'
+                    className={`bg-[var(--bg-surface)] border rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                      mgmtStatusFilter === '' ? 'border-[var(--primary)]/70 ring-1 ring-1 ring-[var(--primary)]/30' : 'border-[var(--border-default)] hover:border-[var(--primary)]/30'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-cyan-950/60 border border-cyan-800/50 rounded-lg text-cyan-400">
+                        <div className="p-1.5 bg-[var(--badge-info-bg)] border border-[var(--primary)]/30 rounded-lg text-[var(--primary)]">
                           <Users className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-medium text-slate-300">Employees with Expenses</span>
+                        <span className="font-medium text-[var(--text-primary)]">Employees with Expenses</span>
                       </div>
                       {mgmtSummary?.yoyEmployeesPct !== null && mgmtSummary?.yoyEmployeesPct !== undefined && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          mgmtSummary.yoyEmployeesPct >= 0 ? 'text-emerald-400 bg-emerald-950/50 border-emerald-800/40' : 'text-rose-400 bg-rose-950/50 border-rose-800/40'
+                          mgmtSummary.yoyEmployeesPct >= 0 ? 'text-[var(--badge-success-text)] bg-[var(--badge-success-bg)] border-[var(--badge-success-border)]' : 'text-[var(--action-danger-bg)] bg-[var(--action-danger-soft)] border-[var(--action-danger-bg)]/30'
                         }`}>
                           {mgmtSummary.yoyEmployeesPct >= 0 ? '+' : ''}{mgmtSummary.yoyEmployeesPct.toFixed(0)}%
                         </span>
                       )}
                     </div>
                     <div className="text-xl font-black text-white pt-1">{mgmtSummary?.employeesWithExpenses || 0}</div>
-                    <div className="text-[10px] text-slate-500">of {mgmtSummary?.totalEmployees || 0} total employees</div>
+                    <div className="text-[10px] text-[var(--text-muted)]">of {mgmtSummary?.totalEmployees || 0} total employees</div>
                   </div>
 
                   {/* Card 2: Total Expense Amount */}
                   <div
                     onClick={() => handleOpenLedgerModal('ALL')}
-                    className="bg-[#0f172a]/90 border border-purple-500/30 hover:border-purple-500/70 ring-1 ring-purple-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-[var(--bg-surface)] border border-[var(--primary)]/30 hover:border-[var(--primary)]/30 ring-1 ring-1 ring-[var(--primary)]/30 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-purple-950/60 border border-purple-800/50 rounded-lg text-purple-400">
+                        <div className="p-1.5 bg-[var(--secondary)]/15 border border-[var(--secondary)]/30 rounded-lg text-[var(--secondary)]">
                           <DollarSign className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-medium text-slate-300">Total Expense Amount</span>
+                        <span className="font-medium text-[var(--text-primary)]">Total Expense Amount</span>
                       </div>
                       {mgmtSummary?.yoyTotalAmountPct !== null && mgmtSummary?.yoyTotalAmountPct !== undefined && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          mgmtSummary.yoyTotalAmountPct >= 0 ? 'text-emerald-400 bg-emerald-950/50 border-emerald-800/40' : 'text-rose-400 bg-rose-950/50 border-rose-800/40'
+                          mgmtSummary.yoyTotalAmountPct >= 0 ? 'text-[var(--badge-success-text)] bg-[var(--badge-success-bg)] border-[var(--badge-success-border)]' : 'text-[var(--action-danger-bg)] bg-[var(--action-danger-soft)] border-[var(--action-danger-bg)]/30'
                         }`}>
                           {mgmtSummary.yoyTotalAmountPct >= 0 ? '+' : ''}{mgmtSummary.yoyTotalAmountPct.toFixed(0)}%
                         </span>
                       )}
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.totalExpenseAmount !== undefined ? mgmtSummary.totalExpenseAmount : (mgmtSummary?.totalRequestedAmount || 0)).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-purple-400 font-medium flex items-center justify-between">
+                    <div className="text-[10px] text-[var(--secondary)] font-medium flex items-center justify-between">
                       <span>Click to view ALL Ledger</span>
                       <ArrowRight className="w-3 h-3" />
                     </div>
@@ -1560,18 +1560,18 @@ export const Expenses: React.FC = () => {
                   {/* Card 3: Approved Amount */}
                   <div
                     onClick={() => handleOpenLedgerModal('APPROVED')}
-                    className="bg-[#0f172a]/90 border border-emerald-500/30 hover:border-emerald-500/70 ring-1 ring-emerald-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-[var(--bg-surface)] border border-[var(--badge-success-border)] hover:border-[var(--badge-success-border)] ring-1 ring-1 ring-[var(--primary)]/30 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-emerald-950/60 border border-emerald-800/50 rounded-lg text-emerald-400">
+                        <div className="p-1.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] rounded-lg text-[var(--badge-success-text)]">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-medium text-slate-300">Approved Amount</span>
+                        <span className="font-medium text-[var(--text-primary)]">Approved Amount</span>
                       </div>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.approvedAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-emerald-400 font-medium flex items-center justify-between">
+                    <div className="text-[10px] text-[var(--badge-success-text)] font-medium flex items-center justify-between">
                       <span>Click for Approved Ledger</span>
                       <ArrowRight className="w-3 h-3" />
                     </div>
@@ -1580,18 +1580,18 @@ export const Expenses: React.FC = () => {
                   {/* Card 4: Pending Amount */}
                   <div
                     onClick={() => handleOpenLedgerModal('PENDING')}
-                    className="bg-[#0f172a]/90 border border-amber-500/30 hover:border-amber-500/70 ring-1 ring-amber-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-[var(--bg-surface)] border border-[var(--badge-warning-border)] hover:border-[var(--badge-warning-border)] ring-1 ring-1 ring-[var(--primary)]/30 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-amber-950/60 border border-amber-800/50 rounded-lg text-amber-400">
+                        <div className="p-1.5 bg-[var(--badge-warning-bg)] border border-[var(--badge-warning-border)] rounded-lg text-[var(--badge-warning-text)]">
                           <Clock className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-medium text-slate-300">Pending Amount</span>
+                        <span className="font-medium text-[var(--text-primary)]">Pending Amount</span>
                       </div>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.pendingAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-amber-400 font-medium flex items-center justify-between">
+                    <div className="text-[10px] text-[var(--badge-warning-text)] font-medium flex items-center justify-between">
                       <span>Pending Approval Center</span>
                       <ArrowRight className="w-3 h-3" />
                     </div>
@@ -1600,18 +1600,18 @@ export const Expenses: React.FC = () => {
                   {/* Card 5: Rejected Amount */}
                   <div
                     onClick={() => handleOpenLedgerModal('REJECTED')}
-                    className="bg-[#0f172a]/90 border border-rose-500/30 hover:border-rose-500/70 ring-1 ring-rose-500/20 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-[var(--bg-surface)] border border-[var(--action-danger-bg)]/30 hover:border-[var(--action-danger-bg)]/30 ring-1 ring-1 ring-[var(--primary)]/30 rounded-xl p-3.5 space-y-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-rose-950/60 border border-rose-800/50 rounded-lg text-rose-400">
+                        <div className="p-1.5 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-lg text-[var(--action-danger-bg)]">
                           <XCircle className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-medium text-slate-300">Rejected Amount</span>
+                        <span className="font-medium text-[var(--text-primary)]">Rejected Amount</span>
                       </div>
                     </div>
                     <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.rejectedAmount || 0).toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-rose-400 font-medium flex items-center justify-between">
+                    <div className="text-[10px] text-[var(--action-danger-bg)] font-medium flex items-center justify-between">
                       <span>Click for Rejected Ledger</span>
                       <ArrowRight className="w-3 h-3" />
                     </div>
@@ -1619,32 +1619,32 @@ export const Expenses: React.FC = () => {
                 </div>
 
                 {/* EMPLOYEE OVERVIEW TABLE */}
-                <div id="employee-overview-table" className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-4 space-y-3 shadow-md">
+                <div id="employee-overview-table" className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-3 shadow-md">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Users className="w-4 h-4 text-cyan-400" />
+                        <Users className="w-4 h-4 text-[var(--primary)]" />
                         <span>Employee Expense Overview</span>
                       </h2>
-                      <p className="text-[11px] text-slate-400">View employee-wise expense summary for the selected financial year</p>
+                      <p className="text-[11px] text-[var(--text-secondary)]">View employee-wise expense summary for the selected financial year</p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" />
+                        <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2" />
                         <input
                           type="text"
                           value={mgmtSearch}
                           onChange={e => { setMgmtSearch(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
                           placeholder="Search by name or employee code..."
-                          className="pl-8 pr-2.5 py-1 bg-[#090d16] border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 w-52"
+                          className="pl-8 pr-2.5 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-white placeholder-[var(--text-muted)] w-52"
                         />
                       </div>
 
                       <select
                         value={mgmtDeptFilter}
                         onChange={e => { setMgmtDeptFilter(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
-                        className="px-2.5 py-1 bg-[#090d16] border border-slate-800 rounded-lg text-xs text-white"
+                        className="px-2.5 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-white"
                       >
                         <option value="">All Departments</option>
                         {departmentsList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1653,7 +1653,7 @@ export const Expenses: React.FC = () => {
                       <select
                         value={mgmtStatusFilter}
                         onChange={e => { setMgmtStatusFilter(e.target.value); setMgmtPagination(p => ({ ...p, page: 1 })); }}
-                        className="px-2.5 py-1 bg-[#090d16] border border-slate-800 rounded-lg text-xs text-white"
+                        className="px-2.5 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-white"
                       >
                         <option value="">All Statuses</option>
                         <option value="APPROVED">Approved Claims</option>
@@ -1663,10 +1663,10 @@ export const Expenses: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-800/80 rounded-lg">
+                  <div className="overflow-x-auto border border-[var(--border-default)] rounded-lg">
                     <table className="w-full text-left text-[11px] border-collapse">
                       <thead>
-                        <tr className="bg-[#090d16] text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider text-[10px]">
+                        <tr className="bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-b border-[var(--border-default)] font-semibold uppercase tracking-wider text-[10px]">
                           <th className="py-2.5 px-3">Employee</th>
                           <th className="py-2.5 px-3">Code</th>
                           <th className="py-2.5 px-3">Department</th>
@@ -1679,9 +1679,9 @@ export const Expenses: React.FC = () => {
                           <th className="py-2.5 px-3 text-center">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/50">
+                      <tbody className="divide-y divide-[var(--border-subtle)]">
                         {mgmtOverview.length === 0 ? (
-                          <tr><td colSpan={10} className="py-6 text-center text-slate-500">No employee expense activity in {currentFy.label}.</td></tr>
+                          <tr><td colSpan={10} className="py-6 text-center text-[var(--text-muted)]">No employee expense activity in {currentFy.label}.</td></tr>
                         ) : (
                           mgmtOverview.map(emp => {
                             const approvedPct = emp.totalRequested > 0 ? (emp.approvedAmount / emp.totalRequested) * 100 : 0;
@@ -1689,44 +1689,44 @@ export const Expenses: React.FC = () => {
                             const rejectedPct = emp.totalRequested > 0 ? (emp.rejectedAmount / emp.totalRequested) * 100 : 0;
 
                             return (
-                              <tr key={emp.employeeId} className="hover:bg-slate-800/30 transition-colors">
+                              <tr key={emp.employeeId} className="hover:bg-[var(--bg-surface-muted)] transition-colors">
                                 <td className="py-2 px-3 font-bold text-white flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-[var(--primary)] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                                     {emp.employeeName.substring(0, 2).toUpperCase()}
                                   </div>
                                   <span className="truncate">{emp.employeeName}</span>
                                 </td>
-                                <td className="py-2 px-3 font-mono text-slate-400">{emp.employeeCode}</td>
-                                <td className="py-2 px-3 text-slate-300">{emp.department}</td>
-                                <td className="py-2 px-3 text-right font-medium text-slate-200">
+                                <td className="py-2 px-3 font-mono text-[var(--text-secondary)]">{emp.employeeCode}</td>
+                                <td className="py-2 px-3 text-[var(--text-primary)]">{emp.department}</td>
+                                <td className="py-2 px-3 text-right font-medium text-[var(--text-primary)]">
                                   <div>₹{emp.approvedAmount.toLocaleString('en-IN')}</div>
-                                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
-                                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, approvedPct)}%` }}></div>
+                                  <div className="w-full bg-[var(--bg-surface-muted)] h-1 rounded-full overflow-hidden mt-1">
+                                    <div className="bg-[var(--badge-success-bg)] h-full rounded-full" style={{ width: `${Math.min(100, approvedPct)}%` }}></div>
                                   </div>
                                 </td>
-                                <td className="py-2 px-3 text-right font-medium text-slate-200">
+                                <td className="py-2 px-3 text-right font-medium text-[var(--text-primary)]">
                                   <div>₹{emp.pendingAmount.toLocaleString('en-IN')}</div>
-                                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
-                                    <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, pendingPct)}%` }}></div>
+                                  <div className="w-full bg-[var(--bg-surface-muted)] h-1 rounded-full overflow-hidden mt-1">
+                                    <div className="bg-[var(--badge-warning-bg)] h-full rounded-full" style={{ width: `${Math.min(100, pendingPct)}%` }}></div>
                                   </div>
                                 </td>
-                                <td className="py-2 px-3 text-right font-medium text-slate-200">
+                                <td className="py-2 px-3 text-right font-medium text-[var(--text-primary)]">
                                   <div>₹{emp.rejectedAmount.toLocaleString('en-IN')}</div>
-                                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
-                                    <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.min(100, rejectedPct)}%` }}></div>
+                                  <div className="w-full bg-[var(--bg-surface-muted)] h-1 rounded-full overflow-hidden mt-1">
+                                    <div className="bg-[var(--action-danger-bg)] h-full rounded-full" style={{ width: `${Math.min(100, rejectedPct)}%` }}></div>
                                   </div>
                                 </td>
                                 <td className="py-2 px-3 text-right font-bold text-white">₹{emp.totalRequested.toLocaleString('en-IN')}</td>
-                                <td className="py-2 px-3 text-right font-bold text-slate-200">₹{emp.totalExpense.toLocaleString('en-IN')}</td>
-                                <td className="py-2 px-3 text-slate-300">
-                                  <span className="px-2 py-0.5 bg-blue-950/60 border border-blue-800/40 text-blue-300 rounded text-[10px] font-medium">
+                                <td className="py-2 px-3 text-right font-bold text-[var(--text-primary)]">₹{emp.totalExpense.toLocaleString('en-IN')}</td>
+                                <td className="py-2 px-3 text-[var(--text-primary)]">
+                                  <span className="px-2 py-0.5 bg-[var(--badge-info-bg)] border border-[var(--badge-info-border)] text-[var(--badge-info-text)] rounded text-[10px] font-medium">
                                     {emp.topCategory || 'N/A'}
                                   </span>
                                 </td>
                                 <td className="py-2 px-3 text-center">
                                   <button
                                     onClick={() => setSelectedEmpId(emp.employeeId)}
-                                    className="px-2 py-1 bg-blue-950/80 hover:bg-blue-900 border border-blue-800/60 text-blue-300 rounded text-[10px] font-bold flex items-center gap-1 mx-auto cursor-pointer"
+                                    className="px-2 py-1 bg-[var(--badge-info-bg)] hover:bg-[var(--bg-surface-hover)] border border-[var(--badge-info-border)]/60 text-[var(--badge-info-text)] rounded text-[10px] font-bold flex items-center gap-1 mx-auto cursor-pointer"
                                   >
                                     <Eye className="w-3 h-3" />
                                     <span>View</span>
@@ -1740,14 +1740,14 @@ export const Expenses: React.FC = () => {
                     </table>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] pt-1">
                     <div>Showing 1 to {mgmtOverview.length} of {mgmtPagination.total} employees</div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <button
                           disabled={mgmtPagination.page <= 1}
                           onClick={() => setMgmtPagination(p => ({ ...p, page: p.page - 1 }))}
-                          className="px-2 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-[11px]"
+                          className="px-2 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)] text-[11px]"
                         >
                           &lt;
                         </button>
@@ -1756,7 +1756,7 @@ export const Expenses: React.FC = () => {
                             key={i}
                             onClick={() => setMgmtPagination(p => ({ ...p, page: i + 1 }))}
                             className={`px-2.5 py-1 rounded text-[11px] font-bold ${
-                              mgmtPagination.page === i + 1 ? 'bg-blue-600 text-white' : 'bg-[#090d16] text-slate-400 hover:text-white border border-slate-800'
+                              mgmtPagination.page === i + 1 ? 'bg-[var(--primary)] text-white' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-white border border-[var(--border-default)]'
                             }`}
                           >
                             {i + 1}
@@ -1765,7 +1765,7 @@ export const Expenses: React.FC = () => {
                         <button
                           disabled={mgmtPagination.page >= mgmtPagination.totalPages}
                           onClick={() => setMgmtPagination(p => ({ ...p, page: p.page + 1 }))}
-                          className="px-2 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-[11px]"
+                          className="px-2 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)] text-[11px]"
                         >
                           &gt;
                         </button>
@@ -1774,7 +1774,7 @@ export const Expenses: React.FC = () => {
                       <select
                         value={mgmtPagination.limit}
                         onChange={e => setMgmtPagination(p => ({ ...p, limit: Number(e.target.value), page: 1 }))}
-                        className="px-2 py-1 bg-[#090d16] border border-slate-800 rounded text-xs text-slate-300"
+                        className="px-2 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded text-xs text-[var(--text-primary)]"
                       >
                         <option value={5}>5 per page</option>
                         <option value={10}>10 per page</option>
@@ -1785,38 +1785,38 @@ export const Expenses: React.FC = () => {
                 </div>
 
                 {/* EXPENSE ANALYSIS SECTION */}
-                <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-4 space-y-4 shadow-md">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-4 shadow-md">
                   <div>
                     <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                      <PieChart className="w-4 h-4 text-purple-400" />
+                      <PieChart className="w-4 h-4 text-[var(--secondary)]" />
                       <span>Expense Analysis</span>
                     </h2>
-                    <p className="text-[11px] text-slate-400">Visual breakdown of expenses for {currentFy.label}</p>
+                    <p className="text-[11px] text-[var(--text-secondary)]">Visual breakdown of expenses for {currentFy.label}</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Expense by Category (Donut Chart representation) */}
-                    <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
-                      <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Expense by Category</h3>
+                    <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-3.5 space-y-3">
+                      <h3 className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Expense by Category</h3>
                       <div className="flex flex-col items-center justify-center py-2">
-                        <div className="relative w-36 h-36 flex items-center justify-center rounded-full border-8 border-cyan-500 border-t-purple-500 border-r-amber-500 border-b-emerald-500 shadow-inner">
+                        <div className="relative w-36 h-36 flex items-center justify-center rounded-full border-8 border-[var(--primary)] border-t-[var(--secondary)] border-r-[var(--badge-warning-text)] border-b-[var(--badge-success-text)] shadow-inner">
                           <div className="text-center">
                             <div className="text-xs font-black text-white">₹{(Number(mgmtSummary?.totalRequestedAmount || 0) / 100000).toFixed(2)}L</div>
-                            <div className="text-[9px] text-slate-400">Total Expenses</div>
+                            <div className="text-[9px] text-[var(--text-secondary)]">Total Expenses</div>
                           </div>
                         </div>
                       </div>
 
                       <div className="space-y-1.5 text-[11px]">
                         {mgmtAnalytics?.categoryBreakdown?.map((cat: any, idx: number) => {
-                          const colors = ['bg-cyan-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500', 'bg-slate-500', 'bg-emerald-500', 'bg-rose-500'];
+                          const colors = ['bg-[var(--primary)]', 'bg-[var(--primary)]', 'bg-[var(--badge-warning-bg)]', 'bg-[var(--primary)]', 'bg-[var(--secondary)]', 'bg-[var(--badge-success-bg)]', 'bg-[var(--action-danger-bg)]'];
                           return (
-                            <div key={cat.category} className="flex items-center justify-between text-slate-300">
+                            <div key={cat.category} className="flex items-center justify-between text-[var(--text-primary)]">
                               <div className="flex items-center gap-2">
                                 <span className={`w-2.5 h-2.5 rounded-full ${colors[idx % colors.length]}`}></span>
                                 <span>{cat.category}</span>
                               </div>
-                              <span className="font-mono font-medium text-slate-400">{cat.percentage.toFixed(0)}%</span>
+                              <span className="font-mono font-medium text-[var(--text-secondary)]">{cat.percentage.toFixed(0)}%</span>
                             </div>
                           );
                         })}
@@ -1824,17 +1824,17 @@ export const Expenses: React.FC = () => {
                     </div>
 
                     {/* Monthly Expense Trend (Apr - Mar) */}
-                    <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
+                    <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Monthly Expense Trend</h3>
+                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Monthly Expense Trend</h3>
                         <div className="flex items-center gap-2 text-[10px]">
-                          <span className="flex items-center gap-1 text-slate-400"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Approved</span>
-                          <span className="flex items-center gap-1 text-slate-400"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Pending</span>
-                          <span className="flex items-center gap-1 text-slate-400"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Rejected</span>
+                          <span className="flex items-center gap-1 text-[var(--text-secondary)]"><span className="w-2 h-2 rounded-full bg-[var(--badge-success-bg)]"></span> Approved</span>
+                          <span className="flex items-center gap-1 text-[var(--text-secondary)]"><span className="w-2 h-2 rounded-full bg-[var(--badge-warning-bg)]"></span> Pending</span>
+                          <span className="flex items-center gap-1 text-[var(--text-secondary)]"><span className="w-2 h-2 rounded-full bg-[var(--action-danger-bg)]"></span> Rejected</span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-12 gap-1 h-36 items-end pt-4 pb-1 border-b border-slate-800">
+                      <div className="grid grid-cols-12 gap-1 h-36 items-end pt-4 pb-1 border-b border-[var(--border-default)]">
                         {mgmtAnalytics?.monthlyTrend?.map((m: any) => {
                           const maxVal = Math.max(...mgmtAnalytics.monthlyTrend.map((x: any) => x.total || 1), 1);
                           const appH = (m.approved / maxVal) * 100;
@@ -1843,12 +1843,12 @@ export const Expenses: React.FC = () => {
 
                           return (
                             <div key={m.month} className="flex flex-col items-center h-full justify-end">
-                              <div className="w-full max-w-[14px] bg-slate-900 rounded-t flex flex-col justify-end overflow-hidden" style={{ height: '100%' }}>
-                                <div className="bg-rose-500 w-full" style={{ height: `${rejH}%` }}></div>
-                                <div className="bg-amber-500 w-full" style={{ height: `${pendH}%` }}></div>
-                                <div className="bg-emerald-500 w-full" style={{ height: `${appH}%` }}></div>
+                              <div className="w-full max-w-[14px] bg-[var(--bg-surface)] rounded-t flex flex-col justify-end overflow-hidden" style={{ height: '100%' }}>
+                                <div className="bg-[var(--action-danger-bg)] w-full" style={{ height: `${rejH}%` }}></div>
+                                <div className="bg-[var(--badge-warning-bg)] w-full" style={{ height: `${pendH}%` }}></div>
+                                <div className="bg-[var(--badge-success-bg)] w-full" style={{ height: `${appH}%` }}></div>
                               </div>
-                              <span className="text-[9px] text-slate-400 mt-1">{m.month}</span>
+                              <span className="text-[9px] text-[var(--text-secondary)] mt-1">{m.month}</span>
                             </div>
                           );
                         })}
@@ -1856,22 +1856,22 @@ export const Expenses: React.FC = () => {
                     </div>
 
                     {/* Top Cost Categories */}
-                    <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
+                    <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Top Cost Categories</h3>
-                        <button onClick={() => setShowCategoryAnalyticsModal(true)} className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer">View All</button>
+                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Top Cost Categories</h3>
+                        <button onClick={() => setShowCategoryAnalyticsModal(true)} className="text-[11px] text-[var(--badge-info-text)] hover:text-[var(--badge-info-text)] font-semibold cursor-pointer">View All</button>
                       </div>
 
                       <div className="space-y-2 text-xs">
                         {mgmtAnalytics?.categoryBreakdown?.slice(0, 5).map((cat: any, idx: number) => (
-                          <div key={cat.category} className="flex items-center justify-between p-2 bg-[#0d1322] border border-slate-800/60 rounded-lg">
+                          <div key={cat.category} className="flex items-center justify-between p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg">
                             <div className="flex items-center gap-2">
-                              <span className="w-4 h-4 rounded bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">{idx + 1}</span>
-                              <span className="font-medium text-slate-200">{cat.category}</span>
+                              <span className="w-4 h-4 rounded bg-[var(--bg-surface-muted)] flex items-center justify-center text-[10px] font-bold text-[var(--text-secondary)]">{idx + 1}</span>
+                              <span className="font-medium text-[var(--text-primary)]">{cat.category}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-white">₹{cat.amount.toLocaleString('en-IN')}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{cat.percentage.toFixed(0)}%</span>
+                              <span className="text-[10px] text-[var(--text-secondary)] font-mono">{cat.percentage.toFixed(0)}%</span>
                             </div>
                           </div>
                         ))}
@@ -1881,34 +1881,34 @@ export const Expenses: React.FC = () => {
 
                   {/* Department Analysis & Cost Optimization Insight */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                    <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
-                      <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Department Analysis</h3>
+                    <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-3.5 space-y-2">
+                      <h3 className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Department Analysis</h3>
                       <table className="w-full text-left text-xs">
                         <thead>
-                          <tr className="text-slate-500 border-b border-slate-800/80 text-[10px] uppercase">
+                          <tr className="text-[var(--text-muted)] border-b border-[var(--border-default)] text-[10px] uppercase">
                             <th className="pb-1.5">Department</th>
                             <th className="pb-1.5 text-right">Active Emps</th>
                             <th className="pb-1.5 text-right">Total Expense</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/40 text-[11px]">
+                        <tbody className="divide-y divide-[var(--border-subtle)] text-[11px]">
                           {mgmtAnalytics?.departmentAnalysis?.map((d: any) => (
                             <tr key={d.department}>
-                              <td className="py-1.5 text-slate-200 font-medium">{d.department}</td>
-                              <td className="py-1.5 text-right text-slate-400">{d.employeesWithExpenses}</td>
-                              <td className="py-1.5 text-right font-bold text-slate-200">₹{d.totalExpense.toLocaleString('en-IN')}</td>
+                              <td className="py-1.5 text-[var(--text-primary)] font-medium">{d.department}</td>
+                              <td className="py-1.5 text-right text-[var(--text-secondary)]">{d.employeesWithExpenses}</td>
+                              <td className="py-1.5 text-right font-bold text-[var(--text-primary)]">₹{d.totalExpense.toLocaleString('en-IN')}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
 
-                    <div className="bg-gradient-to-br from-indigo-950/40 via-[#090d16] to-[#090d16] border border-indigo-900/50 rounded-xl p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                    <div className="bg-[var(--bg-surface)] border border-[var(--primary)]/30 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-[var(--badge-warning-text)] font-bold text-xs">
                         <TrendingUp className="w-4 h-4" />
                         <span>Cost Optimization Insight</span>
                       </div>
-                      <p className="text-xs font-medium text-slate-200 leading-relaxed pt-1">
+                      <p className="text-xs font-medium text-[var(--text-primary)] leading-relaxed pt-1">
                         {mgmtAnalytics?.costOptimizationInsight || "No expense data available for cost optimization analysis."}
                       </p>
                     </div>
@@ -1916,30 +1916,30 @@ export const Expenses: React.FC = () => {
                 </div>
 
                 {/* RECENT EXPENSE REQUESTS */}
-                <div className="bg-[#0f172a]/90 border border-slate-800/90 rounded-xl p-4 space-y-3 shadow-md">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-3 shadow-md">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-cyan-400" />
+                        <Clock className="w-4 h-4 text-[var(--primary)]" />
                         <span>Recent Expense Requests</span>
                       </h2>
-                      <p className="text-[11px] text-slate-400">Latest expense claims submitted by employees</p>
+                      <p className="text-[11px] text-[var(--text-secondary)]">Latest expense claims submitted by employees</p>
                     </div>
                     <button
                       onClick={() => {
                         setMainViewMode('PERSONAL');
                         setActiveRoleTab('WORKFORCE');
                       }}
-                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                      className="text-xs text-[var(--badge-info-text)] hover:text-[var(--badge-info-text)] font-semibold cursor-pointer"
                     >
                       View All
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-800/80 rounded-lg">
+                  <div className="overflow-x-auto border border-[var(--border-default)] rounded-lg">
                     <table className="w-full text-left text-[11px] border-collapse">
                       <thead>
-                        <tr className="bg-[#090d16] text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider text-[10px]">
+                        <tr className="bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-b border-[var(--border-default)] font-semibold uppercase tracking-wider text-[10px]">
                           <th className="py-2.5 px-3">Employee</th>
                           <th className="py-2.5 px-3">Code</th>
                           <th className="py-2.5 px-3">Type</th>
@@ -1950,28 +1950,28 @@ export const Expenses: React.FC = () => {
                           <th className="py-2.5 px-3 text-center">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/50">
+                      <tbody className="divide-y divide-[var(--border-subtle)]">
                         {mgmtRecent.length === 0 ? (
-                          <tr><td colSpan={8} className="py-6 text-center text-slate-500">No recent expense requests for {currentFy.label}.</td></tr>
+                          <tr><td colSpan={8} className="py-6 text-center text-[var(--text-muted)]">No recent expense requests for {currentFy.label}.</td></tr>
                         ) : (
                           mgmtRecent.map(req => (
-                            <tr key={req.id} className="hover:bg-slate-800/30 transition-colors">
+                            <tr key={req.id} className="hover:bg-[var(--bg-surface-muted)] transition-colors">
                               <td className="py-2 px-3 font-bold text-white flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-rose-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-[var(--action-danger-bg)] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                                   {req.employeeName.substring(0, 2).toUpperCase()}
                                 </div>
                                 <span>{req.employeeName}</span>
                               </td>
-                              <td className="py-2 px-3 font-mono text-slate-400">{req.employeeCode}</td>
-                              <td className="py-2 px-3 text-slate-300">{req.claimType}</td>
-                              <td className="py-2 px-3 text-slate-400 font-mono">{new Date(req.date).toLocaleDateString()}</td>
-                              <td className="py-2 px-3 text-slate-300">{req.category}</td>
+                              <td className="py-2 px-3 font-mono text-[var(--text-secondary)]">{req.employeeCode}</td>
+                              <td className="py-2 px-3 text-[var(--text-primary)]">{req.claimType}</td>
+                              <td className="py-2 px-3 text-[var(--text-secondary)] font-mono">{new Date(req.date).toLocaleDateString()}</td>
+                              <td className="py-2 px-3 text-[var(--text-primary)]">{req.category}</td>
                               <td className="py-2 px-3 text-right font-bold text-white">₹{req.amount.toLocaleString('en-IN')}</td>
                               <td className="py-2 px-3 text-center">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  req.status === 'APPROVED' ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60' :
-                                  req.status === 'REJECTED' ? 'bg-rose-950/80 text-rose-400 border-rose-800/60' :
-                                  'bg-amber-950/80 text-amber-400 border-amber-800/60'
+                                  req.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                                  req.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                                  'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                                 }`}>
                                   {req.status}
                                 </span>
@@ -1985,7 +1985,7 @@ export const Expenses: React.FC = () => {
                                       setSelectedSingleExpense(req);
                                     }
                                   }}
-                                  className="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-900 border border-blue-800/60 text-blue-300 rounded text-[10px] font-bold flex items-center gap-1 mx-auto cursor-pointer"
+                                  className="px-2 py-0.5 bg-[var(--badge-info-bg)] hover:bg-[var(--bg-surface-hover)] border border-[var(--badge-info-border)]/60 text-[var(--badge-info-text)] rounded text-[10px] font-bold flex items-center gap-1 mx-auto cursor-pointer"
                                 >
                                   <Eye className="w-3 h-3" />
                                   <span>View</span>
@@ -2002,73 +2002,73 @@ export const Expenses: React.FC = () => {
 
               {/* RIGHT SIDE EMPLOYEE DETAILS DRAWER (WHEN EMPLOYEE SELECTED) */}
               {selectedEmpId && (
-                <div className="w-80 bg-[#0f172a]/95 border border-slate-800/90 rounded-xl p-4 space-y-4 shadow-xl shrink-0 animate-in slide-in-from-right duration-200">
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <div className="w-80 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-4 shadow-xl shrink-0 animate-in slide-in-from-right duration-200">
+                  <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider">Employee Expense Details</h3>
-                    <button onClick={() => setSelectedEmpId(null)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setSelectedEmpId(null)} className="text-[var(--text-secondary)] hover:text-white"><X className="w-4 h-4" /></button>
                   </div>
 
                   {loadingEmpDrawer ? (
-                    <div className="py-12 text-center text-xs text-slate-400">Loading details...</div>
+                    <div className="py-12 text-center text-xs text-[var(--text-secondary)]">Loading details...</div>
                   ) : empDrawerData ? (
                     <>
-                      <div className="flex items-center gap-3 bg-[#090d16] p-3 rounded-lg border border-slate-800/60">
-                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-black text-white shrink-0">
+                      <div className="flex items-center gap-3 bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-default)]">
+                        <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-sm font-black text-white shrink-0">
                           {empDrawerData.employee.name.substring(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-white truncate">{empDrawerData.employee.name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{empDrawerData.employee.employeeCode}</div>
-                          <div className="text-[10px] text-slate-400">{empDrawerData.employee.department}</div>
+                          <div className="text-[10px] text-[var(--text-secondary)] font-mono">{empDrawerData.employee.employeeCode}</div>
+                          <div className="text-[10px] text-[var(--text-secondary)]">{empDrawerData.employee.department}</div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-[#090d16] border border-emerald-900/40 p-2.5 rounded-lg space-y-1">
-                          <div className="text-[10px] text-emerald-400 font-bold">Approved</div>
+                        <div className="bg-[var(--bg-surface-elevated)] border border-[var(--badge-success-border)] p-2.5 rounded-lg space-y-1">
+                          <div className="text-[10px] text-[var(--badge-success-text)] font-bold">Approved</div>
                           <div className="text-sm font-black text-white">₹{empDrawerData.summary.approvedAmount.toLocaleString('en-IN')}</div>
                         </div>
-                        <div className="bg-[#090d16] border border-amber-900/40 p-2.5 rounded-lg space-y-1">
-                          <div className="text-[10px] text-amber-400 font-bold">Pending</div>
+                        <div className="bg-[var(--bg-surface-elevated)] border border-[var(--badge-warning-border)] p-2.5 rounded-lg space-y-1">
+                          <div className="text-[10px] text-[var(--badge-warning-text)] font-bold">Pending</div>
                           <div className="text-sm font-black text-white">₹{empDrawerData.summary.pendingAmount.toLocaleString('en-IN')}</div>
                         </div>
-                        <div className="bg-[#090d16] border border-rose-900/40 p-2.5 rounded-lg space-y-1">
-                          <div className="text-[10px] text-rose-400 font-bold">Rejected</div>
+                        <div className="bg-[var(--bg-surface-elevated)] border border-[var(--action-danger-bg)]/30 p-2.5 rounded-lg space-y-1">
+                          <div className="text-[10px] text-[var(--action-danger-bg)] font-bold">Rejected</div>
                           <div className="text-sm font-black text-white">₹{empDrawerData.summary.rejectedAmount.toLocaleString('en-IN')}</div>
                         </div>
-                        <div className="bg-[#090d16] border border-blue-900/40 p-2.5 rounded-lg space-y-1">
-                          <div className="text-[10px] text-blue-400 font-bold">Total Requested</div>
+                        <div className="bg-[var(--bg-surface-elevated)] border border-[var(--primary)]/30 p-2.5 rounded-lg space-y-1">
+                          <div className="text-[10px] text-[var(--badge-info-text)] font-bold">Total Requested</div>
                           <div className="text-sm font-black text-white">₹{empDrawerData.summary.totalRequestedAmount.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
 
-                      <div className="bg-[#090d16] border border-slate-800/80 rounded-lg p-3 space-y-2">
-                        <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Expense by Category</h4>
+                      <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg p-3 space-y-2">
+                        <h4 className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Expense by Category</h4>
                         {empDrawerData.categories.map((c: any) => (
                           <div key={c.category} className="space-y-1 text-[11px]">
-                            <div className="flex justify-between text-slate-300">
+                            <div className="flex justify-between text-[var(--text-primary)]">
                               <span>{c.category}</span>
                               <span className="font-mono font-medium">₹{c.amount.toLocaleString('en-IN')}</span>
                             </div>
-                            <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                              <div className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.min(100, (c.amount / (empDrawerData.summary.totalRequestedAmount || 1)) * 100)}%` }}></div>
+                            <div className="w-full bg-[var(--bg-surface-muted)] h-1 rounded-full overflow-hidden">
+                              <div className="bg-[var(--primary)] h-full rounded-full" style={{ width: `${Math.min(100, (c.amount / (empDrawerData.summary.totalRequestedAmount || 1)) * 100)}%` }}></div>
                             </div>
                           </div>
                         ))}
                       </div>
 
-                      <div className="p-3 bg-gradient-to-br from-indigo-950/30 to-[#090d16] border border-indigo-900/40 rounded-lg space-y-1 text-xs">
-                        <div className="text-[10px] font-bold text-amber-400 uppercase">Cost Optimization Insight</div>
-                        <p className="text-[11px] text-slate-300 leading-normal pt-1">
+                      <div className="p-3 bg-[var(--bg-surface)] border border-[var(--primary)]/30 rounded-lg space-y-1 text-xs">
+                        <div className="text-[10px] font-bold text-[var(--badge-warning-text)] uppercase">Cost Optimization Insight</div>
+                        <p className="text-[11px] text-[var(--text-primary)] leading-normal pt-1">
                           Top spend for {empDrawerData.employee.name} is concentrated in local travel and business expenses.
                         </p>
                       </div>
 
                       {/* INDIVIDUAL EXPENSE RECORDS SECTION */}
-                      <div className="bg-[#090d16] border border-slate-800/80 rounded-lg p-3 space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg p-3 space-y-3">
+                        <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-2">
                           <h4 className="text-[10px] font-bold text-white uppercase tracking-wider">Individual Expense Records</h4>
-                          <span className="text-[10px] text-slate-400 font-mono">Total: {empRecordSummary.totalRecords}</span>
+                          <span className="text-[10px] text-[var(--text-secondary)] font-mono">Total: {empRecordSummary.totalRecords}</span>
                         </div>
 
                         {/* Record Filters */}
@@ -2076,7 +2076,7 @@ export const Expenses: React.FC = () => {
                           <select
                             value={empRecordTypeFilter}
                             onChange={e => { setEmpRecordTypeFilter(e.target.value); setEmpRecordPage(1); }}
-                            className="px-2 py-1 bg-[#0f172a] border border-slate-800 rounded text-slate-300"
+                            className="px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-primary)]"
                           >
                             <option value="">All Types</option>
                             <option value="BUSINESS">Business</option>
@@ -2087,7 +2087,7 @@ export const Expenses: React.FC = () => {
                           <select
                             value={empRecordStatusFilter}
                             onChange={e => { setEmpRecordStatusFilter(e.target.value); setEmpRecordPage(1); }}
-                            className="px-2 py-1 bg-[#0f172a] border border-slate-800 rounded text-slate-300"
+                            className="px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-primary)]"
                           >
                             <option value="">All Statuses</option>
                             <option value="APPROVED">Approved</option>
@@ -2099,15 +2099,15 @@ export const Expenses: React.FC = () => {
 
                         {/* Individual Record Table */}
                         {loadingEmpRecords ? (
-                          <div className="py-6 text-center text-[10px] text-slate-400">Loading records...</div>
+                          <div className="py-6 text-center text-[10px] text-[var(--text-secondary)]">Loading records...</div>
                         ) : empRecordsList.length === 0 ? (
-                          <div className="py-4 text-center text-[10px] text-slate-500 italic">No records matching selected criteria.</div>
+                          <div className="py-4 text-center text-[10px] text-[var(--text-muted)] italic">No records matching selected criteria.</div>
                         ) : (
                           <div className="space-y-2">
-                            <div className="overflow-x-auto border border-slate-800/60 rounded">
+                            <div className="overflow-x-auto border border-[var(--border-default)] rounded">
                               <table className="w-full text-left text-[10px]">
                                 <thead>
-                                  <tr className="bg-[#0f172a] text-slate-400 border-b border-slate-800 font-semibold uppercase">
+                                  <tr className="bg-[var(--bg-surface)] text-[var(--text-secondary)] border-b border-[var(--border-default)] font-semibold uppercase">
                                     <th className="py-1.5 px-2">Type</th>
                                     <th className="py-1.5 px-2">Date</th>
                                     <th className="py-1.5 px-2">Category</th>
@@ -2116,18 +2116,18 @@ export const Expenses: React.FC = () => {
                                     <th className="py-1.5 px-2 text-center">Action</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/40">
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
                                   {empRecordsList.map(rec => (
-                                    <tr key={rec.id} className="hover:bg-slate-800/20">
-                                      <td className="py-1.5 px-2 font-medium text-slate-200">{rec.expenseType}</td>
-                                      <td className="py-1.5 px-2 font-mono text-slate-400">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</td>
-                                      <td className="py-1.5 px-2 text-slate-300 truncate max-w-[80px]">{rec.category}</td>
+                                    <tr key={rec.id} className="hover:bg-[var(--bg-surface-muted)]">
+                                      <td className="py-1.5 px-2 font-medium text-[var(--text-primary)]">{rec.expenseType}</td>
+                                      <td className="py-1.5 px-2 font-mono text-[var(--text-secondary)]">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</td>
+                                      <td className="py-1.5 px-2 text-[var(--text-primary)] truncate max-w-[80px]">{rec.category}</td>
                                       <td className="py-1.5 px-2 text-right font-bold text-white">₹{rec.amount.toLocaleString('en-IN')}</td>
                                       <td className="py-1.5 px-2 text-center">
                                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                          rec.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400' :
-                                          rec.status === 'REJECTED' ? 'bg-rose-950 text-rose-400' :
-                                          'bg-amber-950 text-amber-400'
+                                          rec.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]' :
+                                          rec.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)]' :
+                                          'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)]'
                                         }`}>
                                           {rec.status}
                                         </span>
@@ -2141,7 +2141,7 @@ export const Expenses: React.FC = () => {
                                               setSelectedSingleExpense(rec);
                                             }
                                           }}
-                                          className="p-1 text-cyan-400 hover:text-white"
+                                          className="p-1 text-[var(--primary)] hover:text-white"
                                           title="View Claim Details"
                                         >
                                           <Eye className="w-3 h-3" />
@@ -2154,20 +2154,20 @@ export const Expenses: React.FC = () => {
                             </div>
 
                             {/* Pagination */}
-                            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                            <div className="flex items-center justify-between text-[10px] text-[var(--text-secondary)] pt-1">
                               <div>Page {empRecordPage} of {empRecordTotalPages}</div>
                               <div className="flex items-center gap-1">
                                 <button
                                   disabled={empRecordPage <= 1}
                                   onClick={() => setEmpRecordPage(p => p - 1)}
-                                  className="px-2 py-0.5 bg-[#0f172a] border border-slate-800 disabled:opacity-40 rounded text-slate-300"
+                                  className="px-2 py-0.5 bg-[var(--bg-surface)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)]"
                                 >
                                   &lt;
                                 </button>
                                 <button
                                   disabled={empRecordPage >= empRecordTotalPages}
                                   onClick={() => setEmpRecordPage(p => p + 1)}
-                                  className="px-2 py-0.5 bg-[#0f172a] border border-slate-800 disabled:opacity-40 rounded text-slate-300"
+                                  className="px-2 py-0.5 bg-[var(--bg-surface)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)]"
                                 >
                                   &gt;
                                 </button>
@@ -2177,7 +2177,7 @@ export const Expenses: React.FC = () => {
                         )}
                       </div>
 
-                      <button onClick={() => setSelectedEmpId(null)} className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors">
+                      <button onClick={() => setSelectedEmpId(null)} className="w-full py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-white rounded-lg text-xs font-bold transition-colors">
                         Close Details
                       </button>
                     </>
@@ -2195,57 +2195,57 @@ export const Expenses: React.FC = () => {
       {activeTrip ? (
         <div className="space-y-6">
           {/* Trip Summary Card Header */}
-          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="p-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-default)] pb-4">
               <div>
                 <button
                   onClick={() => setActiveTrip(null)}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 mb-2"
+                  className="text-xs text-[var(--primary)] hover:text-[var(--primary)] font-semibold flex items-center gap-1 mb-2"
                 >
                   ← Back to Claims List
                 </button>
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-emerald-400" />
+                    <MapPin className="w-5 h-5 text-[var(--badge-success-text)]" />
                     <span>Trip Expense Details</span>
                   </h2>
                   {activeTrip.status === 'DRAFT' && (
                     <button
                       onClick={handleOpenEditTrip}
-                      className="p-1 text-slate-400 hover:text-cyan-400"
+                      className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]"
                       title="Edit Parent Trip Details"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                   )}
                 </div>
-                <div className="text-xl font-extrabold font-mono text-emerald-400 mt-1">
+                <div className="text-xl font-extrabold font-mono text-[var(--badge-success-text)] mt-1">
                   INR {grandTripTotal.toFixed(2)}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-300 mt-1 font-medium">
+                <div className="flex items-center gap-3 text-xs text-[var(--text-primary)] mt-1 font-medium">
                   <span className="font-mono">{new Date(activeTrip.start_date).toDateString()} - {new Date(activeTrip.end_date).toDateString()}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 font-medium">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-[var(--text-primary)] mt-3 pt-3 border-t border-[var(--border-default)] font-medium">
                   <div>Purpose: <strong className="text-white font-semibold">{activeTrip.purpose}</strong></div>
                   <div>Trip Location: <strong className="text-white font-semibold">{activeTrip.start_point} to {activeTrip.end_point}</strong></div>
-                  <div>Currency: <strong className="font-mono text-emerald-400">{activeTrip.currency || 'INR'}</strong></div>
+                  <div>Currency: <strong className="font-mono text-[var(--badge-success-text)]">{activeTrip.currency || 'INR'}</strong></div>
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                  activeTrip.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                  activeTrip.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                  activeTrip.status === 'DRAFT' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                  'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  activeTrip.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                  activeTrip.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                  activeTrip.status === 'DRAFT' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' :
+                  'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                 }`}>
                   {activeTrip.status === 'DRAFT' ? 'Draft Mode' : activeTrip.status}
                 </span>
 
                 {isManagerOrAdmin && (activeTrip.status === 'SUBMITTED' || activeTrip.status === 'PENDING') && (
                   <div className="flex items-center gap-2 pt-1">
-                    <button onClick={() => handleApproveTrip(activeTrip.id)} className="px-3 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-bold">Approve</button>
-                    <button onClick={() => handleRejectTrip(activeTrip.id)} className="px-3 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-bold">Reject</button>
+                    <button onClick={() => handleApproveTrip(activeTrip.id)} className="px-3 py-1 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded-xl text-xs font-bold">Approve</button>
+                    <button onClick={() => handleRejectTrip(activeTrip.id)} className="px-3 py-1 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded-xl text-xs font-bold">Reject</button>
                   </div>
                 )}
               </div>
@@ -2255,16 +2255,16 @@ export const Expenses: React.FC = () => {
           {/* THREE CHILD EXPENSE SECTIONS */}
           <div className="space-y-6">
             {/* 1. TRAVEL EXPENSE SECTION */}
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
                 <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Plane className="w-4 h-4 text-indigo-400" />
+                  <Plane className="w-4 h-4 text-[var(--secondary)]" />
                   <span>Travel Expense</span>
                 </h3>
                 {activeTrip.status === 'DRAFT' && (
                   <button
                     onClick={handleOpenAddTravel}
-                    className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    className="p-1.5 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
                     title="Add Travel Expense"
                   >
                     <Plus className="w-4 h-4" />
@@ -2275,30 +2275,30 @@ export const Expenses: React.FC = () => {
               {(activeTrip.travelExpenses || []).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeTrip.travelExpenses.map((t: any) => (
-                    <div key={t.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
-                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                        <span className="font-bold text-indigo-400 text-xs">{t.transport_mode}</span>
-                        <span className="font-mono text-slate-400">{new Date(t.start_date).toLocaleDateString()} - {new Date(t.end_date).toLocaleDateString()}</span>
+                    <div key={t.id} className="p-4 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] hover:border-[var(--secondary)]/30 rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-2">
+                        <span className="font-bold text-[var(--secondary)] text-xs">{t.transport_mode}</span>
+                        <span className="font-mono text-[var(--text-secondary)]">{new Date(t.start_date).toLocaleDateString()} - {new Date(t.end_date).toLocaleDateString()}</span>
                       </div>
-                      <div className="font-semibold text-slate-200">{t.start_location} → {t.end_location}</div>
-                      <p className="text-slate-400 truncate">{t.purpose}</p>
-                      {t.merchant && <div className="text-[10px] text-slate-500">Merchant: {t.merchant}</div>}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="font-semibold text-[var(--text-primary)]">{t.start_location} → {t.end_location}</div>
+                      <p className="text-[var(--text-secondary)] truncate">{t.purpose}</p>
+                      {t.merchant && <div className="text-[10px] text-[var(--text-muted)]">Merchant: {t.merchant}</div>}
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border-default)]">
+                        <span className="font-mono font-bold text-[var(--badge-success-text)] text-sm">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {t.receipt_url && (
                             <button
                               type="button"
                               onClick={() => setActiveViewFile({ url: t.receipt_url, name: `${t.transport_mode || 'Travel'}_Receipt` })}
-                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                              className="px-2 py-0.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] rounded text-[10px] font-bold cursor-pointer transition-colors"
                             >
                               File
                             </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
-                              <button onClick={() => handleOpenEditTravel(t)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => handleDeleteTravelChild(t.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleOpenEditTravel(t)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteTravelChild(t.id)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--action-danger-bg)]"><Trash2 className="w-3.5 h-3.5" /></button>
                             </>
                           )}
                         </div>
@@ -2307,23 +2307,23 @@ export const Expenses: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                <div className="p-6 text-center text-[var(--text-muted)] text-xs italic bg-[var(--bg-surface-muted)] rounded-xl border border-dashed border-[var(--border-default)]">
                   No travel expenses
                 </div>
               )}
             </div>
 
             {/* 2. ACCOMMODATION EXPENSE SECTION */}
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
                 <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Hotel className="w-4 h-4 text-cyan-400" />
+                  <Hotel className="w-4 h-4 text-[var(--primary)]" />
                   <span>Accommodation Expense</span>
                 </h3>
                 {activeTrip.status === 'DRAFT' && (
                   <button
                     onClick={handleOpenAddAccom}
-                    className="p-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    className="p-1.5 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
                     title="Add Accommodation Expense"
                   >
                     <Plus className="w-4 h-4" />
@@ -2334,28 +2334,28 @@ export const Expenses: React.FC = () => {
               {(activeTrip.accommodationExpenses || []).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeTrip.accommodationExpenses.map((a: any) => (
-                    <div key={a.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-cyan-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
-                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                        <span className="font-semibold text-slate-300">Hotel / Lodging</span>
-                        <span className="font-mono text-slate-400">{new Date(a.start_date).toLocaleDateString()} - {new Date(a.end_date).toLocaleDateString()}</span>
+                    <div key={a.id} className="p-4 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] hover:border-[var(--primary)]/30 rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-2">
+                        <span className="font-semibold text-[var(--text-primary)]">Hotel / Lodging</span>
+                        <span className="font-mono text-[var(--text-secondary)]">{new Date(a.start_date).toLocaleDateString()} - {new Date(a.end_date).toLocaleDateString()}</span>
                       </div>
-                      <p className="font-medium text-slate-200">{a.accommodation_details}</p>
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <p className="font-medium text-[var(--text-primary)]">{a.accommodation_details}</p>
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border-default)]">
+                        <span className="font-mono font-bold text-[var(--badge-success-text)] text-sm">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {a.receipt_url && (
                             <button
                               type="button"
                               onClick={() => setActiveViewFile({ url: a.receipt_url, name: 'Accommodation_Receipt' })}
-                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                              className="px-2 py-0.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] rounded text-[10px] font-bold cursor-pointer transition-colors"
                             >
                               File
                             </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
-                              <button onClick={() => handleOpenEditAccom(a)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => handleDeleteAccomChild(a.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleOpenEditAccom(a)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteAccomChild(a.id)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--action-danger-bg)]"><Trash2 className="w-3.5 h-3.5" /></button>
                             </>
                           )}
                         </div>
@@ -2364,23 +2364,23 @@ export const Expenses: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                <div className="p-6 text-center text-[var(--text-muted)] text-xs italic bg-[var(--bg-surface-muted)] rounded-xl border border-dashed border-[var(--border-default)]">
                   No accommodation expenses
                 </div>
               )}
             </div>
 
             {/* 3. OTHER EXPENSE SECTION */}
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
                 <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-amber-400" />
+                  <FileText className="w-4 h-4 text-[var(--badge-warning-text)]" />
                   <span>Other Expense</span>
                 </h3>
                 {activeTrip.status === 'DRAFT' && (
                   <button
                     onClick={handleOpenAddOther}
-                    className="p-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
+                    className="p-1.5 bg-amber-600 hover:bg-[var(--badge-warning-bg)] text-white rounded-lg transition-all shadow flex items-center gap-1 text-xs font-semibold"
                     title="Add Other Expense"
                   >
                     <Plus className="w-4 h-4" />
@@ -2391,29 +2391,29 @@ export const Expenses: React.FC = () => {
               {(activeTrip.otherExpenses || []).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeTrip.otherExpenses.map((o: any) => (
-                    <div key={o.id} className="p-4 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl space-y-2 text-xs transition-all relative group">
-                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                        <span className="font-bold text-amber-400 text-xs">{o.category}</span>
-                        <span className="font-mono text-slate-400">{new Date(o.transaction_date).toLocaleDateString()}</span>
+                    <div key={o.id} className="p-4 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] hover:border-[var(--badge-warning-border)] rounded-xl space-y-2 text-xs transition-all relative group">
+                      <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-2">
+                        <span className="font-bold text-[var(--badge-warning-text)] text-xs">{o.category}</span>
+                        <span className="font-mono text-[var(--text-secondary)]">{new Date(o.transaction_date).toLocaleDateString()}</span>
                       </div>
-                      <p className="font-medium text-slate-200">{o.purpose}</p>
-                      {o.merchant && <div className="text-[10px] text-slate-500">Merchant: {o.merchant}</div>}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                        <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <p className="font-medium text-[var(--text-primary)]">{o.purpose}</p>
+                      {o.merchant && <div className="text-[10px] text-[var(--text-muted)]">Merchant: {o.merchant}</div>}
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border-default)]">
+                        <span className="font-mono font-bold text-[var(--badge-success-text)] text-sm">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {o.receipt_url && (
                             <button
                               type="button"
                               onClick={() => setActiveViewFile({ url: o.receipt_url, name: `${o.category || 'Other'}_Receipt` })}
-                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                              className="px-2 py-0.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] rounded text-[10px] font-bold cursor-pointer transition-colors"
                             >
                               File
                             </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
-                              <button onClick={() => handleOpenEditOther(o)} className="p-1 text-slate-400 hover:text-cyan-400"><Edit className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => handleDeleteOtherChild(o.id)} className="p-1 text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleOpenEditOther(o)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDeleteOtherChild(o.id)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--action-danger-bg)]"><Trash2 className="w-3.5 h-3.5" /></button>
                             </>
                           )}
                         </div>
@@ -2422,7 +2422,7 @@ export const Expenses: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                <div className="p-6 text-center text-[var(--text-muted)] text-xs italic bg-[var(--bg-surface-muted)] rounded-xl border border-dashed border-[var(--border-default)]">
                   No other expenses
                 </div>
               )}
@@ -2430,17 +2430,17 @@ export const Expenses: React.FC = () => {
           </div>
 
           {/* FINAL TRIP SUBMIT BAR */}
-          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+          <div className="p-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-2xl">
             <div>
-              <span className="text-xs text-slate-400 block font-medium uppercase">TOTAL TRIP AMOUNT</span>
-              <span className="text-2xl font-extrabold font-mono text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs text-[var(--text-secondary)] block font-medium uppercase">TOTAL TRIP AMOUNT</span>
+              <span className="text-2xl font-extrabold font-mono text-[var(--badge-success-text)]">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setActiveTrip(null)}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
+                className="px-4 py-2.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl text-xs font-semibold"
               >
                 Back to Claims List
               </button>
@@ -2449,7 +2449,7 @@ export const Expenses: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenFinalSubmitModal}
-                  className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-emerald-500/20"
+                  className="px-6 py-2.5 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl text-xs font-extrabold shadow-xs"
                 >
                   SUBMIT
                 </button>
@@ -2466,17 +2466,17 @@ export const Expenses: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
               onClick={() => handleOpenSingleModal('BUSINESS')}
-              className="p-5 bg-gradient-to-br from-slate-900 to-cyan-950/40 border border-slate-800 hover:border-cyan-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
+              className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--primary)]/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-white transition-all">
+                <div className="p-3 bg-[var(--primary)]/10 text-[var(--primary)] rounded-xl border border-[var(--primary)]/30 group-hover:bg-[var(--primary)] group-hover:text-white transition-all">
                   <Building className="w-6 h-6" />
                 </div>
-                <span className="px-2.5 py-0.5 bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-bold rounded-full">ACTIVE</span>
+                <span className="px-2.5 py-0.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] text-[10px] font-bold rounded-full">ACTIVE</span>
               </div>
               <h3 className="font-bold text-white text-base mb-1">Business Expense</h3>
-              <p className="text-xs text-slate-400 mb-4">Submit food, courier, office supply, or raw material claims</p>
-              <button className="w-full py-2 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white font-semibold text-xs rounded-xl border border-cyan-500/40 transition-all flex items-center justify-center gap-1.5">
+              <p className="text-xs text-[var(--text-secondary)] mb-4">Submit food, courier, office supply, or raw material claims</p>
+              <button className="w-full py-2 bg-[var(--primary)]/20 hover:bg-[var(--primary)] text-[var(--primary)] hover:text-white font-semibold text-xs rounded-xl border border-[var(--primary)]/30 transition-all flex items-center justify-center gap-1.5">
                 <Plus className="w-4 h-4" />
                 <span>New Business Claim</span>
               </button>
@@ -2484,17 +2484,17 @@ export const Expenses: React.FC = () => {
 
             <div
               onClick={() => handleOpenSingleModal('LOCAL_TRAVEL')}
-              className="p-5 bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-slate-800 hover:border-indigo-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
+              className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--primary)]/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                <div className="p-3 bg-[var(--secondary)]/15 text-[var(--secondary)] rounded-xl border border-[var(--secondary)]/30 group-hover:bg-[var(--primary)] group-hover:text-white transition-all">
                   <Navigation className="w-6 h-6" />
                 </div>
-                <span className="px-2.5 py-0.5 bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-bold rounded-full">ACTIVE</span>
+                <span className="px-2.5 py-0.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] text-[10px] font-bold rounded-full">ACTIVE</span>
               </div>
               <h3 className="font-bold text-white text-base mb-1">Local Travel Expense</h3>
-              <p className="text-xs text-slate-400 mb-4">Submit taxi, auto, metro, bus, or field visit travel claims</p>
-              <button className="w-full py-2 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white font-semibold text-xs rounded-xl border border-indigo-500/40 transition-all flex items-center justify-center gap-1.5">
+              <p className="text-xs text-[var(--text-secondary)] mb-4">Submit taxi, auto, metro, bus, or field visit travel claims</p>
+              <button className="w-full py-2 bg-[var(--secondary)]/20 hover:bg-[var(--primary)] text-[var(--secondary)] hover:text-white font-semibold text-xs rounded-xl border border-[var(--secondary)]/30 transition-all flex items-center justify-center gap-1.5">
                 <Plus className="w-4 h-4" />
                 <span>New Local Travel Claim</span>
               </button>
@@ -2502,17 +2502,17 @@ export const Expenses: React.FC = () => {
 
             <div
               onClick={handleOpenCreateTrip}
-              className="p-5 bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-slate-800 hover:border-emerald-500/60 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
+              className="p-5 bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--badge-success-border)] rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-xl group"
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                <div className="p-3 bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] rounded-xl border border-[var(--badge-success-border)] group-hover:bg-[var(--badge-success-bg)] group-hover:text-white transition-all">
                   <MapPin className="w-6 h-6" />
                 </div>
-                <span className="px-2.5 py-0.5 bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-bold rounded-full">ACTIVE</span>
+                <span className="px-2.5 py-0.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] text-[10px] font-bold rounded-full">ACTIVE</span>
               </div>
               <h3 className="font-bold text-white text-base mb-1">Trip Expense</h3>
-              <p className="text-xs text-slate-400 mb-4">Multi-day outstation trips with travel, hotel & other expenses</p>
-              <button className="w-full py-2 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-white font-semibold text-xs rounded-xl border border-emerald-500/40 transition-all flex items-center justify-center gap-1.5">
+              <p className="text-xs text-[var(--text-secondary)] mb-4">Multi-day outstation trips with travel, hotel & other expenses</p>
+              <button className="w-full py-2 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] hover:text-white font-semibold text-xs rounded-xl border border-[var(--badge-success-border)] transition-all flex items-center justify-center gap-1.5">
                 <Plus className="w-4 h-4" />
                 <span>Create New Trip Claim</span>
               </button>
@@ -2520,14 +2520,14 @@ export const Expenses: React.FC = () => {
           </div>
 
           {/* NEW MY EXPENSES SUMMARY SECTION */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-default)] pb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-cyan-400" />
+                  <Receipt className="w-5 h-5 text-[var(--primary)]" />
                   <span>My Expenses Summary</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                   Overview of all your expense claims and their current status
                 </p>
               </div>
@@ -2536,10 +2536,10 @@ export const Expenses: React.FC = () => {
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[...Array(6)].map((_, idx) => (
-                  <div key={idx} className="h-28 bg-slate-950/60 border border-slate-800/60 rounded-xl p-4 space-y-3 animate-pulse">
-                    <div className="h-4 w-20 bg-slate-800 rounded"></div>
-                    <div className="h-5 w-16 bg-slate-800 rounded"></div>
-                    <div className="h-4 w-24 bg-slate-800 rounded"></div>
+                  <div key={idx} className="h-28 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl p-4 space-y-3 animate-pulse">
+                    <div className="h-4 w-20 bg-[var(--bg-surface-muted)] rounded"></div>
+                    <div className="h-5 w-16 bg-[var(--bg-surface-muted)] rounded"></div>
+                    <div className="h-4 w-24 bg-[var(--bg-surface-muted)] rounded"></div>
                   </div>
                 ))}
               </div>
@@ -2554,28 +2554,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter(''); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     !statusFilter
-                      ? 'bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500/80 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--primary)]/80 ring-1 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--primary)]/30 hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-cyan-400">Total Expenses</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">Total Expenses</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      !statusFilter ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-slate-950'
+                      !statusFilter ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]' : 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30 group-hover:bg-[var(--primary)] group-hover:text-[var(--primary-text)]'
                     }`}>
                       <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.total.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.total.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.total.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.total.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-cyan-400 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--primary)] mt-1 truncate">
                       ₹{empSummaryMetrics.total.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${!statusFilter ? 'text-cyan-400 translate-x-0.5' : 'text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${!statusFilter ? 'text-[var(--primary)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--primary)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
 
@@ -2588,28 +2588,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('DRAFT'); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     statusFilter === 'DRAFT'
-                      ? 'bg-gradient-to-br from-amber-950/60 to-slate-900 border-amber-500/80 ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--badge-warning-border)] ring-1 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--badge-warning-border)] hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-amber-400">Drafts</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--badge-warning-text)]">Drafts</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      statusFilter === 'DRAFT' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-amber-500/10 text-amber-400 border-amber-500/20 group-hover:bg-amber-500 group-hover:text-slate-950'
+                      statusFilter === 'DRAFT' ? 'bg-[var(--badge-warning-bg)] text-[var(--primary-text)] border-[var(--badge-warning-border)]' : 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)] group-hover:bg-[var(--badge-warning-bg)] group-hover:text-[var(--primary-text)]'
                     }`}>
                       <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.draft.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.draft.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.draft.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.draft.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-amber-400 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--badge-warning-text)] mt-1 truncate">
                       ₹{empSummaryMetrics.draft.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'DRAFT' ? 'text-amber-400 translate-x-0.5' : 'text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'DRAFT' ? 'text-[var(--badge-warning-text)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--badge-warning-text)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
 
@@ -2622,28 +2622,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('PENDING'); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     statusFilter === 'PENDING' || statusFilter === 'SUBMITTED'
-                      ? 'bg-gradient-to-br from-indigo-950/60 to-slate-900 border-indigo-500/80 ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-indigo-500/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--primary)]/80 ring-1 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--secondary)]/30 hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-indigo-400">Submitted</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--secondary)]">Submitted</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'bg-indigo-500 text-slate-950 border-indigo-400' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 group-hover:bg-indigo-500 group-hover:text-slate-950'
+                      statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]' : 'bg-[var(--secondary)]/15 text-[var(--secondary)] border-[var(--secondary)]/30 group-hover:bg-[var(--primary)] group-hover:text-[var(--primary-text)]'
                     }`}>
                       <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.submitted.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.submitted.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.submitted.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.submitted.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-indigo-400 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--secondary)] mt-1 truncate">
                       ₹{empSummaryMetrics.submitted.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'text-indigo-400 translate-x-0.5' : 'text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'text-[var(--secondary)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--secondary)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
 
@@ -2656,28 +2656,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('APPROVED'); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     statusFilter === 'APPROVED'
-                      ? 'bg-gradient-to-br from-emerald-950/60 to-slate-900 border-emerald-500/80 ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-emerald-500/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--badge-success-border)] ring-1 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--badge-success-border)] hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-emerald-400">Approved</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--badge-success-text)]">Approved</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      statusFilter === 'APPROVED' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-slate-950'
+                      statusFilter === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--primary-text)] border-[var(--badge-success-border)]' : 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)] group-hover:bg-[var(--badge-success-bg)] group-hover:text-[var(--primary-text)]'
                     }`}>
                       <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.approved.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.approved.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.approved.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.approved.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-emerald-400 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--badge-success-text)] mt-1 truncate">
                       ₹{empSummaryMetrics.approved.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'APPROVED' ? 'text-emerald-400 translate-x-0.5' : 'text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'APPROVED' ? 'text-[var(--badge-success-text)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--badge-success-text)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
 
@@ -2690,28 +2690,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('REJECTED'); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     statusFilter === 'REJECTED'
-                      ? 'bg-gradient-to-br from-rose-950/60 to-slate-900 border-rose-500/80 ring-1 ring-rose-500/50 shadow-lg shadow-rose-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-rose-500/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--action-danger-bg)]/30 ring-1 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--action-danger-bg)]/30 hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-rose-400">Rejected</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--action-danger-bg)]">Rejected</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      statusFilter === 'REJECTED' ? 'bg-rose-500 text-slate-950 border-rose-400' : 'bg-rose-500/10 text-rose-400 border-rose-500/20 group-hover:bg-rose-500 group-hover:text-slate-950'
+                      statusFilter === 'REJECTED' ? 'bg-[var(--action-danger-bg)] text-[var(--primary-text)] border-[var(--action-danger-bg)]/30' : 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30 group-hover:bg-[var(--action-danger-bg)] group-hover:text-[var(--primary-text)]'
                     }`}>
                       <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.rejected.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.rejected.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.rejected.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.rejected.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-rose-400 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--action-danger-bg)] mt-1 truncate">
                       ₹{empSummaryMetrics.rejected.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'REJECTED' ? 'text-rose-400 translate-x-0.5' : 'text-slate-600 group-hover:text-rose-400 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'REJECTED' ? 'text-[var(--action-danger-bg)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--action-danger-bg)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
 
@@ -2724,28 +2724,28 @@ export const Expenses: React.FC = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('CANCELLED'); }}
                   className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
                     statusFilter === 'CANCELLED'
-                      ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-500/80 ring-1 ring-slate-400/50 shadow-lg shadow-slate-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-600/40 hover:bg-slate-900/60'
+                      ? 'bg-[var(--bg-surface)] border-[var(--border-default)] ring-1 ring-[var(--border-default)] shadow-lg shadow-xs scale-[1.01]'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:border-[var(--border-default)] hover:bg-[var(--bg-surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400">Cancelled</span>
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">Cancelled</span>
                     <div className={`p-1.5 rounded-lg border transition-colors ${
-                      statusFilter === 'CANCELLED' ? 'bg-slate-400 text-slate-950 border-slate-300' : 'bg-slate-800 text-slate-400 border-slate-700 group-hover:bg-slate-700 group-hover:text-white'
+                      statusFilter === 'CANCELLED' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)] group-hover:bg-[var(--bg-surface-hover)] group-hover:text-white'
                     }`}>
                       <Ban className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                      {empSummaryMetrics.cancelled.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.cancelled.count === 1 ? 'Claim' : 'Claims'}</span>
+                      {empSummaryMetrics.cancelled.count} <span className="text-xs font-normal text-[var(--text-secondary)]">{empSummaryMetrics.cancelled.count === 1 ? 'Claim' : 'Claims'}</span>
                     </div>
-                    <div className="text-xs sm:text-sm font-extrabold font-mono text-slate-300 mt-1 truncate">
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-[var(--text-primary)] mt-1 truncate">
                       ₹{empSummaryMetrics.cancelled.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-end">
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'CANCELLED' ? 'text-slate-300 translate-x-0.5' : 'text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'CANCELLED' ? 'text-[var(--text-primary)] translate-x-0.5' : 'text-[var(--text-muted)] group-hover:text-[var(--text-primary)] group-hover:translate-x-0.5'}`} />
                   </div>
                 </div>
               </div>
@@ -2753,14 +2753,14 @@ export const Expenses: React.FC = () => {
           </div>
 
           {/* Main Table Tabs */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-5 space-y-4 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] pb-3">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-1 bg-[var(--bg-surface-muted)] p-1 rounded-xl border border-[var(--border-default)]">
                   <button
                     onClick={() => setClaimCategoryTab('SINGLE_EXPENSES')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      claimCategoryTab === 'SINGLE_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                      claimCategoryTab === 'SINGLE_EXPENSES' ? 'bg-[var(--primary)] text-white shadow' : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
                     Single Claims (Business & Local Travel)
@@ -2768,7 +2768,7 @@ export const Expenses: React.FC = () => {
                   <button
                     onClick={() => setClaimCategoryTab('TRIP_EXPENSES')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      claimCategoryTab === 'TRIP_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                      claimCategoryTab === 'TRIP_EXPENSES' ? 'bg-[var(--primary)] text-white shadow' : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
                     Trip Expenses ({displayedTrips.length})
@@ -2776,11 +2776,11 @@ export const Expenses: React.FC = () => {
                 </div>
 
                 {isManagerOrAdmin && (
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-1 bg-[var(--bg-surface-muted)] p-1 rounded-xl border border-[var(--border-default)]">
                     <button
                       onClick={() => setActiveRoleTab('WORKFORCE')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        activeRoleTab === 'WORKFORCE' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                        activeRoleTab === 'WORKFORCE' ? 'bg-[var(--primary)] text-white shadow' : 'text-[var(--text-secondary)] hover:text-white'
                       }`}
                     >
                       Workforce Claims ({allExpenses.length + allTrips.length})
@@ -2788,7 +2788,7 @@ export const Expenses: React.FC = () => {
                     <button
                       onClick={() => setActiveRoleTab('MY_CLAIMS')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        activeRoleTab === 'MY_CLAIMS' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                        activeRoleTab === 'MY_CLAIMS' ? 'bg-[var(--primary)] text-white shadow' : 'text-[var(--text-secondary)] hover:text-white'
                       }`}
                     >
                       My Claims ({myExpenses.length + myTrips.length})
@@ -2801,7 +2801,7 @@ export const Expenses: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="px-3 py-1.5 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50"
                 >
                   <option value="">All Expenses</option>
                   <option value="DRAFT">DRAFT</option>
@@ -2814,9 +2814,9 @@ export const Expenses: React.FC = () => {
             </div>
 
             {claimCategoryTab === 'SINGLE_EXPENSES' && (
-              <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+              <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl">
+                <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                  <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] uppercase font-semibold text-[10px] border-b border-[var(--border-default)]">
                     <tr>
                       {activeRoleTab === 'WORKFORCE' && <th className="p-3">Employee</th>}
                       <th className="p-3">Type</th>
@@ -2829,57 +2829,57 @@ export const Expenses: React.FC = () => {
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {displayedSingleExpenses.map(ex => (
-                      <tr key={ex.id} className="hover:bg-slate-800/40">
+                      <tr key={ex.id} className="hover:bg-[var(--bg-surface-muted)]">
                         {activeRoleTab === 'WORKFORCE' && (
-                          <td className="p-3 font-semibold text-slate-200">
+                          <td className="p-3 font-semibold text-[var(--text-primary)]">
                             <div>{ex.employee_name}</div>
-                            <span className="text-[10px] font-mono text-slate-500">{ex.employee_code}</span>
+                            <span className="text-[10px] font-mono text-[var(--text-muted)]">{ex.employee_code}</span>
                           </td>
                         )}
                         <td className="p-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                             ex.expense_type === 'LOCAL_TRAVEL'
-                              ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
-                              : 'bg-cyan-950 text-cyan-300 border-cyan-800'
+                              ? 'bg-[var(--secondary)]/15 text-[var(--secondary)] border-[var(--secondary)]/30'
+                              : 'bg-[var(--bg-surface-muted)] text-[var(--primary)] border-[var(--primary)]'
                           }`}>
                             {ex.expense_type === 'LOCAL_TRAVEL' ? 'Local Travel' : 'Business'}
                           </span>
                         </td>
-                        <td className="p-3 font-mono text-slate-400">{ex.transaction_date ? new Date(ex.transaction_date).toLocaleDateString() : '-'}</td>
-                        <td className="p-3 font-semibold text-slate-200">{ex.category || ex.category_name}</td>
+                        <td className="p-3 font-mono text-[var(--text-secondary)]">{ex.transaction_date ? new Date(ex.transaction_date).toLocaleDateString() : '-'}</td>
+                        <td className="p-3 font-semibold text-[var(--text-primary)]">{ex.category || ex.category_name}</td>
                         <td className="p-3 max-w-[200px] truncate">
-                          {ex.merchant && <span className="font-semibold text-slate-200 block">{ex.merchant}</span>}
+                          {ex.merchant && <span className="font-semibold text-[var(--text-primary)] block">{ex.merchant}</span>}
                           {ex.expense_type === 'LOCAL_TRAVEL' && ex.start_location && (
-                            <span className="text-[10px] text-slate-400 block truncate">
+                            <span className="text-[10px] text-[var(--text-secondary)] block truncate">
                               {ex.start_location} → {ex.end_location} ({ex.transport_mode})
                             </span>
                           )}
                         </td>
-                        <td className="p-3 font-mono font-bold text-emerald-400">
+                        <td className="p-3 font-mono font-bold text-[var(--badge-success-text)]">
                           ₹{Number(ex.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="p-3 font-mono text-[10px]">{ex.bucket || 'Primary'}</td>
                         <td className="p-3">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            ex.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                            ex.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                            ex.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                            ex.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                            'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
+                            ex.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                            ex.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                            ex.status === 'CANCELLED' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' :
+                            ex.status === 'DRAFT' ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]' :
+                            'bg-[var(--secondary)]/15 text-[var(--secondary)] border-[var(--secondary)]/30'
                           }`}>
                             {ex.status === 'PENDING' ? 'SUBMITTED' : ex.status}
                           </span>
                         </td>
                         <td className="p-3 text-right space-x-1">
-                          <button onClick={() => setSelectedSingleExpense(ex)} className="p-1 text-slate-400 hover:text-cyan-400" title="View Details">
+                          <button onClick={() => setSelectedSingleExpense(ex)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]" title="View Details">
                             <Eye className="w-4 h-4" />
                           </button>
                           {user?.role === 'SUPER_ADMIN' && (
                             <button
                               onClick={() => { setDeleteConfirmExpense(ex); setDeleteInputText(''); }}
-                              className="p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded transition-colors inline-block"
+                              className="p-1 text-[var(--action-danger-bg)] hover:text-[var(--action-danger-bg)] hover:bg-[var(--action-danger-soft)] rounded transition-colors inline-block"
                               title="Delete Expense Permanently (Super Admin Only)"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -2887,8 +2887,8 @@ export const Expenses: React.FC = () => {
                           )}
                           {activeRoleTab === 'WORKFORCE' && user?.employeeId !== ex.employee_id && (ex.status === 'SUBMITTED' || ex.status === 'PENDING') && (
                             <>
-                              <button onClick={() => handleApproveSingle(ex.id)} className="px-2 py-0.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
-                              <button onClick={() => handleRejectSingle(ex.id)} className="px-2 py-0.5 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">Reject</button>
+                              <button onClick={() => handleApproveSingle(ex.id)} className="px-2 py-0.5 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded text-[10px] font-bold">Approve</button>
+                              <button onClick={() => handleRejectSingle(ex.id)} className="px-2 py-0.5 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold">Reject</button>
                             </>
                           )}
                         </td>
@@ -2896,14 +2896,14 @@ export const Expenses: React.FC = () => {
                     ))}
                     {loading ? (
                       <tr>
-                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-slate-400 font-medium">
-                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-400" />
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-[var(--text-secondary)] font-medium">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--primary)]" />
                           <span>Loading claims...</span>
                         </td>
                       </tr>
                     ) : displayedSingleExpenses.length === 0 ? (
                       <tr>
-                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-slate-400 italic font-medium">
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-[var(--text-secondary)] italic font-medium">
                           {statusFilter === 'APPROVED' ? 'No approved expenses yet. Submit an expense claim and it will appear here once approved.' :
                            statusFilter === 'DRAFT' ? 'No draft expenses. Create a claim to save it as a draft.' :
                            statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted expenses currently under review.' :
@@ -2919,9 +2919,9 @@ export const Expenses: React.FC = () => {
             )}
 
             {claimCategoryTab === 'TRIP_EXPENSES' && (
-              <div className="overflow-x-auto border border-slate-800 rounded-xl">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+              <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl">
+                <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                  <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] uppercase font-semibold text-[10px] border-b border-[var(--border-default)]">
                     <tr>
                       {activeRoleTab === 'WORKFORCE' && <th className="p-3">Employee</th>}
                       <th className="p-3">Trip Purpose</th>
@@ -2933,33 +2933,33 @@ export const Expenses: React.FC = () => {
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {displayedTrips.map(tr => (
-                      <tr key={tr.id} className="hover:bg-slate-800/40">
+                      <tr key={tr.id} className="hover:bg-[var(--bg-surface-muted)]">
                         {activeRoleTab === 'WORKFORCE' && (
-                          <td className="p-3 font-semibold text-slate-200">
+                          <td className="p-3 font-semibold text-[var(--text-primary)]">
                             <div>{tr.employee_name}</div>
-                            <span className="text-[10px] font-mono text-slate-500">{tr.employee_code}</span>
+                            <span className="text-[10px] font-mono text-[var(--text-muted)]">{tr.employee_code}</span>
                           </td>
                         )}
                         <td className="p-3 font-bold text-white">{tr.purpose}</td>
-                        <td className="p-3 text-cyan-300 font-semibold">{tr.start_point} → {tr.end_point}</td>
-                        <td className="p-3 font-mono text-slate-400">{new Date(tr.start_date).toLocaleDateString()} — {new Date(tr.end_date).toLocaleDateString()}</td>
+                        <td className="p-3 text-[var(--primary)] font-semibold">{tr.start_point} → {tr.end_point}</td>
+                        <td className="p-3 font-mono text-[var(--text-secondary)]">{new Date(tr.start_date).toLocaleDateString()} — {new Date(tr.end_date).toLocaleDateString()}</td>
                         <td className="p-3 space-x-1">
-                          <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-indigo-400 font-mono text-[10px] rounded">{tr.travel_count || 0} Travel</span>
-                          <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-cyan-400 font-mono text-[10px] rounded">{tr.accom_count || 0} Hotel</span>
-                          <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-amber-400 font-mono text-[10px] rounded">{tr.other_count || 0} Other</span>
+                          <span className="px-2 py-0.5 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] text-[var(--secondary)] font-mono text-[10px] rounded">{tr.travel_count || 0} Travel</span>
+                          <span className="px-2 py-0.5 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] text-[var(--primary)] font-mono text-[10px] rounded">{tr.accom_count || 0} Hotel</span>
+                          <span className="px-2 py-0.5 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] text-[var(--badge-warning-text)] font-mono text-[10px] rounded">{tr.other_count || 0} Other</span>
                         </td>
-                        <td className="p-3 font-mono font-extrabold text-emerald-400">
+                        <td className="p-3 font-mono font-extrabold text-[var(--badge-success-text)]">
                           ₹{Number(tr.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="p-3">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            tr.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                            tr.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                            tr.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                            tr.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                            'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
+                            tr.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                            tr.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                            tr.status === 'CANCELLED' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' :
+                            tr.status === 'DRAFT' ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]' :
+                            'bg-[var(--secondary)]/15 text-[var(--secondary)] border-[var(--secondary)]/30'
                           }`}>
                             {tr.status === 'PENDING' ? 'SUBMITTED' : tr.status}
                           </span>
@@ -2967,7 +2967,7 @@ export const Expenses: React.FC = () => {
                         <td className="p-3 text-right space-x-1">
                           <button
                             onClick={() => loadTripDetails(tr.id)}
-                            className="px-2.5 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded text-[10px] font-bold flex items-center gap-1 inline-flex"
+                            className="px-2.5 py-1 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] border border-[var(--primary)] text-[var(--primary)] rounded text-[10px] font-bold flex items-center gap-1 inline-flex"
                           >
                             <span>{tr.status === 'DRAFT' ? 'Manage Trip' : 'Trip Details'}</span>
                             <ChevronRight className="w-3 h-3" />
@@ -2975,8 +2975,8 @@ export const Expenses: React.FC = () => {
 
                           {activeRoleTab === 'WORKFORCE' && user?.employeeId !== tr.employee_id && (tr.status === 'SUBMITTED' || tr.status === 'PENDING') && (
                             <>
-                              <button onClick={() => handleApproveTrip(tr.id)} className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold">Approve</button>
-                              <button onClick={() => handleRejectTrip(tr.id)} className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold">Reject</button>
+                              <button onClick={() => handleApproveTrip(tr.id)} className="px-2 py-1 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded text-[10px] font-bold">Approve</button>
+                              <button onClick={() => handleRejectTrip(tr.id)} className="px-2 py-1 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold">Reject</button>
                             </>
                           )}
 
@@ -2986,10 +2986,10 @@ export const Expenses: React.FC = () => {
                                 setDeleteConfirmTrip(tr);
                                 setDeleteInputText('');
                               }}
-                              className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
                               title="Delete Trip Expense (Super Admin)"
                             >
-                              <Trash2 className="w-3 h-3 text-rose-400" />
+                              <Trash2 className="w-3 h-3 text-[var(--action-danger-bg)]" />
                               <span>Delete</span>
                             </button>
                           )}
@@ -2998,14 +2998,14 @@ export const Expenses: React.FC = () => {
                     ))}
                     {loading ? (
                       <tr>
-                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-slate-400 font-medium">
-                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-400" />
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-[var(--text-secondary)] font-medium">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--primary)]" />
                           <span>Loading trip claims...</span>
                         </td>
                       </tr>
                     ) : displayedTrips.length === 0 ? (
                       <tr>
-                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-slate-400 italic font-medium">
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-[var(--text-secondary)] italic font-medium">
                           {statusFilter === 'APPROVED' ? 'No approved trip expenses yet.' :
                            statusFilter === 'DRAFT' ? 'No draft trip expenses. Create a trip to save it as a draft.' :
                            statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted trip expenses under review.' :
@@ -3029,13 +3029,13 @@ export const Expenses: React.FC = () => {
 
       {/* ALERT MODAL: TRIP INITIATED */}
       {showInitiatedAlert && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center z-[5001]">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center z-[5001]">
             <h3 className="font-bold text-lg text-white">Trip Expense Initiated</h3>
-            <p className="text-xs text-slate-300">You can add all the trip related expenses here.</p>
+            <p className="text-xs text-[var(--text-primary)]">You can add all the trip related expenses here.</p>
             <button
               onClick={() => setShowInitiatedAlert(false)}
-              className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-extrabold text-xs shadow-lg"
+              className="px-6 py-2 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl font-extrabold text-xs shadow-lg"
             >
               OKAY
             </button>
@@ -3046,19 +3046,19 @@ export const Expenses: React.FC = () => {
 
       {/* 1. SINGLE CLAIM MODAL */}
       {showSingleModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                {singleClaimType === 'BUSINESS' ? <Building className="w-5 h-5 text-cyan-400" /> : <Navigation className="w-5 h-5 text-indigo-400" />}
+                {singleClaimType === 'BUSINESS' ? <Building className="w-5 h-5 text-[var(--primary)]" /> : <Navigation className="w-5 h-5 text-[var(--secondary)]" />}
                 <span>{singleClaimType === 'BUSINESS' ? 'Business Expense Claim' : 'Local Travel Expense Claim'}</span>
               </h3>
-              <button type="button" onClick={() => setShowSingleModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowSingleModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
@@ -3066,44 +3066,44 @@ export const Expenses: React.FC = () => {
             <form onSubmit={e => { e.preventDefault(); handleSubmitSingleClaim('SUBMITTED'); }} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Transaction Date *</label>
-                  <input type="date" required value={singleFormData.transactionDate} onChange={e => setSingleFormData({ ...singleFormData, transactionDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Transaction Date *</label>
+                  <input type="date" required value={singleFormData.transactionDate} onChange={e => setSingleFormData({ ...singleFormData, transactionDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Category *</label>
-                  <select required value={singleFormData.category} onChange={e => setSingleFormData({ ...singleFormData, category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Category *</label>
+                  <select required value={singleFormData.category} onChange={e => setSingleFormData({ ...singleFormData, category: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]">
                     {(singleClaimType === 'BUSINESS' ? BUSINESS_CATEGORIES : LOCAL_TRAVEL_CATEGORIES).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose / Note *</label>
-                <textarea required rows={2} value={singleFormData.description} onChange={e => setSingleFormData({ ...singleFormData, description: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Reason for expense..." />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Purpose / Note *</label>
+                <textarea required rows={2} value={singleFormData.description} onChange={e => setSingleFormData({ ...singleFormData, description: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Reason for expense..." />
               </div>
 
               {singleClaimType === 'LOCAL_TRAVEL' && (
-                <div className="space-y-3 p-3 bg-indigo-950/30 border border-indigo-800/40 rounded-xl">
+                <div className="space-y-3 p-3 bg-[var(--secondary)]/15 border border-[var(--secondary)]/30/40 rounded-xl">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-indigo-300 mb-1 font-medium">Mode of Transport *</label>
-                      <select required value={singleFormData.transportMode} onChange={e => setSingleFormData({ ...singleFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                      <label className="block text-[var(--secondary)] mb-1 font-medium">Mode of Transport *</label>
+                      <select required value={singleFormData.transportMode} onChange={e => setSingleFormData({ ...singleFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]">
                         {TRANSPORT_MODES.map(mode => <option key={mode} value={mode}>{mode}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-indigo-300 mb-1 font-medium">Merchant *</label>
-                      <input type="text" required value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Uber / Ola" />
+                      <label className="block text-[var(--secondary)] mb-1 font-medium">Merchant *</label>
+                      <input type="text" required value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Uber / Ola" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-indigo-300 mb-1 font-medium">Start Location *</label>
-                      <input type="text" required value={singleFormData.startLocation} onChange={e => setSingleFormData({ ...singleFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="HQ Office" />
+                      <label className="block text-[var(--secondary)] mb-1 font-medium">Start Location *</label>
+                      <input type="text" required value={singleFormData.startLocation} onChange={e => setSingleFormData({ ...singleFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="HQ Office" />
                     </div>
                     <div>
-                      <label className="block text-indigo-300 mb-1 font-medium">End Location *</label>
-                      <input type="text" required value={singleFormData.endLocation} onChange={e => setSingleFormData({ ...singleFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client Site" />
+                      <label className="block text-[var(--secondary)] mb-1 font-medium">End Location *</label>
+                      <input type="text" required value={singleFormData.endLocation} onChange={e => setSingleFormData({ ...singleFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Client Site" />
                     </div>
                   </div>
                 </div>
@@ -3111,35 +3111,35 @@ export const Expenses: React.FC = () => {
 
               {singleClaimType === 'BUSINESS' && (
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Merchant / Vendor</label>
-                  <input type="text" value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Amazon / Vendor Name" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Merchant / Vendor</label>
+                  <input type="text" value={singleFormData.merchant} onChange={e => setSingleFormData({ ...singleFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Amazon / Vendor Name" />
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={singleFormData.currency} onChange={e => setSingleFormData({ ...singleFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={singleFormData.currency} onChange={e => setSingleFormData({ ...singleFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                     <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" required value={singleFormData.amount} onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={singleFormData.amount} onChange={e => setSingleFormData({ ...singleFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Expense Bucket *</label>
-                <select value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Expense Bucket *</label>
+                <select value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                   {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
               </div>
 
               {/* ATTACHMENT UPLOAD */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <label className="block text-slate-300 font-medium flex items-center gap-2">
-                  <Upload className="w-4 h-4 text-cyan-400" />
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-2">
+                <label className="block text-[var(--text-primary)] font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-[var(--primary)]" />
                   <span>Receipt / Document Attachment</span>
                 </label>
                 <input
@@ -3151,20 +3151,20 @@ export const Expenses: React.FC = () => {
                       setAttachment({ name: file.name, url: URL.createObjectURL(file) });
                     }
                   }}
-                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700"
+                  className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--bg-surface-muted)] file:text-[var(--primary)] hover:file:bg-[var(--bg-surface)]"
                 />
                 {attachment && (
-                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-primary)] bg-[var(--bg-surface)] p-2 rounded-lg">
                     <span className="truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-[var(--action-danger-bg)] hover:text-[var(--action-danger-bg)] font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 font-bold">
-                <button type="button" onClick={() => setShowSingleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="button" disabled={submitting} onClick={() => handleSubmitSingleClaim('DRAFT')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl">Save as Draft</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow uppercase">SUBMIT</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)] font-bold">
+                <button type="button" onClick={() => setShowSingleModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="button" disabled={submitting} onClick={() => handleSubmitSingleClaim('DRAFT')} className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl">Save as Draft</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-xl shadow uppercase">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -3174,61 +3174,61 @@ export const Expenses: React.FC = () => {
 
       {/* 2. CREATE PARENT TRIP MODAL */}
       {showCreateTripModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-400" />
+                <MapPin className="w-5 h-5 text-[var(--badge-success-text)]" />
                 <span>Trip Expense</span>
               </h3>
-              <button type="button" onClick={() => setShowCreateTripModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowCreateTripModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
             <form onSubmit={handleCreateTripDraft} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
-                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client visit and business meetings" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Client visit and business meetings" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Point *</label>
-                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Delhi" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Point *</label>
+                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Delhi" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Point *</label>
-                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Mumbai" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Point *</label>
+                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Mumbai" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
-                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Date *</label>
+                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
-                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Date *</label>
+                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                   <option value="INR">Indian Rupee</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowCreateTripModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold shadow uppercase">SUBMIT</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
+                <button type="button" onClick={() => setShowCreateTripModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl font-bold shadow uppercase">SUBMIT</button>
               </div>
             </form>
           </div>
@@ -3238,61 +3238,61 @@ export const Expenses: React.FC = () => {
 
       {/* EDIT PARENT TRIP DETAILS MODAL */}
       {showEditTripModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Edit className="w-5 h-5 text-cyan-400" />
+                <Edit className="w-5 h-5 text-[var(--primary)]" />
                 <span>Edit Trip Details</span>
               </h3>
-              <button type="button" onClick={() => setShowEditTripModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowEditTripModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
             <form onSubmit={handleUpdateTripDraft} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
-                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={tripFormData.purpose} onChange={e => setTripFormData({ ...tripFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Point *</label>
-                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Point *</label>
+                  <input type="text" required value={tripFormData.startPoint} onChange={e => setTripFormData({ ...tripFormData, startPoint: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Point *</label>
-                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Point *</label>
+                  <input type="text" required value={tripFormData.endPoint} onChange={e => setTripFormData({ ...tripFormData, endPoint: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
-                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Date *</label>
+                  <input type="date" required value={tripFormData.startDate} onChange={e => setTripFormData({ ...tripFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
-                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Date *</label>
+                  <input type="date" required value={tripFormData.endDate} onChange={e => setTripFormData({ ...tripFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                   <option value="INR">Indian Rupee</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowEditTripModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-bold shadow">Save Changes</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
+                <button type="button" onClick={() => setShowEditTripModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-xl font-bold shadow">Save Changes</button>
               </div>
             </form>
           </div>
@@ -3302,19 +3302,19 @@ export const Expenses: React.FC = () => {
 
       {/* 3. ADD / EDIT TRAVEL EXPENSE CHILD MODAL */}
       {showTravelModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Plane className="w-5 h-5 text-indigo-400" />
+                <Plane className="w-5 h-5 text-[var(--secondary)]" />
                 <span>Travel Expense</span>
               </h3>
-              <button type="button" onClick={() => setShowTravelModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowTravelModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
@@ -3322,66 +3322,66 @@ export const Expenses: React.FC = () => {
             <form onSubmit={handleSubmitTravelChild} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Date *</label>
-                  <input type="date" required value={travelFormData.startDate} onChange={e => setTravelFormData({ ...travelFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Date *</label>
+                  <input type="date" required value={travelFormData.startDate} onChange={e => setTravelFormData({ ...travelFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Date *</label>
-                  <input type="date" required value={travelFormData.endDate} onChange={e => setTravelFormData({ ...travelFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Date *</label>
+                  <input type="date" required value={travelFormData.endDate} onChange={e => setTravelFormData({ ...travelFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Mode of Transport *</label>
-                <select value={travelFormData.transportMode} onChange={e => setTravelFormData({ ...travelFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Mode of Transport *</label>
+                <select value={travelFormData.transportMode} onChange={e => setTravelFormData({ ...travelFormData, transportMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]">
                   {TRANSPORT_MODES.map(mode => <option key={mode} value={mode}>{mode}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose *</label>
-                <textarea required rows={2} value={travelFormData.purpose} onChange={e => setTravelFormData({ ...travelFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Flight from Delhi to Mumbai" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Purpose *</label>
+                <textarea required rows={2} value={travelFormData.purpose} onChange={e => setTravelFormData({ ...travelFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Flight from Delhi to Mumbai" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Start Location *</label>
-                  <input type="text" required value={travelFormData.startLocation} onChange={e => setTravelFormData({ ...travelFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="DEL Airport" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Start Location *</label>
+                  <input type="text" required value={travelFormData.startLocation} onChange={e => setTravelFormData({ ...travelFormData, startLocation: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="DEL Airport" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">End Location *</label>
-                  <input type="text" required value={travelFormData.endLocation} onChange={e => setTravelFormData({ ...travelFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="BOM Airport" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">End Location *</label>
+                  <input type="text" required value={travelFormData.endLocation} onChange={e => setTravelFormData({ ...travelFormData, endLocation: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="BOM Airport" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Merchant / Airline</label>
-                  <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Indigo / Air India" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Merchant / Airline</label>
+                  <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Indigo / Air India" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Distance (Km)</label>
-                  <input type="number" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" placeholder="0" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Distance (Km)</label>
+                  <input type="number" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" placeholder="0" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={travelFormData.currency} onChange={e => setTravelFormData({ ...travelFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={travelFormData.currency} onChange={e => setTravelFormData({ ...travelFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                     <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={travelFormData.amount} onChange={e => setTravelFormData({ ...travelFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
               {/* ATTACHMENT UPLOAD */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <label className="block text-slate-300 font-medium flex items-center gap-2">
-                  <Upload className="w-4 h-4 text-indigo-400" />
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-2">
+                <label className="block text-[var(--text-primary)] font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-[var(--secondary)]" />
                   <span>Ticket / Boarding Pass Attachment</span>
                 </label>
                 <input
@@ -3393,19 +3393,19 @@ export const Expenses: React.FC = () => {
                       setAttachment({ name: file.name, url: URL.createObjectURL(file) });
                     }
                   }}
-                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-400 hover:file:bg-slate-700"
+                  className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--bg-surface-muted)] file:text-[var(--secondary)] hover:file:bg-[var(--bg-surface)]"
                 />
                 {attachment && (
-                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-primary)] bg-[var(--bg-surface)] p-2 rounded-lg">
                     <span className="truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-[var(--action-danger-bg)] hover:text-[var(--action-danger-bg)] font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
+                <button type="button" onClick={() => setShowTravelModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
@@ -3415,19 +3415,19 @@ export const Expenses: React.FC = () => {
 
       {/* 4. ADD / EDIT ACCOMMODATION EXPENSE CHILD MODAL */}
       {showAccomModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Hotel className="w-5 h-5 text-cyan-400" />
+                <Hotel className="w-5 h-5 text-[var(--primary)]" />
                 <span>Accommodation Expense</span>
               </h3>
-              <button type="button" onClick={() => setShowAccomModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowAccomModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
@@ -3435,37 +3435,37 @@ export const Expenses: React.FC = () => {
             <form onSubmit={handleSubmitAccomChild} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Check-In Date *</label>
-                  <input type="date" required value={accomFormData.startDate} onChange={e => setAccomFormData({ ...accomFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Check-In Date *</label>
+                  <input type="date" required value={accomFormData.startDate} onChange={e => setAccomFormData({ ...accomFormData, startDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Check-Out Date *</label>
-                  <input type="date" required value={accomFormData.endDate} onChange={e => setAccomFormData({ ...accomFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Check-Out Date *</label>
+                  <input type="date" required value={accomFormData.endDate} onChange={e => setAccomFormData({ ...accomFormData, endDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Hotel Name & Details *</label>
-                <textarea required rows={2} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Taj Hotel Mumbai - Deluxe Room" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Hotel Name & Details *</label>
+                <textarea required rows={2} value={accomFormData.accommodationDetails} onChange={e => setAccomFormData({ ...accomFormData, accommodationDetails: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Taj Hotel Mumbai - Deluxe Room" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={accomFormData.currency} onChange={e => setAccomFormData({ ...accomFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={accomFormData.currency} onChange={e => setAccomFormData({ ...accomFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                     <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={accomFormData.amount} onChange={e => setAccomFormData({ ...accomFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
               {/* ATTACHMENT UPLOAD */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <label className="block text-slate-300 font-medium flex items-center gap-2">
-                  <Upload className="w-4 h-4 text-cyan-400" />
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-2">
+                <label className="block text-[var(--text-primary)] font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-[var(--primary)]" />
                   <span>Hotel Receipt Attachment</span>
                 </label>
                 <input
@@ -3477,19 +3477,19 @@ export const Expenses: React.FC = () => {
                       setAttachment({ name: file.name, url: URL.createObjectURL(file) });
                     }
                   }}
-                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700"
+                  className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--bg-surface-muted)] file:text-[var(--primary)] hover:file:bg-[var(--bg-surface)]"
                 />
                 {attachment && (
-                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-primary)] bg-[var(--bg-surface)] p-2 rounded-lg">
                     <span className="truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-[var(--action-danger-bg)] hover:text-[var(--action-danger-bg)] font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
+                <button type="button" onClick={() => setShowAccomModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
@@ -3499,19 +3499,19 @@ export const Expenses: React.FC = () => {
 
       {/* 5. ADD / EDIT OTHER EXPENSE CHILD MODAL */}
       {showOtherModal && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-amber-400" />
+                <Receipt className="w-5 h-5 text-[var(--badge-warning-text)]" />
                 <span>Other Trip Expense</span>
               </h3>
-              <button type="button" onClick={() => setShowOtherModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowOtherModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
@@ -3519,44 +3519,44 @@ export const Expenses: React.FC = () => {
             <form onSubmit={handleSubmitOtherChild} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Transaction Date *</label>
-                  <input type="date" required value={otherFormData.transactionDate} onChange={e => setOtherFormData({ ...otherFormData, transactionDate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Transaction Date *</label>
+                  <input type="date" required value={otherFormData.transactionDate} onChange={e => setOtherFormData({ ...otherFormData, transactionDate: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Category *</label>
-                  <select value={otherFormData.category} onChange={e => setOtherFormData({ ...otherFormData, category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Category *</label>
+                  <select value={otherFormData.category} onChange={e => setOtherFormData({ ...otherFormData, category: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]">
                     {OTHER_EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Merchant / Vendor</label>
-                <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Restaurant Name" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Merchant / Vendor</label>
+                <input type="text" value={otherFormData.merchant} onChange={e => setOtherFormData({ ...otherFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Restaurant Name" />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Purpose / Note *</label>
-                <textarea required rows={2} value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200" placeholder="Client dinner expense" />
+                <label className="block text-[var(--text-primary)] mb-1 font-medium">Purpose / Note *</label>
+                <textarea required rows={2} value={otherFormData.purpose} onChange={e => setOtherFormData({ ...otherFormData, purpose: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Client dinner expense" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Currency *</label>
-                  <select value={otherFormData.currency} onChange={e => setOtherFormData({ ...otherFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono">
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={otherFormData.currency} onChange={e => setOtherFormData({ ...otherFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                     <option value="INR">Indian Rupee</option>
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-slate-300 mb-1 font-medium">Amount (₹) *</label>
-                  <input type="number" step="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 font-mono font-bold" placeholder="0.00" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Amount (₹) *</label>
+                  <input type="number" step="0.01" required value={otherFormData.amount} onChange={e => setOtherFormData({ ...otherFormData, amount: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono font-bold" placeholder="0.00" />
                 </div>
               </div>
 
               {/* ATTACHMENT UPLOAD */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <label className="block text-slate-300 font-medium flex items-center gap-2">
-                  <Upload className="w-4 h-4 text-amber-400" />
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-2">
+                <label className="block text-[var(--text-primary)] font-medium flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-[var(--badge-warning-text)]" />
                   <span>Receipt Attachment</span>
                 </label>
                 <input
@@ -3568,19 +3568,19 @@ export const Expenses: React.FC = () => {
                       setAttachment({ name: file.name, url: URL.createObjectURL(file) });
                     }
                   }}
-                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700"
+                  className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--bg-surface-muted)] file:text-[var(--badge-warning-text)] hover:file:bg-[var(--bg-surface)]"
                 />
                 {attachment && (
-                  <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900 p-2 rounded-lg">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-primary)] bg-[var(--bg-surface)] p-2 rounded-lg">
                     <span className="truncate">{attachment.name}</span>
-                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-rose-400 hover:text-rose-300 font-bold">Remove</button>
+                    <button type="button" onClick={() => { setAttachment(null); setRawFile(null); }} className="text-[var(--action-danger-bg)] hover:text-[var(--action-danger-bg)] font-bold">Remove</button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
+                <button type="button" onClick={() => setShowOtherModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-amber-600 hover:bg-[var(--badge-warning-bg)] text-white rounded-xl font-bold shadow uppercase">{editingChild ? 'UPDATE' : 'SUBMIT'}</button>
               </div>
             </form>
           </div>
@@ -3590,46 +3590,46 @@ export const Expenses: React.FC = () => {
 
       {/* 6. FINAL SUBMIT TRIP CONFIRMATION MODAL */}
       {showFinalSubmitModal && createPortal(
-        <div className="fixed inset-0 z-[6000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[6001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[6000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl z-[6001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-[var(--badge-success-text)]" />
                 <span>Confirmation</span>
               </h3>
-              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <p className="text-slate-300 text-sm">Are you sure you want to submit this request?</p>
+              <p className="text-[var(--text-primary)] text-sm">Are you sure you want to submit this request?</p>
               
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2 font-mono">
+              <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl space-y-2 font-mono">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Trip Purpose:</span>
-                  <span className="font-semibold text-slate-200">{activeTrip?.purpose}</span>
+                  <span className="text-[var(--text-secondary)]">Trip Purpose:</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{activeTrip?.purpose}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Travel Expenses:</span>
-                  <span className="font-mono text-indigo-400 font-bold">{activeTrip?.travelExpenses?.length || 0} items</span>
+                  <span className="text-[var(--text-secondary)]">Travel Expenses:</span>
+                  <span className="font-mono text-[var(--secondary)] font-bold">{activeTrip?.travelExpenses?.length || 0} items</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Accommodation Expenses:</span>
-                  <span className="font-mono text-cyan-400 font-bold">{activeTrip?.accommodationExpenses?.length || 0} items</span>
+                  <span className="text-[var(--text-secondary)]">Accommodation Expenses:</span>
+                  <span className="font-mono text-[var(--primary)] font-bold">{activeTrip?.accommodationExpenses?.length || 0} items</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Other Expenses:</span>
-                  <span className="font-mono text-amber-400 font-bold">{activeTrip?.otherExpenses?.length || 0} items</span>
+                  <span className="text-[var(--text-secondary)]">Other Expenses:</span>
+                  <span className="font-mono text-[var(--badge-warning-text)] font-bold">{activeTrip?.otherExpenses?.length || 0} items</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t border-slate-800 text-sm">
-                  <span className="font-bold text-slate-300">Trip Total:</span>
-                  <span className="font-mono font-extrabold text-emerald-400">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                <div className="flex justify-between pt-2 border-t border-[var(--border-default)] text-sm">
+                  <span className="font-bold text-[var(--text-primary)]">Trip Total:</span>
+                  <span className="font-mono font-extrabold text-[var(--badge-success-text)]">₹{grandTripTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 text-xs font-bold">
-              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl">CANCEL</button>
-              <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl shadow uppercase">OKAY</button>
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)] text-xs font-bold">
+              <button type="button" onClick={() => setShowFinalSubmitModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl">CANCEL</button>
+              <button type="button" disabled={submitting} onClick={handleConfirmFinalSubmitTrip} className="px-5 py-2 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl shadow uppercase">OKAY</button>
             </div>
           </div>
         </div>,
@@ -3638,28 +3638,28 @@ export const Expenses: React.FC = () => {
 
       {/* SINGLE EXPENSE DETAIL VIEW MODAL */}
       {selectedSingleExpense && createPortal(
-        <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl w-[min(calc(100vw-24px),540px)] space-y-4 shadow-2xl z-[5001] max-h-[calc(100vh-24px)] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] p-4 sm:p-6 rounded-2xl w-[min(calc(100vw-24px),540px)] space-y-4 shadow-2xl z-[5001] max-h-[calc(100vh-24px)] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-cyan-400 shrink-0" />
+                <Receipt className="w-5 h-5 text-[var(--primary)] shrink-0" />
                 <span>Expense Claim Details</span>
               </h3>
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="p-1 text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="p-1 text-[var(--text-secondary)] hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="space-y-3 text-xs">
               {/* Employee Banner (if employee info is present) */}
               {(selectedSingleExpense.employeeName || selectedSingleExpense.employee_name || selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code) && (
-                <div className="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                <div className="flex items-center gap-3 bg-[var(--bg-surface-muted)] p-3 rounded-xl border border-[var(--border-default)]">
+                  <div className="w-9 h-9 rounded-full bg-[var(--bg-surface)] flex items-center justify-center text-xs font-bold text-white shrink-0">
                     {(selectedSingleExpense.employeeName || selectedSingleExpense.employee_name || 'EM').substring(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-bold text-white truncate">
                       {selectedSingleExpense.employeeName || selectedSingleExpense.employee_name}
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)]">
                       {(selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code) && (
                         <span className="font-mono">{selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code}</span>
                       )}
@@ -3669,11 +3669,11 @@ export const Expenses: React.FC = () => {
                     </div>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
-                    selectedSingleExpense.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
-                    selectedSingleExpense.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
-                    selectedSingleExpense.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                    selectedSingleExpense.status === 'DRAFT' ? 'bg-slate-800 text-slate-300 border-slate-700' :
-                    'bg-amber-950 text-amber-400 border-amber-800'
+                    selectedSingleExpense.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                    selectedSingleExpense.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                    selectedSingleExpense.status === 'CANCELLED' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' :
+                    selectedSingleExpense.status === 'DRAFT' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border-[var(--border-default)]' :
+                    'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                   }`}>
                     {selectedSingleExpense.status === 'PENDING' ? 'SUBMITTED' : selectedSingleExpense.status}
                   </span>
@@ -3681,42 +3681,42 @@ export const Expenses: React.FC = () => {
               )}
 
               {/* Core Financial Details */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800/60">
+              <div className="grid grid-cols-2 gap-3 p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-default)]">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">EXPENSE TYPE</span>
-                  <span className="font-bold text-cyan-400">{selectedSingleExpense.expense_type || selectedSingleExpense.claimType || selectedSingleExpense.expenseType || 'BUSINESS'}</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">EXPENSE TYPE</span>
+                  <span className="font-bold text-[var(--primary)]">{selectedSingleExpense.expense_type || selectedSingleExpense.claimType || selectedSingleExpense.expenseType || 'BUSINESS'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">TRANSACTION DATE</span>
-                  <span className="font-mono text-slate-200">
+                  <span className="text-[var(--text-secondary)] block text-[10px]">TRANSACTION DATE</span>
+                  <span className="font-mono text-[var(--text-primary)]">
                     {selectedSingleExpense.transaction_date || selectedSingleExpense.date
                       ? new Date(selectedSingleExpense.transaction_date || selectedSingleExpense.date).toLocaleDateString()
                       : '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">CATEGORY</span>
-                  <span className="font-semibold text-slate-200">{selectedSingleExpense.category || selectedSingleExpense.category_name || selectedSingleExpense.categoryName || '-'}</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">CATEGORY</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{selectedSingleExpense.category || selectedSingleExpense.category_name || selectedSingleExpense.categoryName || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">AMOUNT</span>
-                  <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(selectedSingleExpense.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">AMOUNT</span>
+                  <span className="font-mono font-bold text-[var(--badge-success-text)] text-sm">₹{Number(selectedSingleExpense.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 {selectedSingleExpense.bucket && (
                   <div>
-                    <span className="text-slate-400 block text-[10px]">BUCKET</span>
-                    <span className="text-slate-300 font-semibold">{selectedSingleExpense.bucket}</span>
+                    <span className="text-[var(--text-secondary)] block text-[10px]">BUCKET</span>
+                    <span className="text-[var(--text-primary)] font-semibold">{selectedSingleExpense.bucket}</span>
                   </div>
                 )}
                 {!selectedSingleExpense.employeeName && !selectedSingleExpense.employee_name && (
                   <div>
-                    <span className="text-slate-400 block text-[10px]">STATUS</span>
+                    <span className="text-[var(--text-secondary)] block text-[10px]">STATUS</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${
-                      selectedSingleExpense.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
-                      selectedSingleExpense.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
-                      selectedSingleExpense.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                      selectedSingleExpense.status === 'DRAFT' ? 'bg-slate-800 text-slate-300 border-slate-700' :
-                      'bg-amber-950 text-amber-400 border-amber-800'
+                      selectedSingleExpense.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                      selectedSingleExpense.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                      selectedSingleExpense.status === 'CANCELLED' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' :
+                      selectedSingleExpense.status === 'DRAFT' ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border-[var(--border-default)]' :
+                      'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                     }`}>
                       {selectedSingleExpense.status === 'PENDING' ? 'SUBMITTED' : selectedSingleExpense.status}
                     </span>
@@ -3725,29 +3725,29 @@ export const Expenses: React.FC = () => {
               </div>
 
               {/* Purpose & Merchant */}
-              <div className="space-y-2 p-3 bg-slate-950 rounded-xl border border-slate-800/60">
+              <div className="space-y-2 p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-default)]">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">PURPOSE / NOTE</span>
-                  <p className="text-slate-200 font-medium whitespace-pre-wrap">{selectedSingleExpense.description || selectedSingleExpense.purpose || '-'}</p>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">PURPOSE / NOTE</span>
+                  <p className="text-[var(--text-primary)] font-medium whitespace-pre-wrap">{selectedSingleExpense.description || selectedSingleExpense.purpose || '-'}</p>
                 </div>
                 {selectedSingleExpense.merchant && (
                   <div>
-                    <span className="text-slate-400 block text-[10px]">MERCHANT / VENDOR</span>
-                    <span className="text-slate-200 font-semibold">{selectedSingleExpense.merchant}</span>
+                    <span className="text-[var(--text-secondary)] block text-[10px]">MERCHANT / VENDOR</span>
+                    <span className="text-[var(--text-primary)] font-semibold">{selectedSingleExpense.merchant}</span>
                   </div>
                 )}
                 {(selectedSingleExpense.expense_type === 'LOCAL_TRAVEL' || selectedSingleExpense.transport_mode || selectedSingleExpense.start_location) && (
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--border-default)]">
                     {selectedSingleExpense.transport_mode && (
                       <div>
-                        <span className="text-slate-400 block text-[10px]">MODE OF TRANSPORT</span>
-                        <span className="text-indigo-300 font-semibold">{selectedSingleExpense.transport_mode}</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">MODE OF TRANSPORT</span>
+                        <span className="text-[var(--secondary)] font-semibold">{selectedSingleExpense.transport_mode}</span>
                       </div>
                     )}
                     {(selectedSingleExpense.start_location || selectedSingleExpense.end_location) && (
                       <div>
-                        <span className="text-slate-400 block text-[10px]">ROUTE</span>
-                        <span className="text-slate-200">{selectedSingleExpense.start_location || '-'} → {selectedSingleExpense.end_location || '-'}</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">ROUTE</span>
+                        <span className="text-[var(--text-primary)]">{selectedSingleExpense.start_location || '-'} → {selectedSingleExpense.end_location || '-'}</span>
                       </div>
                     )}
                   </div>
@@ -3756,12 +3756,12 @@ export const Expenses: React.FC = () => {
 
               {/* Approval Info */}
               {selectedSingleExpense.status === 'APPROVED' && (selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver || selectedSingleExpense.reviewed_at) && (
-                <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-xl space-y-1 text-[11px]">
-                  <span className="font-bold text-[10px] text-emerald-400 block uppercase">APPROVAL DETAILS</span>
-                  <div className="flex flex-wrap items-center justify-between text-slate-300">
+                <div className="p-3 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] rounded-xl space-y-1 text-[11px]">
+                  <span className="font-bold text-[10px] text-[var(--badge-success-text)] block uppercase">APPROVAL DETAILS</span>
+                  <div className="flex flex-wrap items-center justify-between text-[var(--text-primary)]">
                     <span>Approved by: <strong>{selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver || 'Manager'}</strong></span>
                     {selectedSingleExpense.reviewed_at && (
-                      <span className="text-slate-400 font-mono">{new Date(selectedSingleExpense.reviewed_at).toLocaleDateString()}</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{new Date(selectedSingleExpense.reviewed_at).toLocaleDateString()}</span>
                     )}
                   </div>
                 </div>
@@ -3769,11 +3769,11 @@ export const Expenses: React.FC = () => {
 
               {/* Rejection Details */}
               {(selectedSingleExpense.rejection_reason || selectedSingleExpense.rejectionReason) && (
-                <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-xl space-y-1">
-                  <span className="font-bold text-[10px] text-rose-400 block uppercase">REJECTION REASON</span>
+                <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded-xl space-y-1">
+                  <span className="font-bold text-[10px] text-[var(--action-danger-bg)] block uppercase">REJECTION REASON</span>
                   <p className="leading-relaxed">{selectedSingleExpense.rejection_reason || selectedSingleExpense.rejectionReason}</p>
                   {(selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver) && (
-                    <div className="text-[10px] text-slate-400 pt-1">
+                    <div className="text-[10px] text-[var(--text-secondary)] pt-1">
                       Reviewed by: {selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver}
                       {selectedSingleExpense.reviewed_at && ` on ${new Date(selectedSingleExpense.reviewed_at).toLocaleDateString()}`}
                     </div>
@@ -3783,18 +3783,18 @@ export const Expenses: React.FC = () => {
 
               {/* Cancellation Reason */}
               {(selectedSingleExpense.cancellation_reason || selectedSingleExpense.cancellationReason) && (
-                <div className="p-3 bg-slate-800/60 border border-slate-700 text-slate-300 rounded-xl space-y-1">
-                  <span className="font-bold text-[10px] text-slate-400 block uppercase">CANCELLATION REASON</span>
+                <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-xl space-y-1">
+                  <span className="font-bold text-[10px] text-[var(--text-secondary)] block uppercase">CANCELLATION REASON</span>
                   <p>{selectedSingleExpense.cancellation_reason || selectedSingleExpense.cancellationReason}</p>
                 </div>
               )}
 
               {/* Attachment / Receipt View (Works for all statuses) */}
               {(selectedSingleExpense.receipt_url || selectedSingleExpense.receiptUrl || selectedSingleExpense.attachment_url || selectedSingleExpense.attachmentUrl) && (
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 flex items-center justify-between gap-3">
+                <div className="p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-default)] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span className="font-semibold text-slate-200 truncate">
+                    <FileText className="w-4 h-4 text-[var(--primary)] shrink-0" />
+                    <span className="font-semibold text-[var(--text-primary)] truncate">
                       {selectedSingleExpense.attachment_name || selectedSingleExpense.attachmentName || selectedSingleExpense.receipt_name || selectedSingleExpense.receiptName || 'Receipt / Document'}
                     </span>
                   </div>
@@ -3807,7 +3807,7 @@ export const Expenses: React.FC = () => {
                         setActiveViewFile({ url: fileUrl, name: fileName });
                       }
                     }}
-                    className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] border border-[var(--primary)] rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>View File</span>
@@ -3816,20 +3816,20 @@ export const Expenses: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-[var(--border-default)]">
               {isManagerOrAdmin && user?.employeeId !== (selectedSingleExpense.employee_id || selectedSingleExpense.employeeId) && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
                 <>
                   <button
                     type="button"
                     onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleApproveSingle(id); }}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--badge-success-bg)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     Approve Claim
                   </button>
                   <button
                     type="button"
                     onClick={() => { const id = selectedSingleExpense.id; setSelectedSingleExpense(null); handleRejectSingle(id); }}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-bg)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     Reject Claim
                   </button>
@@ -3844,7 +3844,7 @@ export const Expenses: React.FC = () => {
                       setSelectedSingleExpense(null);
                       handleOpenEditSingle(exp);
                     }}
-                    className="w-full sm:w-auto px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full sm:w-auto px-3 py-2.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] border border-[var(--border-default)] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Edit className="w-3.5 h-3.5" />
                     <span>Edit Expense</span>
@@ -3855,7 +3855,7 @@ export const Expenses: React.FC = () => {
                       const exp = selectedSingleExpense;
                       handleDeleteExpenseByEmployee(exp);
                     }}
-                    className="w-full sm:w-auto px-3 py-2.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full sm:w-auto px-3 py-2.5 bg-[var(--action-danger-soft)] hover:bg-rose-900 text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Expense</span>
@@ -3871,13 +3871,13 @@ export const Expenses: React.FC = () => {
                     setDeleteConfirmExpense(exp);
                     setDeleteInputText('');
                   }}
-                  className="w-full sm:w-auto px-3 py-2.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3 py-2.5 bg-[var(--action-danger-soft)] hover:bg-rose-900 text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete Expense</span>
                 </button>
               )}
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer text-center">Close</button>
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="w-full sm:w-auto px-4 py-2.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl text-xs font-medium cursor-pointer text-center">Close</button>
             </div>
           </div>
         </div>,
@@ -3886,36 +3886,36 @@ export const Expenses: React.FC = () => {
 
       {/* SUPER ADMIN DELETE CONFIRMATION MODAL */}
       {deleteConfirmExpense && createPortal(
-        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
-            <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-[var(--bg-surface-muted)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] border border-[var(--action-danger-bg)]/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
+            <div className="flex items-center gap-3 text-[var(--action-danger-bg)] border-b border-[var(--border-default)] pb-3">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="text-base font-bold text-white">Delete Expense Permanently?</h3>
             </div>
 
-            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 font-mono">
-              <p><span className="text-slate-500">Expense Type:</span> {deleteConfirmExpense.expense_type}</p>
-              <p><span className="text-slate-500">Employee:</span> {deleteConfirmExpense.employee_name_snapshot || deleteConfirmExpense.employee_code_snapshot || deleteConfirmExpense.employee_id}</p>
-              <p><span className="text-slate-500">Merchant / Category:</span> {deleteConfirmExpense.merchant || deleteConfirmExpense.category}</p>
-              <p><span className="text-slate-500">Amount:</span> ₹{Number(deleteConfirmExpense.amount || 0).toLocaleString('en-IN')}</p>
-              <p><span className="text-slate-500">Date:</span> {deleteConfirmExpense.transaction_date}</p>
-              <p><span className="text-slate-500">Status:</span> {deleteConfirmExpense.status}</p>
+            <div className="space-y-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-surface-muted)] p-3.5 rounded-xl border border-[var(--border-default)] font-mono">
+              <p><span className="text-[var(--text-muted)]">Expense Type:</span> {deleteConfirmExpense.expense_type}</p>
+              <p><span className="text-[var(--text-muted)]">Employee:</span> {deleteConfirmExpense.employee_name_snapshot || deleteConfirmExpense.employee_code_snapshot || deleteConfirmExpense.employee_id}</p>
+              <p><span className="text-[var(--text-muted)]">Merchant / Category:</span> {deleteConfirmExpense.merchant || deleteConfirmExpense.category}</p>
+              <p><span className="text-[var(--text-muted)]">Amount:</span> ₹{Number(deleteConfirmExpense.amount || 0).toLocaleString('en-IN')}</p>
+              <p><span className="text-[var(--text-muted)]">Date:</span> {deleteConfirmExpense.transaction_date}</p>
+              <p><span className="text-[var(--text-muted)]">Status:</span> {deleteConfirmExpense.status}</p>
             </div>
 
-            <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+            <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[11px] text-[var(--action-danger-bg)] leading-relaxed">
               <strong>Warning:</strong> This action permanently deletes the expense claim and associated application attachment metadata. This action cannot be undone.
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Type <span className="font-mono text-rose-400 font-bold">DELETE</span> to confirm permanent deletion:
+              <label className="block text-[11px] font-semibold text-[var(--text-primary)] mb-1">
+                Type <span className="font-mono text-[var(--action-danger-bg)] font-bold">DELETE</span> to confirm permanent deletion:
               </label>
               <input
                 type="text"
                 value={deleteInputText}
                 onChange={e => setDeleteInputText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
+                className="w-full bg-[var(--bg-surface-muted)] border border-[var(--border-default)] focus:border-[var(--primary)] rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
               />
             </div>
 
@@ -3923,7 +3923,7 @@ export const Expenses: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setDeleteConfirmExpense(null); setDeleteInputText(''); }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer"
+                className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -3931,7 +3931,7 @@ export const Expenses: React.FC = () => {
                 type="button"
                 disabled={deleteInputText !== 'DELETE' || deletingExpense}
                 onClick={handleDeleteSuperAdmin}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-bg)] disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
               >
                 {deletingExpense ? 'Deleting...' : 'Delete Permanently'}
               </button>
@@ -3943,44 +3943,44 @@ export const Expenses: React.FC = () => {
 
       {/* SUPER ADMIN TRIP DELETE CONFIRMATION MODAL */}
       {deleteConfirmTrip && createPortal(
-        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
-            <div className="flex items-center gap-3 text-rose-400 border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-[var(--bg-surface-muted)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] border border-[var(--action-danger-bg)]/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[6001]">
+            <div className="flex items-center gap-3 text-[var(--action-danger-bg)] border-b border-[var(--border-default)] pb-3">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="text-base font-bold text-white">Delete Trip Expense Permanently?</h3>
             </div>
 
-            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 font-mono">
-              <p><span className="text-slate-500">Trip / Purpose:</span> {deleteConfirmTrip.purpose}</p>
+            <div className="space-y-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-surface-muted)] p-3.5 rounded-xl border border-[var(--border-default)] font-mono">
+              <p><span className="text-[var(--text-muted)]">Trip / Purpose:</span> {deleteConfirmTrip.purpose}</p>
               <p>
-                <span className="text-slate-500">Employee:</span> {
+                <span className="text-[var(--text-muted)]">Employee:</span> {
                   deleteConfirmTrip.employee_name || deleteConfirmTrip.employee_name_snapshot 
                     ? `${deleteConfirmTrip.employee_name || deleteConfirmTrip.employee_name_snapshot} ${deleteConfirmTrip.employee_code || deleteConfirmTrip.employee_code_snapshot ? `(${deleteConfirmTrip.employee_code || deleteConfirmTrip.employee_code_snapshot})` : ''}`
                     : 'Historical Record'
                 }
-                {!deleteConfirmTrip.employee_id && <span className="ml-1 text-[10px] text-amber-400 font-bold">(Historical Record)</span>}
+                {!deleteConfirmTrip.employee_id && <span className="ml-1 text-[10px] text-[var(--badge-warning-text)] font-bold">(Historical Record)</span>}
               </p>
-              <p><span className="text-slate-500">Destination:</span> {deleteConfirmTrip.start_point} → {deleteConfirmTrip.end_point}</p>
-              <p><span className="text-slate-500">Date:</span> {deleteConfirmTrip.start_date} → {deleteConfirmTrip.end_date}</p>
-              <p><span className="text-slate-500">Status:</span> {deleteConfirmTrip.status}</p>
-              <p><span className="text-slate-500">Total Amount:</span> ₹{Number(deleteConfirmTrip.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-              <p><span className="text-slate-500">Child Expenses:</span> {deleteConfirmTrip.travel_count || 0} Travel, {deleteConfirmTrip.accom_count || 0} Hotel, {deleteConfirmTrip.other_count || 0} Other</p>
+              <p><span className="text-[var(--text-muted)]">Destination:</span> {deleteConfirmTrip.start_point} → {deleteConfirmTrip.end_point}</p>
+              <p><span className="text-[var(--text-muted)]">Date:</span> {deleteConfirmTrip.start_date} → {deleteConfirmTrip.end_date}</p>
+              <p><span className="text-[var(--text-muted)]">Status:</span> {deleteConfirmTrip.status}</p>
+              <p><span className="text-[var(--text-muted)]">Total Amount:</span> ₹{Number(deleteConfirmTrip.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              <p><span className="text-[var(--text-muted)]">Child Expenses:</span> {deleteConfirmTrip.travel_count || 0} Travel, {deleteConfirmTrip.accom_count || 0} Hotel, {deleteConfirmTrip.other_count || 0} Other</p>
             </div>
 
-            <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+            <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[11px] text-[var(--action-danger-bg)] leading-relaxed">
               <strong>Warning:</strong> This permanently deletes this trip claim and its associated child expenses and attachments from the application. This action cannot be undone.
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Type <span className="font-mono text-rose-400 font-bold">DELETE</span> to confirm permanent deletion:
+              <label className="block text-[11px] font-semibold text-[var(--text-primary)] mb-1">
+                Type <span className="font-mono text-[var(--action-danger-bg)] font-bold">DELETE</span> to confirm permanent deletion:
               </label>
               <input
                 type="text"
                 value={deleteInputText}
                 onChange={e => setDeleteInputText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
+                className="w-full bg-[var(--bg-surface-muted)] border border-[var(--border-default)] focus:border-[var(--primary)] rounded-xl px-3 py-2 text-xs text-white font-mono uppercase tracking-wider"
               />
             </div>
 
@@ -3988,7 +3988,7 @@ export const Expenses: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setDeleteConfirmTrip(null); setDeleteInputText(''); }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium cursor-pointer"
+                className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -3996,7 +3996,7 @@ export const Expenses: React.FC = () => {
                 type="button"
                 disabled={deleteInputText !== 'DELETE' || deletingTrip}
                 onClick={handleDeleteSuperAdminTrip}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-bg)] disabled:opacity-40 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
               >
                 {deletingTrip ? 'Deleting...' : 'Delete Permanently'}
               </button>
@@ -4008,21 +4008,21 @@ export const Expenses: React.FC = () => {
 
       {/* CATEGORY ANALYTICS MODAL */}
       {showCategoryAnalyticsModal && createPortal(
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[5001]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-[var(--bg-surface-muted)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150 z-[5001]">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-purple-400" />
+                <PieChart className="w-5 h-5 text-[var(--secondary)]" />
                 <span>Top Cost Categories Analytics ({currentFy.label})</span>
               </h3>
-              <button onClick={() => setShowCategoryAnalyticsModal(false)} className="text-slate-400 hover:text-white p-1 cursor-pointer">
+              <button onClick={() => setShowCategoryAnalyticsModal(false)} className="text-[var(--text-secondary)] hover:text-white p-1 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-xl">
+            <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#090d16] text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                <thead className="bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] uppercase font-semibold text-[10px] border-b border-[var(--border-default)]">
                   <tr>
                     <th className="p-3">Category</th>
                     <th className="p-3 text-right">Total Amount (₹)</th>
@@ -4033,19 +4033,19 @@ export const Expenses: React.FC = () => {
                     <th className="p-3 text-center">Claim Count</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {mgmtAnalytics?.categoryBreakdown?.map((cat: any) => (
-                    <tr key={cat.category} className="hover:bg-slate-800/30">
+                    <tr key={cat.category} className="hover:bg-[var(--bg-surface-muted)]">
                       <td className="p-3 font-bold text-white flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-[var(--primary)]"></span>
                         <span>{cat.category}</span>
                       </td>
-                      <td className="p-3 text-right font-mono font-bold text-purple-300">₹{cat.amount.toLocaleString('en-IN')}</td>
-                      <td className="p-3 text-right font-mono text-emerald-400">₹{(cat.approvedAmount || 0).toLocaleString('en-IN')}</td>
-                      <td className="p-3 text-right font-mono text-amber-400">₹{(cat.pendingAmount || 0).toLocaleString('en-IN')}</td>
-                      <td className="p-3 text-right font-mono text-rose-400">₹{(cat.rejectedAmount || 0).toLocaleString('en-IN')}</td>
-                      <td className="p-3 text-right font-mono font-semibold text-slate-300">{cat.percentage.toFixed(1)}%</td>
-                      <td className="p-3 text-center font-mono text-slate-400">{cat.claimCount || '-'}</td>
+                      <td className="p-3 text-right font-mono font-bold text-[var(--secondary)]">₹{cat.amount.toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-[var(--badge-success-text)]">₹{(cat.approvedAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-[var(--badge-warning-text)]">₹{(cat.pendingAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono text-[var(--action-danger-bg)]">₹{(cat.rejectedAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right font-mono font-semibold text-[var(--text-primary)]">{cat.percentage.toFixed(1)}%</td>
+                      <td className="p-3 text-center font-mono text-[var(--text-secondary)]">{cat.claimCount || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -4055,7 +4055,7 @@ export const Expenses: React.FC = () => {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setShowCategoryAnalyticsModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-white rounded-xl text-xs font-bold cursor-pointer"
               >
                 Close View
               </button>
@@ -4067,16 +4067,16 @@ export const Expenses: React.FC = () => {
 
       {/* DETAILED EXPENSE LEDGER / PENDING APPROVAL CENTER MODAL */}
       {showLedgerModal && createPortal(
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150 z-[5001]">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-[var(--bg-surface-muted)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150 z-[5001]">
             {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-default)] pb-3">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  {ledgerType === 'PENDING' ? <Clock className="w-5 h-5 text-amber-400" /> :
-                   ledgerType === 'APPROVED' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> :
-                   ledgerType === 'REJECTED' ? <XCircle className="w-5 h-5 text-rose-400" /> :
-                   <DollarSign className="w-5 h-5 text-purple-400" />}
+                  {ledgerType === 'PENDING' ? <Clock className="w-5 h-5 text-[var(--badge-warning-text)]" /> :
+                   ledgerType === 'APPROVED' ? <CheckCircle2 className="w-5 h-5 text-[var(--badge-success-text)]" /> :
+                   ledgerType === 'REJECTED' ? <XCircle className="w-5 h-5 text-[var(--action-danger-bg)]" /> :
+                   <DollarSign className="w-5 h-5 text-[var(--secondary)]" />}
                   <span>
                     {ledgerType === 'PENDING' ? 'Pending Approval Center' :
                      ledgerType === 'APPROVED' ? 'Detailed APPROVED Expense Ledger' :
@@ -4084,7 +4084,7 @@ export const Expenses: React.FC = () => {
                      'Detailed ALL Expense Ledger'} ({currentFy.label})
                   </span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                   {ledgerType === 'PENDING' ? 'Review, view, approve or reject pending employee claims' :
                    ledgerType === 'APPROVED' ? 'List of all approved expense records' :
                    ledgerType === 'REJECTED' ? 'List of rejected expenses with reviewer metadata and persisted reasons' :
@@ -4093,12 +4093,12 @@ export const Expenses: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="bg-[#090d16] px-4 py-2 rounded-xl border border-slate-800 text-right">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Ledger Amount</div>
+                <div className="bg-[var(--bg-surface-elevated)] px-4 py-2 rounded-xl border border-[var(--border-default)] text-right">
+                  <div className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Total Ledger Amount</div>
                   <div className="text-lg font-black text-white font-mono">₹{ledgerTotalAmount.toLocaleString('en-IN')}</div>
                 </div>
 
-                <button onClick={() => setShowLedgerModal(false)} className="p-1 text-slate-400 hover:text-white cursor-pointer">
+                <button onClick={() => setShowLedgerModal(false)} className="p-1 text-[var(--text-secondary)] hover:text-white cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -4107,7 +4107,7 @@ export const Expenses: React.FC = () => {
             {/* Filter / Search Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-2.5" />
                 <input
                   type="text"
                   value={ledgerSearch}
@@ -4116,26 +4116,26 @@ export const Expenses: React.FC = () => {
                     fetchLedgerData(ledgerType, 1, e.target.value);
                   }}
                   placeholder="Search by employee name, code, merchant, purpose..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-[#090d16] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500"
+                  className="w-full pl-9 pr-3 py-1.5 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl text-xs text-white placeholder-[var(--text-muted)]"
                 />
               </div>
 
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-[var(--text-secondary)]">
                 Found <strong className="text-white">{ledgerTotalRecords}</strong> records
               </div>
             </div>
 
             {/* Ledger Table */}
             {loadingLedger ? (
-              <div className="py-12 text-center text-xs text-slate-400">Loading ledger records...</div>
+              <div className="py-12 text-center text-xs text-[var(--text-secondary)]">Loading ledger records...</div>
             ) : ledgerRecords.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-500 italic border border-slate-800/80 rounded-xl bg-[#090d16]">
+              <div className="py-8 text-center text-xs text-[var(--text-muted)] italic border border-[var(--border-default)] rounded-xl bg-[var(--bg-surface-elevated)]">
                 No records found matching current criteria.
               </div>
             ) : (
-              <div className="overflow-x-auto border border-slate-800 rounded-xl">
+              <div className="overflow-x-auto border border-[var(--border-default)] rounded-xl">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#090d16] text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                  <thead className="bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] uppercase font-semibold text-[10px] border-b border-[var(--border-default)]">
                     <tr>
                       <th className="p-3">Employee</th>
                       <th className="p-3">Department</th>
@@ -4147,38 +4147,38 @@ export const Expenses: React.FC = () => {
                       <th className="p-3 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {ledgerRecords.map(rec => (
-                      <tr key={rec.id} className="hover:bg-slate-800/30">
+                      <tr key={rec.id} className="hover:bg-[var(--bg-surface-muted)]">
                         <td className="p-3 font-bold text-white">
                           <div>{rec.employeeName}</div>
-                          <span className="text-[10px] font-mono text-slate-400">{rec.employeeCode}</span>
+                          <span className="text-[10px] font-mono text-[var(--text-secondary)]">{rec.employeeCode}</span>
                         </td>
-                        <td className="p-3 text-slate-300">{rec.department}</td>
+                        <td className="p-3 text-[var(--text-primary)]">{rec.department}</td>
                         <td className="p-3">
-                          <div className="font-semibold text-slate-200">{rec.expenseType}</div>
-                          <div className="text-[10px] font-mono text-slate-400">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</div>
+                          <div className="font-semibold text-[var(--text-primary)]">{rec.expenseType}</div>
+                          <div className="text-[10px] font-mono text-[var(--text-secondary)]">{rec.date ? new Date(rec.date).toLocaleDateString() : '-'}</div>
                         </td>
                         <td className="p-3">
-                          <div className="font-semibold text-slate-200">{rec.category}</div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[180px]">{rec.merchant || rec.description || '-'}</div>
+                          <div className="font-semibold text-[var(--text-primary)]">{rec.category}</div>
+                          <div className="text-[10px] text-[var(--text-secondary)] truncate max-w-[180px]">{rec.merchant || rec.description || '-'}</div>
                         </td>
-                        <td className="p-3 text-right font-mono font-bold text-emerald-400">
+                        <td className="p-3 text-right font-mono font-bold text-[var(--badge-success-text)]">
                           ₹{rec.amount.toLocaleString('en-IN')}
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            rec.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
-                            rec.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
-                            'bg-amber-950 text-amber-400 border-amber-800'
+                            rec.status === 'APPROVED' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                            rec.status === 'REJECTED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                            'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                           }`}>
                             {rec.status}
                           </span>
                         </td>
                         {ledgerType === 'REJECTED' && (
                           <td className="p-3 text-xs">
-                            <div className="text-rose-300 font-semibold">{rec.rejectionReason || 'No reason provided'}</div>
-                            <div className="text-[10px] text-slate-400">Reviewed by: {rec.approver || 'System Admin'}</div>
+                            <div className="text-[var(--action-danger-bg)] font-semibold">{rec.rejectionReason || 'No reason provided'}</div>
+                            <div className="text-[10px] text-[var(--text-secondary)]">Reviewed by: {rec.approver || 'System Admin'}</div>
                           </td>
                         )}
                         <td className="p-3 text-center space-x-1">
@@ -4191,7 +4191,7 @@ export const Expenses: React.FC = () => {
                                 setSelectedSingleExpense(rec);
                               }
                             }}
-                            className="px-2 py-1 bg-blue-950 hover:bg-blue-900 border border-blue-800 text-blue-300 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2 py-1 bg-[var(--badge-info-bg)] hover:bg-[var(--bg-surface-hover)] border border-[var(--badge-info-border)] text-[var(--badge-info-text)] rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
                             title="View Claim Details"
                           >
                             <Eye className="w-3 h-3" />
@@ -4210,7 +4210,7 @@ export const Expenses: React.FC = () => {
                                   fetchLedgerData(ledgerType, ledgerPage, ledgerSearch);
                                   fetchManagementData();
                                 }}
-                                className="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 rounded text-[10px] font-bold cursor-pointer"
+                                className="px-2 py-1 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded text-[10px] font-bold cursor-pointer"
                               >
                                 Approve
                               </button>
@@ -4224,7 +4224,7 @@ export const Expenses: React.FC = () => {
                                   fetchLedgerData(ledgerType, ledgerPage, ledgerSearch);
                                   fetchManagementData();
                                 }}
-                                className="px-2 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded text-[10px] font-bold cursor-pointer"
+                                className="px-2 py-1 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold cursor-pointer"
                               >
                                 Reject
                               </button>
@@ -4239,7 +4239,7 @@ export const Expenses: React.FC = () => {
             )}
 
             {/* Pagination Controls */}
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-default)]">
               <div>Page {ledgerPage} of {ledgerTotalPages}</div>
               <div className="flex items-center gap-2">
                 <button
@@ -4249,7 +4249,7 @@ export const Expenses: React.FC = () => {
                     setLedgerPage(newPage);
                     fetchLedgerData(ledgerType, newPage, ledgerSearch);
                   }}
-                  className="px-3 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-xs cursor-pointer"
+                  className="px-3 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)] text-xs cursor-pointer"
                 >
                   Previous
                 </button>
@@ -4260,7 +4260,7 @@ export const Expenses: React.FC = () => {
                     setLedgerPage(newPage);
                     fetchLedgerData(ledgerType, newPage, ledgerSearch);
                   }}
-                  className="px-3 py-1 bg-[#090d16] border border-slate-800 disabled:opacity-40 rounded text-slate-300 text-xs cursor-pointer"
+                  className="px-3 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] disabled:opacity-40 rounded text-[var(--text-primary)] text-xs cursor-pointer"
                 >
                   Next
                 </button>

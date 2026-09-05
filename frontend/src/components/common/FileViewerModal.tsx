@@ -242,24 +242,24 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
           )}
 
           {error && !loading && (
-            <div className="max-w-md p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3 m-4">
+            <div className="max-w-md p-6 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-center space-y-3 m-4">
               <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
               <div className="space-y-1">
-                <h4 className="text-sm font-bold text-rose-900">Unable to View Document</h4>
+                <h4 className="text-sm font-bold text-[var(--action-danger-bg)]">Unable to View Document</h4>
                 <p className="text-xs text-rose-700">{error}</p>
               </div>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={loadFileBlob}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Retry
                 </button>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-bg)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Close
                 </button>
@@ -282,21 +282,21 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
                   />
                 </div>
               ) : isPdf ? (
-                <div className="w-full h-full flex flex-col rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
+                <div className="w-full h-full flex flex-col rounded-xl overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-default)]">
                   <object
                     data={blobUrl}
                     type="application/pdf"
                     className="w-full h-full"
                   >
                     <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-3">
-                      <FileText className="w-12 h-12 text-cyan-400" />
-                      <p className="text-xs text-slate-300">
+                      <FileText className="w-12 h-12 text-[var(--primary)]" />
+                      <p className="text-xs text-[var(--text-primary)]">
                         PDF preview is not supported directly in your browser.
                       </p>
                       <button
                         type="button"
                         onClick={handleDownload}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold"
+                        className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-xl text-xs font-bold"
                       >
                         Download PDF
                       </button>
@@ -305,17 +305,17 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-sm">
-                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-cyan-400">
+                  <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl text-[var(--primary)]">
                     <FileText className="w-12 h-12" />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white">{cleanFileName}</h4>
-                    <p className="text-xs text-slate-400 mt-1">This file format can be downloaded and opened securely on your device.</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">This file format can be downloaded and opened securely on your device.</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleDownload}
-                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer"
+                    className="px-5 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download File</span>

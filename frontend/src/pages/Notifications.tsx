@@ -42,7 +42,7 @@ export const Notifications: React.FC = () => {
           onClick={handleMarkAllRead}
           className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
         >
-          <CheckCheck className="w-4 h-4 text-emerald-600" />
+          <CheckCheck className="w-4 h-4 text-[var(--badge-success-text)]" />
           <span>Mark All as Read</span>
         </button>
       </div>

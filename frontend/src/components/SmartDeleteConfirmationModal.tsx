@@ -80,9 +80,9 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
       <div className="relative w-full max-w-md bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-2xl overflow-hidden text-[var(--text-primary)]">
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)] bg-rose-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--action-danger-soft)]">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-rose-100 text-rose-700 border border-rose-200">
+            <div className="p-2 rounded-xl bg-rose-100 text-rose-700 border border-[var(--action-danger-bg)]/30">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <h3 className="text-base font-bold text-[var(--text-primary)]">{title}</h3>
@@ -122,7 +122,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 placeholder={`Type '${expectedValue}'`}
-                className="w-full px-3.5 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-mono text-sm placeholder-[var(--text-muted)] focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition shadow-sm"
+                className="w-full px-3.5 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-mono text-sm placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-2 focus:ring-[var(--primary)]/30 transition shadow-sm"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -144,7 +144,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
 
             {/* Validation Message */}
             {validationError && (
-              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-center space-x-1.5">
+              <div className="text-xs text-rose-700 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 p-2.5 rounded-xl flex items-center space-x-1.5">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0" />
                 <span>{validationError}</span>
               </div>
@@ -169,7 +169,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
             disabled={!isExactMatch || isLoading}
             className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center space-x-2 transition cursor-pointer ${
               isExactMatch && !isLoading
-                ? 'bg-rose-700 hover:bg-rose-800 text-white shadow-sm'
+                ? 'bg-rose-700 hover:opacity-90 text-white shadow-sm'
                 : 'bg-[var(--bg-surface-muted)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-subtle)]'
             }`}
           >

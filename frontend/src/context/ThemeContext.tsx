@@ -1,47 +1,40 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type Theme = 'pastel' | 'sage' | 'neutral';
+export type Theme = 'vanilla' | 'merino';
 
 export interface ThemeMeta {
   id: Theme;
   name: string;
+  subtitle: string;
   description: string;
-  swatch: {
+  palette: {
     bg: string;
-    surface: string;
+    secondary: string;
     primary: string;
   };
 }
 
 export const THEMES: ThemeMeta[] = [
   {
-    id: 'pastel',
-    name: 'Pastel',
-    description: 'Soft, modern and elegant',
-    swatch: {
-      bg: '#FBF7F2',
-      surface: '#FFFDFC',
-      primary: '#D47A74'
+    id: 'vanilla',
+    name: 'Vanilla',
+    subtitle: 'Vanilla • Misty Sage • Bloodstone',
+    description: 'Warm, elegant and sophisticated',
+    palette: {
+      bg: '#FFF9EB',
+      secondary: '#9FB2AC',
+      primary: '#5D0D18'
     }
   },
   {
-    id: 'sage',
-    name: 'Sage',
-    description: 'Natural, fresh and balanced',
-    swatch: {
-      bg: '#F5F7F4',
-      surface: '#FCFDFB',
-      primary: '#5A7D65'
-    }
-  },
-  {
-    id: 'neutral',
-    name: 'Neutral',
-    description: 'Professional and timeless',
-    swatch: {
-      bg: '#F7F5F0',
-      surface: '#FEFDFC',
-      primary: '#8D7B68'
+    id: 'merino',
+    name: 'Merino',
+    subtitle: 'Merino • Rock Blue • Venice Blue',
+    description: 'Calm, modern and professional',
+    palette: {
+      bg: '#F5EEDD',
+      secondary: '#84B3CE',
+      primary: '#16587B'
     }
   }
 ];
@@ -60,11 +53,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem('theiakshi_theme');
-      if (saved === 'pastel' || saved === 'sage' || saved === 'neutral') {
+      if (saved === 'vanilla' || saved === 'merino') {
         return saved;
       }
     } catch {}
-    return 'pastel';
+    return 'vanilla';
   });
 
   const setTheme = (newTheme: Theme) => {
@@ -72,11 +65,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const cycleTheme = () => {
-    setThemeState(prev => {
-      if (prev === 'pastel') return 'sage';
-      if (prev === 'sage') return 'neutral';
-      return 'pastel';
-    });
+    setThemeState(prev => (prev === 'vanilla' ? 'merino' : 'vanilla'));
   };
 
   useEffect(() => {
@@ -85,7 +74,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {}
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
-    root.classList.remove('dark', 'light');
+    root.classList.remove('pastel', 'sage', 'neutral', 'dark', 'light');
     root.classList.add(theme);
   }, [theme]);
 
@@ -102,7 +91,7 @@ export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
     return {
-      theme: 'pastel' as Theme,
+      theme: 'vanilla' as Theme,
       setTheme: () => {},
       cycleTheme: () => {},
       themes: THEMES,

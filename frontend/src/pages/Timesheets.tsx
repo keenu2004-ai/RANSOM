@@ -464,10 +464,10 @@ export const Timesheets: React.FC = () => {
 
   // Card Left Border Accents
   const getCardAccentColor = (index: number, status: string) => {
-    if (status === 'COMPLETED') return 'border-l-purple-500 hover:border-l-purple-400';
-    if (status === 'IN_PROGRESS') return 'border-l-cyan-500 hover:border-l-cyan-400';
+    if (status === 'COMPLETED') return 'border-l-[var(--primary)] hover:border-l-[var(--primary)]';
+    if (status === 'IN_PROGRESS') return 'border-l-[var(--primary)] hover:border-l-[var(--primary)]';
     if (status === 'CANCELLED') return 'border-l-rose-500 hover:border-l-rose-400';
-    const accents = ['border-l-cyan-500', 'border-l-indigo-500', 'border-l-purple-500', 'border-l-emerald-500'];
+    const accents = ['border-l-[var(--primary)]', 'border-l-[var(--primary)]', 'border-l-[var(--primary)]', 'border-l-[var(--badge-success-border)]'];
     return accents[index % accents.length];
   };
 
@@ -476,22 +476,22 @@ export const Timesheets: React.FC = () => {
       {/* Top Banner & Header Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-purple-600/20 text-purple-400 rounded-2xl border border-purple-500/30 shadow-lg shadow-purple-500/10">
+          <div className="p-3 bg-[var(--primary)]/20 text-[var(--secondary)] rounded-2xl border border-[var(--primary)]/30 shadow-xs">
             <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-white tracking-tight">Weekly Plan</h1>
-            <p className="text-xs text-slate-400">Plan, track and manage employee customer visits and tasks for the selected period.</p>
+            <p className="text-xs text-[var(--text-secondary)]">Plan, track and manage employee customer visits and tasks for the selected period.</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* View Switcher: [Month] [Week] [List] */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-default)] p-1 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setActiveView('month')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeView === 'month' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                activeView === 'month' ? 'bg-[var(--primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-white'
               }`}
             >
               Month
@@ -499,7 +499,7 @@ export const Timesheets: React.FC = () => {
             <button
               onClick={() => setActiveView('week')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeView === 'week' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                activeView === 'week' ? 'bg-[var(--primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-white'
               }`}
             >
               Week
@@ -507,7 +507,7 @@ export const Timesheets: React.FC = () => {
             <button
               onClick={() => setActiveView('list')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeView === 'list' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                activeView === 'list' ? 'bg-[var(--primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-white'
               }`}
             >
               List
@@ -515,10 +515,10 @@ export const Timesheets: React.FC = () => {
           </div>
 
           {/* Navigation Controls */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 shadow-inner">
+          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-1 shadow-inner">
             <button
               onClick={activeView === 'week' ? handlePrevWeek : handlePrevMonth}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              className="p-1.5 text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-surface-muted)] rounded-lg transition-all"
               title="Previous"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -526,19 +526,19 @@ export const Timesheets: React.FC = () => {
 
             <button
               onClick={handleThisWeek}
-              className="px-2.5 py-1 text-xs font-semibold text-purple-400 hover:text-purple-300 rounded-lg transition-all"
+              className="px-2.5 py-1 text-xs font-semibold text-[var(--secondary)] hover:text-[var(--secondary)] rounded-lg transition-all"
             >
               Today
             </button>
 
-            <div className="px-3 text-xs font-bold text-slate-200 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-purple-400" />
+            <div className="px-3 text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[var(--secondary)]" />
               <span>{dateRangeDisplay}</span>
             </div>
 
             <button
               onClick={activeView === 'week' ? handleNextWeek : handleNextMonth}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              className="p-1.5 text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-surface-muted)] rounded-lg transition-all"
               title="Next"
             >
               <ChevronRight className="w-4 h-4" />
@@ -549,17 +549,17 @@ export const Timesheets: React.FC = () => {
             type="button"
             disabled={downloading}
             onClick={handleDownloadExcel}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-default)] font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
             title="Export Weekly Plan to Excel"
           >
-            <Download className="w-4 h-4 text-cyan-400" />
+            <Download className="w-4 h-4 text-[var(--primary)]" />
             <span>{downloading ? 'Downloading...' : 'Export'}</span>
           </button>
 
           {/* Add Plan Primary Button */}
           <button
             onClick={() => openCreateModalForDate(todayStr || weekDays[0].dateStr)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-600/25 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] font-semibold text-xs rounded-xl shadow-xs transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add Plan</span>
@@ -578,19 +578,19 @@ export const Timesheets: React.FC = () => {
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('TOTAL'); }}
           className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
             activeKpiFilter === 'TOTAL'
-              ? 'bg-gradient-to-br from-cyan-950/70 to-slate-900 border-cyan-500/80 ring-2 ring-cyan-500/50 shadow-lg shadow-cyan-500/10 scale-[1.01]'
-              : 'bg-slate-900/90 border-slate-800 hover:border-cyan-500/40 hover:bg-slate-900/60'
+              ? 'bg-[var(--bg-surface)] border-[var(--primary)]/80 ring-2 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+              : 'bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-[var(--primary)]/30 hover:bg-[var(--bg-surface)]'
           }`}
         >
           <div className="space-y-1">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-cyan-400">Total Plans</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--primary)]">Total Plans</span>
             <div className="text-2xl font-extrabold text-white">{kpis.totalPlans}</div>
-            <div className="text-[11px] text-slate-400">Selected period</div>
+            <div className="text-[11px] text-[var(--text-secondary)]">Selected period</div>
           </div>
           <div className={`p-3 rounded-xl border transition-colors ${
             activeKpiFilter === 'TOTAL'
-              ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-              : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-slate-950'
+              ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]'
+              : 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30 group-hover:bg-[var(--primary)] group-hover:text-[var(--primary-text)]'
           }`}>
             <CalendarIcon className="w-6 h-6" />
           </div>
@@ -605,19 +605,19 @@ export const Timesheets: React.FC = () => {
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('SCHEDULED'); }}
           className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
             activeKpiFilter === 'SCHEDULED'
-              ? 'bg-gradient-to-br from-emerald-950/70 to-slate-900 border-emerald-500/80 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/10 scale-[1.01]'
-              : 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900/60'
+              ? 'bg-[var(--bg-surface)] border-[var(--badge-success-border)] ring-2 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+              : 'bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-[var(--badge-success-border)] hover:bg-[var(--bg-surface)]'
           }`}
         >
           <div className="space-y-1">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Scheduled Visits</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--badge-success-text)]">Scheduled Visits</span>
             <div className="text-2xl font-extrabold text-white">{kpis.scheduledVisits}</div>
-            <div className="text-[11px] text-slate-400">Customer meetings</div>
+            <div className="text-[11px] text-[var(--text-secondary)]">Customer meetings</div>
           </div>
           <div className={`p-3 rounded-xl border transition-colors ${
             activeKpiFilter === 'SCHEDULED'
-              ? 'bg-emerald-500 text-slate-950 border-emerald-400'
-              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-slate-950'
+              ? 'bg-[var(--badge-success-bg)] text-[var(--primary-text)] border-[var(--badge-success-border)]'
+              : 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)] group-hover:bg-[var(--badge-success-bg)] group-hover:text-[var(--primary-text)]'
           }`}>
             <Send className="w-6 h-6" />
           </div>
@@ -632,19 +632,19 @@ export const Timesheets: React.FC = () => {
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('PENDING_FOLLOWUP'); }}
           className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
             activeKpiFilter === 'PENDING_FOLLOWUP'
-              ? 'bg-gradient-to-br from-amber-950/70 to-slate-900 border-amber-500/80 ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/10 scale-[1.01]'
-              : 'bg-slate-900/90 border-slate-800 hover:border-amber-500/40 hover:bg-slate-900/60'
+              ? 'bg-[var(--bg-surface)] border-[var(--badge-warning-border)] ring-2 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+              : 'bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-[var(--badge-warning-border)] hover:bg-[var(--bg-surface)]'
           }`}
         >
           <div className="space-y-1">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-amber-400">Pending Follow-ups</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--badge-warning-text)]">Pending Follow-ups</span>
             <div className="text-2xl font-extrabold text-white">{kpis.pendingFollowUps}</div>
-            <div className="text-[11px] text-slate-400">Action required</div>
+            <div className="text-[11px] text-[var(--text-secondary)]">Action required</div>
           </div>
           <div className={`p-3 rounded-xl border transition-colors ${
             activeKpiFilter === 'PENDING_FOLLOWUP'
-              ? 'bg-amber-500 text-slate-950 border-amber-400'
-              : 'bg-amber-500/10 text-amber-400 border-amber-500/20 group-hover:bg-amber-500 group-hover:text-slate-950'
+              ? 'bg-[var(--badge-warning-bg)] text-[var(--primary-text)] border-[var(--badge-warning-border)]'
+              : 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)] group-hover:bg-[var(--badge-warning-bg)] group-hover:text-[var(--primary-text)]'
           }`}>
             <Hourglass className="w-6 h-6" />
           </div>
@@ -659,19 +659,19 @@ export const Timesheets: React.FC = () => {
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('COMPLETED'); }}
           className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
             activeKpiFilter === 'COMPLETED'
-              ? 'bg-gradient-to-br from-purple-950/70 to-slate-900 border-purple-500/80 ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10 scale-[1.01]'
-              : 'bg-slate-900/90 border-slate-800 hover:border-purple-500/40 hover:bg-slate-900/60'
+              ? 'bg-[var(--bg-surface)] border-[var(--primary)]/30 ring-2 ring-1 ring-[var(--primary)]/30 shadow-xs scale-[1.01]'
+              : 'bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-[var(--primary)]/30 hover:bg-[var(--bg-surface)]'
           }`}
         >
           <div className="space-y-1">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-purple-400">Completed</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--secondary)]">Completed</span>
             <div className="text-2xl font-extrabold text-white">{kpis.completed}</div>
-            <div className="text-[11px] text-slate-400">Marked as completed</div>
+            <div className="text-[11px] text-[var(--text-secondary)]">Marked as completed</div>
           </div>
           <div className={`p-3 rounded-xl border transition-colors ${
             activeKpiFilter === 'COMPLETED'
-              ? 'bg-purple-500 text-white border-purple-400'
-              : 'bg-purple-500/10 text-purple-400 border-purple-500/20 group-hover:bg-purple-500 group-hover:text-white'
+              ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+              : 'bg-[var(--secondary)]/15 text-[var(--secondary)] border-[var(--primary)]/30 group-hover:bg-[var(--primary)] group-hover:text-white'
           }`}>
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -680,43 +680,43 @@ export const Timesheets: React.FC = () => {
 
       {/* Carried Forward Pending Work Banner */}
       {pendingCarryForward.length > 0 && (
-        <div className="p-4 bg-amber-950/20 border border-amber-800/40 rounded-2xl space-y-3 shadow-xl">
-          <div className="flex items-center justify-between border-b border-amber-800/40 pb-2">
-            <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-              <AlertCircle className="w-4 h-4 text-amber-400" />
+        <div className="p-4 bg-[var(--badge-warning-bg)] border border-[var(--badge-warning-border)] rounded-2xl space-y-3 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[var(--badge-warning-border)] pb-2">
+            <div className="flex items-center gap-2 text-[var(--badge-warning-text)] font-bold text-xs">
+              <AlertCircle className="w-4 h-4 text-[var(--badge-warning-text)]" />
               <span>CARRIED FORWARD — {pendingCarryForward.length} PENDING ITEMS FROM PREVIOUS WEEKS</span>
             </div>
-            <span className="text-[10px] text-amber-400/80 font-medium">Require Action: Complete, Cancel, or Reschedule</span>
+            <span className="text-[10px] text-[var(--badge-warning-text)]/80 font-medium">Require Action: Complete, Cancel, or Reschedule</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
             {pendingCarryForward.map(item => (
-              <div key={item.id} className="p-3 bg-slate-950/80 border border-amber-800/40 rounded-xl space-y-2 text-xs">
+              <div key={item.id} className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--badge-warning-border)] rounded-xl space-y-2 text-xs">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-bold text-slate-100 block">{item.title}</span>
+                    <span className="font-bold text-[var(--text-heading)] block">{item.title}</span>
                     {item.assigned_employee_name && (
-                      <span className="text-cyan-400 text-[11px] font-semibold block">
+                      <span className="text-[var(--primary)] text-[11px] font-semibold block">
                         Employee: {item.assigned_employee_name}
                       </span>
                     )}
-                    {item.customer_name && <span className="text-amber-400 text-[11px] font-semibold block">Customer: {item.customer_name}</span>}
+                    {item.customer_name && <span className="text-[var(--badge-warning-text)] text-[11px] font-semibold block">Customer: {item.customer_name}</span>}
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-950 text-amber-400 border border-amber-800">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)]">
                     {item.date}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-default)]">
                   <button
                     onClick={() => openEditModal(item)}
-                    className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-semibold"
+                    className="px-2.5 py-1 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)] rounded-lg text-[10px] font-semibold"
                   >
                     Complete
                   </button>
                   <button
                     onClick={() => openRescheduleModal(item)}
-                    className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-[10px] font-semibold flex items-center gap-1"
+                    className="px-2.5 py-1 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/30 rounded-lg text-[10px] font-semibold flex items-center gap-1"
                   >
                     <span>Reschedule</span>
                     <ArrowRight className="w-3 h-3" />
@@ -740,26 +740,26 @@ export const Timesheets: React.FC = () => {
                 key={idx}
                 className={`rounded-2xl border transition-all flex flex-col justify-between min-h-[360px] overflow-hidden ${
                   isToday
-                    ? 'bg-slate-900/90 border-purple-500/80 shadow-lg shadow-purple-500/10 ring-1 ring-purple-500/40'
-                    : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                    ? 'bg-[var(--bg-surface)] border-[var(--primary)]/30 shadow-xs ring-1 ring-1 ring-[var(--primary)]/30'
+                    : 'bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-[var(--border-default)]'
                 }`}
               >
                 {/* Day Header */}
                 <div className={`p-2.5 sm:p-3 border-b flex items-center justify-between ${
-                  isToday ? 'bg-purple-950/40 border-purple-500/40' : 'bg-slate-950/40 border-slate-800'
+                  isToday ? 'bg-[var(--secondary)]/15 border-[var(--primary)]/30' : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)]'
                 }`}>
                   <div className="space-y-0.5 text-left">
-                    <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
+                    <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-[var(--secondary)]' : 'text-[var(--text-secondary)]'}`}>
                       {day.shortName}
                     </div>
-                    <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                    <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                       {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); openCreateModalForDate(day.dateStr); }}
-                    className="p-1.5 bg-purple-500/10 hover:bg-purple-500/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg transition-all text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                    className="p-1.5 bg-[var(--secondary)]/15 hover:bg-[var(--primary)]/30 text-[var(--secondary)] hover:text-white border border-[var(--primary)]/30 rounded-lg transition-all text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
                     title={`Add new plan for ${day.displayLabel}`}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -773,13 +773,13 @@ export const Timesheets: React.FC = () => {
                     <div
                       key={t.id || tIdx}
                       onClick={() => openEditModal(t)}
-                      className={`p-3 bg-slate-950/90 border-l-4 ${getCardAccentColor(tIdx, t.status)} border-y border-r border-slate-800 hover:border-slate-700 rounded-xl space-y-2 cursor-pointer transition-all shadow-md group relative`}
+                      className={`p-3 bg-[var(--bg-surface-muted)] border-l-4 ${getCardAccentColor(tIdx, t.status)} border-y border-r border-[var(--border-default)] hover:border-[var(--border-default)] rounded-xl space-y-2 cursor-pointer transition-all shadow-md group relative`}
                     >
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-secondary)]">
                         <span>{t.time_slot || '10:00 - 11:00'}</span>
                         <button
                           onClick={(e) => handleDeleteTask(t.id, e)}
-                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="text-[var(--text-muted)] hover:text-[var(--action-danger-bg)] p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                           title="Delete Plan"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -787,34 +787,34 @@ export const Timesheets: React.FC = () => {
                       </div>
 
                       {t.customer_name && (
-                        <div className="font-bold text-slate-100 text-xs line-clamp-1">
+                        <div className="font-bold text-[var(--text-heading)] text-xs line-clamp-1">
                           {t.customer_name}
                         </div>
                       )}
 
                       {t.visit_location && (
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                        <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
                           <span className="truncate">{t.visit_location}</span>
                         </div>
                       )}
 
-                      <div className="text-[11px] text-slate-300 font-medium line-clamp-2">
+                      <div className="text-[11px] text-[var(--text-primary)] font-medium line-clamp-2">
                         {t.title || t.visit_objective || 'Customer Meeting'}
                       </div>
 
-                      <div className="pt-1 flex items-center justify-between border-t border-slate-800/80">
+                      <div className="pt-1 flex items-center justify-between border-t border-[var(--border-default)]">
                         <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
-                          t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                          t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
-                          t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
-                          'bg-slate-800 text-slate-300 border border-slate-700'
+                          t.status === 'COMPLETED' ? 'bg-[var(--primary)]/20 text-[var(--secondary)] border border-[var(--primary)]/30' :
+                          t.status === 'IN_PROGRESS' ? 'bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/30' :
+                          t.status === 'CANCELLED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30' :
+                          'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-default)]'
                         }`}>
                           {t.status === 'PLANNED' ? 'Planned' : t.status || 'Planned'}
                         </span>
 
                         {t.assigned_employee_name && (
-                          <span className="text-[9px] text-slate-400 font-semibold truncate max-w-[80px]">
+                          <span className="text-[9px] text-[var(--text-secondary)] font-semibold truncate max-w-[80px]">
                             {t.assigned_employee_name.split(' ')[0]}
                           </span>
                         )}
@@ -823,12 +823,12 @@ export const Timesheets: React.FC = () => {
                   ))}
 
                   {dayTasks.length === 0 && (
-                    <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-slate-800/60 rounded-xl space-y-2 bg-slate-950/20">
-                      <CalendarIcon className="w-7 h-7 text-slate-600" />
-                      <span className="text-xs text-slate-400 font-medium">No plans for this day</span>
+                    <div className="h-full min-h-[220px] flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-[var(--border-default)] rounded-xl space-y-2 bg-[var(--bg-surface-muted)]">
+                      <CalendarIcon className="w-7 h-7 text-[var(--text-muted)]" />
+                      <span className="text-xs text-[var(--text-secondary)] font-medium">No plans for this day</span>
                       <button
                         onClick={() => openCreateModalForDate(day.dateStr)}
-                        className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                        className="mt-1 flex items-center gap-1 px-3 py-1 bg-[var(--secondary)]/15 hover:bg-[var(--primary)]/20 text-[var(--secondary)] border border-[var(--primary)]/30 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add Plan</span>
@@ -839,14 +839,14 @@ export const Timesheets: React.FC = () => {
 
                 {/* Day Column Footer Add Action for Occupied Days */}
                 {dayTasks.length > 0 && (
-                  <div className="p-2 border-t border-slate-800/80 bg-slate-950/30">
+                  <div className="p-2 border-t border-[var(--border-default)] bg-[var(--bg-surface-muted)]">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); openCreateModalForDate(day.dateStr); }}
-                      className="w-full py-1.5 bg-slate-900 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/40 text-slate-300 hover:text-purple-300 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                      className="w-full py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--secondary)]/15 border border-[var(--border-default)] hover:border-[var(--primary)]/30 text-[var(--text-primary)] hover:text-[var(--secondary)] rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
                       title={`Add another plan for ${day.displayLabel}`}
                     >
-                      <Plus className="w-3.5 h-3.5 text-purple-400" />
+                      <Plus className="w-3.5 h-3.5 text-[var(--secondary)]" />
                       <span>Add Plan</span>
                     </button>
                   </div>
@@ -859,8 +859,8 @@ export const Timesheets: React.FC = () => {
 
       {/* 2. MONTH VIEW (SUN - SAT GRID) */}
       {activeView === 'month' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold uppercase tracking-wider text-purple-400 border-b border-slate-800 pb-3">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold uppercase tracking-wider text-[var(--secondary)] border-b border-[var(--border-default)] pb-3">
             <div>Sun</div>
             <div>Mon</div>
             <div>Tue</div>
@@ -881,29 +881,29 @@ export const Timesheets: React.FC = () => {
                   onClick={() => openCreateModalForDate(cell.dateStr)}
                   className={`min-h-[110px] p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
                     !cell.isCurrentMonth
-                      ? 'bg-slate-950/20 border-slate-900/40 text-slate-600 opacity-40'
+                      ? 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] text-[var(--text-muted)] opacity-40'
                       : isToday
-                      ? 'bg-purple-950/30 border-purple-500/80 shadow-md shadow-purple-500/10 ring-1 ring-purple-500/40'
-                      : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/40 hover:border-slate-700'
+                      ? 'bg-[var(--secondary)]/15 border-[var(--primary)]/30 shadow-md shadow-xs ring-1 ring-1 ring-[var(--primary)]/30'
+                      : 'bg-[var(--bg-surface-muted)] border-[var(--border-default)] hover:bg-[var(--bg-surface-muted)] hover:border-[var(--border-default)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
-                      isToday ? 'bg-purple-600 text-white font-extrabold' : 'text-slate-300'
+                      isToday ? 'bg-[var(--primary)] text-white font-extrabold' : 'text-[var(--text-primary)]'
                     }`}>
                       {cell.dayNum}
                     </span>
 
                     <div className="flex items-center gap-1">
                       {dayPlans.length > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--secondary)]">
                           {dayPlans.length} {dayPlans.length === 1 ? 'plan' : 'plans'}
                         </span>
                       )}
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); openCreateModalForDate(cell.dateStr); }}
-                        className="p-1 bg-purple-500/10 hover:bg-purple-500/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[10px] transition-all cursor-pointer"
+                        className="p-1 bg-[var(--secondary)]/15 hover:bg-[var(--primary)]/30 text-[var(--secondary)] hover:text-white border border-[var(--primary)]/30 rounded-lg text-[10px] transition-all cursor-pointer"
                         title={`Add new plan for ${cell.dateStr}`}
                       >
                         <Plus className="w-3 h-3" />
@@ -920,9 +920,9 @@ export const Timesheets: React.FC = () => {
                           e.stopPropagation();
                           openEditModal(p);
                         }}
-                        className="px-2 py-1 bg-slate-900 border-l-2 border-purple-500 border-slate-800 hover:border-purple-400 rounded text-[10px] truncate transition-all"
+                        className="px-2 py-1 bg-[var(--bg-surface)] border-l-2 border-[var(--primary)] border-[var(--border-default)] hover:border-[var(--primary)] rounded text-[10px] truncate transition-all"
                       >
-                        <span className="font-bold text-slate-100">{p.customer_name || p.title}</span>
+                        <span className="font-bold text-[var(--text-heading)]">{p.customer_name || p.title}</span>
                       </div>
                     ))}
                   </div>
@@ -938,7 +938,7 @@ export const Timesheets: React.FC = () => {
                           plans: dayPlans
                         });
                       }}
-                      className="text-[10px] font-bold text-purple-400 hover:text-purple-300 text-left pt-0.5"
+                      className="text-[10px] font-bold text-[var(--secondary)] hover:text-[var(--secondary)] text-left pt-0.5"
                     >
                       +{dayPlans.length - 2} more...
                     </button>
@@ -952,11 +952,11 @@ export const Timesheets: React.FC = () => {
 
       {/* 3. LIST VIEW (TABULAR FORMAT) */}
       {activeView === 'list' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
             <div className="flex items-center gap-3">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Table className="w-4 h-4 text-purple-400" />
+                <Table className="w-4 h-4 text-[var(--secondary)]" />
                 <span>
                   {activeKpiFilter === 'TOTAL' && `All Plans (${filteredTasks.length})`}
                   {activeKpiFilter === 'SCHEDULED' && `Scheduled Visit Records (${filteredTasks.length})`}
@@ -968,18 +968,18 @@ export const Timesheets: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveKpiFilter('TOTAL')}
-                  className="px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all border border-slate-700"
+                  className="px-2.5 py-1 text-[11px] font-medium bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-lg transition-all border border-[var(--border-default)]"
                 >
                   Clear Filter (Show All)
                 </button>
               )}
             </div>
-            <span className="text-xs text-slate-400 font-mono">Sorted Newest First</span>
+            <span className="text-xs text-[var(--text-secondary)] font-mono">Sorted Newest First</span>
           </div>
 
-          <div className="overflow-x-auto border border-slate-800 rounded-2xl">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+          <div className="overflow-x-auto border border-[var(--border-default)] rounded-2xl">
+            <table className="w-full text-left text-xs text-[var(--text-primary)]">
+              <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] uppercase font-semibold text-[10px] border-b border-[var(--border-default)]">
                 <tr>
                   <th className="p-3">Date</th>
                   <th className="p-3">Employee</th>
@@ -991,40 +991,40 @@ export const Timesheets: React.FC = () => {
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-[var(--border-subtle)]">
                 {filteredTasks.map((t, idx) => (
-                  <tr key={t.id || idx} className="hover:bg-slate-800/40">
-                    <td className="p-3 font-mono font-bold text-purple-400">{t.date}</td>
-                    <td className="p-3 font-semibold text-slate-200">{t.assigned_employee_name || 'Self'}</td>
+                  <tr key={t.id || idx} className="hover:bg-[var(--bg-surface-muted)]">
+                    <td className="p-3 font-mono font-bold text-[var(--secondary)]">{t.date}</td>
+                    <td className="p-3 font-semibold text-[var(--text-primary)]">{t.assigned_employee_name || 'Self'}</td>
                     <td className="p-3 font-bold text-white max-w-[200px] truncate">{t.title}</td>
-                    <td className="p-3 text-slate-300 max-w-[200px] truncate">
+                    <td className="p-3 text-[var(--text-primary)] max-w-[200px] truncate">
                       <div>{t.customer_name || '—'}</div>
-                      {t.visit_location && <span className="text-[10px] text-slate-500">{t.visit_location}</span>}
+                      {t.visit_location && <span className="text-[10px] text-[var(--text-muted)]">{t.visit_location}</span>}
                     </td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--secondary)]/15 text-[var(--secondary)] border border-[var(--primary)]/30">
                         {t.opportunity_stage || 'No Requirement'}
                       </span>
                     </td>
-                    <td className="p-3 font-mono text-slate-400">{t.follow_up_date || '—'}</td>
+                    <td className="p-3 font-mono text-[var(--text-secondary)]">{t.follow_up_date || '—'}</td>
                     <td className="p-3">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                        t.status === 'COMPLETED' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                        t.status === 'IN_PROGRESS' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
-                        t.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
-                        'bg-slate-800 text-slate-300 border-slate-700'
+                        t.status === 'COMPLETED' ? 'bg-[var(--primary)]/20 text-[var(--secondary)] border-[var(--primary)]/30' :
+                        t.status === 'IN_PROGRESS' ? 'bg-[var(--primary)]/20 text-[var(--primary)] border-[var(--primary)]/30' :
+                        t.status === 'CANCELLED' ? 'bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border-[var(--action-danger-bg)]/30' :
+                        'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border-[var(--border-default)]'
                       }`}>
                         {t.status}
                       </span>
                     </td>
                     <td className="p-3 text-right space-x-1">
-                      <button onClick={() => openEditModal(t)} className="p-1 text-slate-400 hover:text-purple-400" title="Edit Plan">
+                      <button onClick={() => openEditModal(t)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--secondary)]" title="Edit Plan">
                         <Edit3 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => openRescheduleModal(t)} className="p-1 text-slate-400 hover:text-cyan-400" title="Reschedule">
+                      <button onClick={() => openRescheduleModal(t)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--primary)]" title="Reschedule">
                         <ArrowRight className="w-4 h-4" />
                       </button>
-                      <button onClick={(e) => handleDeleteTask(t.id, e)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
+                      <button onClick={(e) => handleDeleteTask(t.id, e)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--action-danger-bg)]" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -1032,7 +1032,7 @@ export const Timesheets: React.FC = () => {
                 ))}
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500 italic">
+                    <td colSpan={8} className="p-8 text-center text-[var(--text-muted)] italic">
                       {activeKpiFilter === 'SCHEDULED' && 'No scheduled visit records found.'}
                       {activeKpiFilter === 'PENDING_FOLLOWUP' && 'No pending follow-ups found.'}
                       {activeKpiFilter === 'COMPLETED' && 'No completed plans yet.'}
@@ -1048,14 +1048,14 @@ export const Timesheets: React.FC = () => {
 
       {/* OVERFLOW MODAL FOR MONTH VIEW */}
       {overflowModalData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0B0F19] border border-slate-800 p-6 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-purple-400" />
+                <CalendarIcon className="w-5 h-5 text-[var(--secondary)]" />
                 <h3 className="font-bold text-white text-sm">Plans for {overflowModalData.displayLabel}</h3>
               </div>
-              <button onClick={() => setOverflowModalData(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setOverflowModalData(null)} className="text-[var(--text-secondary)] hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1068,30 +1068,30 @@ export const Timesheets: React.FC = () => {
                     setOverflowModalData(null);
                     openEditModal(p);
                   }}
-                  className="p-3 bg-slate-950 border border-slate-800 hover:border-purple-500 rounded-xl space-y-1 cursor-pointer transition-all"
+                  className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] hover:border-[var(--primary)] rounded-xl space-y-1 cursor-pointer transition-all"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white text-xs">{p.title}</span>
-                    <span className="text-[10px] font-mono text-purple-400">{p.time_slot || '10:00 - 11:00'}</span>
+                    <span className="text-[10px] font-mono text-[var(--secondary)]">{p.time_slot || '10:00 - 11:00'}</span>
                   </div>
-                  {p.customer_name && <div className="text-[11px] text-cyan-400 font-semibold">{p.customer_name}</div>}
-                  {p.visit_location && <div className="text-[10px] text-slate-400">Location: {p.visit_location}</div>}
+                  {p.customer_name && <div className="text-[11px] text-[var(--primary)] font-semibold">{p.customer_name}</div>}
+                  {p.visit_location && <div className="text-[10px] text-[var(--text-secondary)]">Location: {p.visit_location}</div>}
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--border-default)]">
               <button
                 onClick={() => {
                   const d = overflowModalData.dateStr;
                   setOverflowModalData(null);
                   openCreateModalForDate(d);
                 }}
-                className="px-3.5 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-xl"
+                className="px-3.5 py-1.5 bg-[var(--primary)] text-white text-xs font-semibold rounded-xl"
               >
                 + Add New Plan
               </button>
-              <button onClick={() => setOverflowModalData(null)} className="px-4 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-xl font-medium">
+              <button onClick={() => setOverflowModalData(null)} className="px-4 py-1.5 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] text-xs rounded-xl font-medium">
                 Close
               </button>
             </div>
@@ -1101,26 +1101,26 @@ export const Timesheets: React.FC = () => {
 
       {/* Add / Edit Weekly Plan Modal with 3-Step Stepper */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-surface-muted)] backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 duration-150">
 
             {/* Modal Left Stepper Sidebar */}
-            <div className="w-full md:w-64 bg-[#0D1322] border-b md:border-b-0 md:border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
+            <div className="w-full md:w-64 bg-[var(--bg-surface-elevated)] border-b md:border-b-0 md:border-r border-[var(--border-default)] p-6 flex flex-col justify-between shrink-0">
               <div className="space-y-6">
                 <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/30 shrink-0">
+                  <div className="p-2.5 bg-[var(--primary)]/20 text-[var(--secondary)] rounded-xl border border-[var(--primary)]/30 shrink-0">
                     <CalendarIcon className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-white text-base leading-tight">
                       {editingTask ? 'Edit Weekly Plan' : 'Add Weekly Plan'}
                     </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Plan a customer visit or task for your team</p>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Plan a customer visit or task for your team</p>
                   </div>
                 </div>
 
                 <div className="relative space-y-6 pl-2 pt-2">
-                  <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-800" />
+                  <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-[var(--bg-surface-muted)]" />
 
                   {/* Step 1 */}
                   <div
@@ -1129,18 +1129,18 @@ export const Timesheets: React.FC = () => {
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
                       modalStep === 1
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
+                        ? 'bg-[var(--primary)] text-white shadow-xs ring-4 ring-1 ring-[var(--primary)]/30'
                         : modalStep > 1
-                        ? 'bg-emerald-500 text-slate-950 font-extrabold'
-                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                        ? 'bg-[var(--badge-success-bg)] text-[var(--primary-text)] font-extrabold'
+                        : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] group-hover:bg-[var(--bg-surface-hover)]'
                     }`}>
                       {modalStep > 1 ? <Check className="w-4 h-4 stroke-[3]" /> : '1'}
                     </div>
                     <div>
-                      <div className={`text-xs font-bold ${modalStep === 1 ? 'text-white' : 'text-slate-400'}`}>
+                      <div className={`text-xs font-bold ${modalStep === 1 ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                         Visit Details
                       </div>
-                      <div className="text-[10px] text-slate-500">Basic information</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">Basic information</div>
                     </div>
                   </div>
 
@@ -1151,18 +1151,18 @@ export const Timesheets: React.FC = () => {
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
                       modalStep === 2
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
+                        ? 'bg-[var(--primary)] text-white shadow-xs ring-4 ring-1 ring-[var(--primary)]/30'
                         : modalStep > 2
-                        ? 'bg-emerald-500 text-slate-950 font-extrabold'
-                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                        ? 'bg-[var(--badge-success-bg)] text-[var(--primary-text)] font-extrabold'
+                        : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] group-hover:bg-[var(--bg-surface-hover)]'
                     }`}>
                       {modalStep > 2 ? <Check className="w-4 h-4 stroke-[3]" /> : '2'}
                     </div>
                     <div>
-                      <div className={`text-xs font-bold ${modalStep === 2 ? 'text-white' : 'text-slate-400'}`}>
+                      <div className={`text-xs font-bold ${modalStep === 2 ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                         Meeting & Discussion
                       </div>
-                      <div className="text-[10px] text-slate-500">Objectives and notes</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">Objectives and notes</div>
                     </div>
                   </div>
 
@@ -1173,31 +1173,31 @@ export const Timesheets: React.FC = () => {
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all z-10 ${
                       modalStep === 3
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/40 ring-4 ring-purple-600/20'
-                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                        ? 'bg-[var(--primary)] text-white shadow-xs ring-4 ring-1 ring-[var(--primary)]/30'
+                        : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] group-hover:bg-[var(--bg-surface-hover)]'
                     }`}>
                       3
                     </div>
                     <div>
-                      <div className={`text-xs font-bold ${modalStep === 3 ? 'text-white' : 'text-slate-400'}`}>
+                      <div className={`text-xs font-bold ${modalStep === 3 ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                         Follow-Up
                       </div>
-                      <div className="text-[10px] text-slate-500">Next steps</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">Next steps</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="hidden md:block text-[10px] text-slate-500 pt-4 border-t border-slate-800">
+              <div className="hidden md:block text-[10px] text-[var(--text-muted)] pt-4 border-t border-[var(--border-default)]">
                 Theiakshi Weekly Planner
               </div>
             </div>
 
             {/* Modal Right Form Area */}
-            <div className="flex-1 bg-[#090D16] p-6 flex flex-col justify-between overflow-y-auto">
+            <div className="flex-1 bg-[var(--bg-surface-elevated)] p-6 flex flex-col justify-between overflow-y-auto">
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
+                  <span className="text-xs font-bold text-[var(--secondary)] uppercase tracking-wider flex items-center gap-1.5">
                     <CalendarIcon className="w-4 h-4" />
                     {modalStep === 1 && 'VISIT & TASK PLANNING DETAILS'}
                     {modalStep === 2 && 'MEETING & DISCUSSION OUTCOME'}
@@ -1206,15 +1206,15 @@ export const Timesheets: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="p-1 text-slate-400 hover:text-white rounded-lg transition-all"
+                    className="p-1 text-[var(--text-secondary)] hover:text-white rounded-lg transition-all"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {formError && (
-                  <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0" />
                     <span>{formError}</span>
                   </div>
                 )}
@@ -1226,11 +1226,11 @@ export const Timesheets: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {isManagement ? (
                           <div>
-                            <label className="block text-slate-300 mb-1 font-semibold">Assigned Employee *</label>
+                            <label className="block text-[var(--text-primary)] mb-1 font-semibold">Assigned Employee *</label>
                             <select
                               value={formData.assignedEmployeeId || (employees.length > 0 ? employees[0].id : '')}
                               onChange={e => setFormData({ ...formData, assignedEmployeeId: e.target.value })}
-                              className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                              className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                             >
                               {employees.map(emp => (
                                 <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_code})</option>
@@ -1238,20 +1238,20 @@ export const Timesheets: React.FC = () => {
                             </select>
                           </div>
                         ) : (
-                          <div className="p-3 bg-[#060911] border border-slate-800 rounded-xl text-xs flex items-center justify-between">
-                            <span className="text-slate-400">Assigned To:</span>
-                            <strong className="text-purple-400 font-semibold">You (Self-Assigned)</strong>
+                          <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-xs flex items-center justify-between">
+                            <span className="text-[var(--text-secondary)]">Assigned To:</span>
+                            <strong className="text-[var(--secondary)] font-semibold">You (Self-Assigned)</strong>
                           </div>
                         )}
 
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Task Title / Objective *</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Task Title / Objective *</label>
                           <input
                             type="text"
                             required
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             placeholder="e.g. CLRI VISIT"
                           />
                         </div>
@@ -1259,32 +1259,32 @@ export const Timesheets: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Customer / Account Name</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Customer / Account Name</label>
                           <input
                             type="text"
                             value={formData.customerName}
                             onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             placeholder="e.g. CENTRAL LEATHER RESEARCH INSTITUTE"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Contact Person</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Contact Person</label>
                           <input
                             type="text"
                             value={formData.contactPerson}
                             onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             placeholder="e.g. Amit Ashok"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Contact Phone / Email</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Contact Phone / Email</label>
                           <input
                             type="text"
                             value={formData.contactDetails}
                             onChange={e => setFormData({ ...formData, contactDetails: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             placeholder="04424437137"
                           />
                         </div>
@@ -1292,22 +1292,22 @@ export const Timesheets: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Visit Location / Place</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Visit Location / Place</label>
                           <input
                             type="text"
                             value={formData.visitLocation}
                             onChange={e => setFormData({ ...formData, visitLocation: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             placeholder="Adayar"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Visit Type</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Visit Type</label>
                           <select
                             value={formData.visitType}
                             onChange={e => setFormData({ ...formData, visitType: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="New Prospect">New Prospect</option>
                             <option value="Follow-Up">Follow-Up</option>
@@ -1320,11 +1320,11 @@ export const Timesheets: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Time Slot</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Time Slot</label>
                           <select
                             value={formData.timeSlot}
                             onChange={e => setFormData({ ...formData, timeSlot: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="09:00-10:30">09:00 - 10:30</option>
                             <option value="10:00-11:00">10:00 - 11:00</option>
@@ -1339,23 +1339,23 @@ export const Timesheets: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Planned Date *</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Planned Date *</label>
                           <input
                             type="date"
                             required
                             value={formData.date}
                             onChange={e => setFormData({ ...formData, date: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono focus:border-[var(--primary)] focus:outline-none"
                           />
                         </div>
 
                         {/* Opportunity Stage with No Requirement */}
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Opportunity Stage</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Opportunity Stage</label>
                           <select
                             value={formData.opportunityStage}
                             onChange={e => setFormData({ ...formData, opportunityStage: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="No Requirement">No Requirement</option>
                             <option value="Lead">Lead</option>
@@ -1369,11 +1369,11 @@ export const Timesheets: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Priority</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Priority</label>
                           <select
                             value={formData.priority}
                             onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="HIGH">HIGH</option>
                             <option value="MEDIUM">MEDIUM</option>
@@ -1383,12 +1383,12 @@ export const Timesheets: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1 font-semibold">Products / Solutions to Present</label>
+                        <label className="block text-[var(--text-primary)] mb-1 font-semibold">Products / Solutions to Present</label>
                         <input
                           type="text"
                           value={formData.productsToPresent}
                           onChange={e => setFormData({ ...formData, productsToPresent: e.target.value })}
-                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           placeholder="e.g. Microscope"
                         />
                       </div>
@@ -1400,11 +1400,11 @@ export const Timesheets: React.FC = () => {
                     <div className="space-y-3 animate-in fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Task Status *</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Task Status *</label>
                           <select
                             value={formData.status}
                             onChange={e => setFormData({ ...formData, status: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-bold focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-bold focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="PLANNED">PLANNED</option>
                             <option value="IN_PROGRESS">IN PROGRESS</option>
@@ -1414,35 +1414,35 @@ export const Timesheets: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-slate-300 mb-1 font-semibold">Estimated Opportunity Value (₹)</label>
+                          <label className="block text-[var(--text-primary)] mb-1 font-semibold">Estimated Opportunity Value (₹)</label>
                           <input
                             type="number"
                             value={formData.estimatedValue}
                             onChange={e => setFormData({ ...formData, estimatedValue: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-amber-300 font-mono focus:border-purple-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--badge-warning-text)] font-mono focus:border-[var(--primary)] focus:outline-none"
                             placeholder="e.g. 250000"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1 font-semibold">Visit Objective / Notes</label>
+                        <label className="block text-[var(--text-primary)] mb-1 font-semibold">Visit Objective / Notes</label>
                         <textarea
                           rows={3}
                           value={formData.visitObjective}
                           onChange={e => setFormData({ ...formData, visitObjective: e.target.value })}
-                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           placeholder="Objectives for the customer visit..."
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1 font-semibold">Discussion Outcome / Meeting Summary</label>
+                        <label className="block text-[var(--text-primary)] mb-1 font-semibold">Discussion Outcome / Meeting Summary</label>
                         <textarea
                           rows={3}
                           value={formData.outcomeSummary}
                           onChange={e => setFormData({ ...formData, outcomeSummary: e.target.value })}
-                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           placeholder="Discussed product requirements. Customer requested quotation..."
                         />
                       </div>
@@ -1453,34 +1453,34 @@ export const Timesheets: React.FC = () => {
                   {modalStep === 3 && (
                     <div className="space-y-3 animate-in fade-in duration-200">
                       <div>
-                        <label className="block text-slate-300 mb-1 font-semibold">Next Required Action</label>
+                        <label className="block text-[var(--text-primary)] mb-1 font-semibold">Next Required Action</label>
                         <input
                           type="text"
                           value={formData.nextAction}
                           onChange={e => setFormData({ ...formData, nextAction: e.target.value })}
-                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                          className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           placeholder="Send commercial quotation and technical specs..."
                         />
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 mb-1 font-semibold">Next Follow-Up Date</label>
+                        <label className="block text-[var(--text-primary)] mb-1 font-semibold">Next Follow-Up Date</label>
                         <input
                           type="date"
                           value={formData.followUpDate}
                           onChange={e => setFormData({ ...formData, followUpDate: e.target.value })}
-                          className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                          className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono focus:border-[var(--primary)] focus:outline-none"
                         />
                       </div>
 
                       {formData.status === 'CANCELLED' && (
                         <div>
-                          <label className="block text-rose-400 mb-1 font-semibold">Cancellation Reason *</label>
+                          <label className="block text-[var(--action-danger-bg)] mb-1 font-semibold">Cancellation Reason *</label>
                           <input
                             type="text"
                             value={formData.cancellationReason}
                             onChange={e => setFormData({ ...formData, cancellationReason: e.target.value })}
-                            className="w-full px-3 py-2 bg-[#060911] border border-rose-800 rounded-xl text-rose-300 focus:outline-none"
+                            className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[var(--action-danger-bg)] focus:outline-none"
                             placeholder="e.g. Rescheduled by client..."
                           />
                         </div>
@@ -1491,11 +1491,11 @@ export const Timesheets: React.FC = () => {
               </div>
 
               {/* Form Bottom Control Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800 mt-4">
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--border-default)] mt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-xs transition-all"
+                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl font-medium text-xs transition-all"
                 >
                   Cancel
                 </button>
@@ -1505,7 +1505,7 @@ export const Timesheets: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setModalStep((modalStep - 1) as any)}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold text-xs transition-all"
+                      className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl font-semibold text-xs transition-all"
                     >
                       Back
                     </button>
@@ -1515,7 +1515,7 @@ export const Timesheets: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setModalStep((modalStep + 1) as any)}
-                      className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-purple-600/25 transition-all"
+                      className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary)] text-white rounded-xl font-semibold text-xs shadow-xs transition-all"
                     >
                       Next
                     </button>
@@ -1523,7 +1523,7 @@ export const Timesheets: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-purple-600/30 transition-all"
+                      className="px-6 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl font-semibold text-xs shadow-xs transition-all"
                     >
                       Save Plan
                     </button>
@@ -1538,58 +1538,58 @@ export const Timesheets: React.FC = () => {
 
       {/* Reschedule Task Modal */}
       {rescheduleTaskItem && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0B0F19] border border-slate-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-surface-muted)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <div className="flex items-center gap-2">
-                <ArrowRight className="w-5 h-5 text-purple-400" />
+                <ArrowRight className="w-5 h-5 text-[var(--secondary)]" />
                 <h3 className="font-bold text-white text-sm">Reschedule Weekly Plan</h3>
               </div>
-              <button onClick={() => setRescheduleTaskItem(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setRescheduleTaskItem(null)} className="text-[var(--text-secondary)] hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleRescheduleSubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-[#060911] rounded-xl border border-slate-800 space-y-1">
-                <p className="text-slate-400 font-medium">Plan: <span className="text-slate-100 font-bold">{rescheduleTaskItem.title}</span></p>
-                <p className="text-slate-400 font-medium">Original Date: <span className="text-amber-400 font-mono">{rescheduleTaskItem.date}</span></p>
+              <div className="p-3 bg-[var(--bg-surface)] rounded-xl border border-[var(--border-default)] space-y-1">
+                <p className="text-[var(--text-secondary)] font-medium">Plan: <span className="text-[var(--text-heading)] font-bold">{rescheduleTaskItem.title}</span></p>
+                <p className="text-[var(--text-secondary)] font-medium">Original Date: <span className="text-[var(--badge-warning-text)] font-mono">{rescheduleTaskItem.date}</span></p>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">New Planned Date *</label>
+                <label className="block text-[var(--text-primary)] mb-1 font-semibold">New Planned Date *</label>
                 <input
                   type="date"
                   required
                   value={rescheduleNewDate}
                   onChange={e => setRescheduleNewDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#060911] border border-slate-800 text-purple-300 font-mono rounded-xl outline-none"
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--secondary)] font-mono rounded-xl outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Reschedule Reason</label>
+                <label className="block text-[var(--text-primary)] mb-1 font-semibold">Reschedule Reason</label>
                 <input
                   type="text"
                   value={rescheduleReason}
                   onChange={e => setRescheduleReason(e.target.value)}
                   placeholder="e.g. Customer requested later date..."
-                  className="w-full px-3 py-2 bg-[#060911] border border-slate-800 text-slate-200 rounded-xl outline-none"
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-xl outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setRescheduleTaskItem(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={rescheduling || !rescheduleNewDate}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-semibold shadow disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)] rounded-xl font-semibold shadow disabled:opacity-50"
                 >
                   {rescheduling ? 'Rescheduling...' : 'Confirm Reschedule'}
                 </button>
