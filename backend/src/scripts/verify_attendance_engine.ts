@@ -31,21 +31,24 @@ async function runAttendanceVerificationSuite() {
   // TESTS 1–16: CORE ATTENDANCE ENGINE & HOLIDAY RULES
   // ----------------------------------------------------
 
-  // 1. 09:00 AM Check-In Punctuality
-  const lateAt0900 = AttendanceStatusService.isCheckInLate('2026-09-01T09:00:00+05:30');
-  assert(!lateAt0900, 'Test 1: 09:00 AM check-in is NOT late (PRESENT)');
+  // 1. Punctuality Category Exact Boundaries
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T09:14:59+05:30') === 'PRESENT', 'Test 1a: 09:14:59 is PRESENT');
+  assert(!AttendanceStatusService.isCheckInLate('2026-09-01T09:14:59+05:30'), 'Test 1b: 09:14:59 is NOT late');
 
-  // 2. 09:15 AM Check-In Punctuality (Grace Period Limit)
-  const lateAt0915 = AttendanceStatusService.isCheckInLate('2026-09-01T09:15:00+05:30');
-  assert(!lateAt0915, 'Test 2: 09:15 AM check-in is NOT late (PRESENT)');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T09:15:00+05:30') === 'LATE_PRESENT', 'Test 2a: 09:15:00 is LATE CHECK-IN');
+  assert(AttendanceStatusService.isCheckInLate('2026-09-01T09:15:00+05:30'), 'Test 2b: 09:15:00 IS late');
 
-  // 3. 09:16 AM Check-In Punctuality (After Grace Period)
-  const lateAt0916 = AttendanceStatusService.isCheckInLate('2026-09-01T09:16:00+05:30');
-  assert(lateAt0916, 'Test 3: 09:16 AM check-in IS LATE PRESENT');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T09:20:00+05:30') === 'LATE_PRESENT', 'Test 3a: 09:20:00 is LATE CHECK-IN');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T09:29:59+05:30') === 'LATE_PRESENT', 'Test 3b: 09:29:59 is LATE CHECK-IN');
 
-  // 4. 10:00 AM Check-In Punctuality
-  const lateAt1000 = AttendanceStatusService.isCheckInLate('2026-09-01T10:00:00+05:30');
-  assert(lateAt1000, 'Test 4: 10:00 AM check-in IS LATE PRESENT');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T09:30:00+05:30') === 'SHORT_LEAVE', 'Test 4a: 09:30:00 is SHORT LEAVE');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T10:30:00+05:30') === 'SHORT_LEAVE', 'Test 4b: 10:30:00 is SHORT LEAVE');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T10:59:59+05:30') === 'SHORT_LEAVE', 'Test 4c: 10:59:59 is SHORT LEAVE');
+
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T11:00:00+05:30') === 'HALF_DAY', 'Test 4d: 11:00:00 is HALF DAY');
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T12:59:59+05:30') === 'HALF_DAY', 'Test 4e: 12:59:59 is HALF DAY');
+
+  assert(AttendanceStatusService.getPunctualityCategory('2026-09-01T13:00:00+05:30') === 'ABSENT', 'Test 4f: 13:00:00 is ABSENT');
 
   // 5. Completed duration >= 8h => PRESENT (not early checkout)
   const res8h = AttendanceStatusService.resolveDayStatus({
@@ -88,8 +91,8 @@ async function runAttendanceVerificationSuite() {
       organization_id: 'org1',
       employee_id: 'emp1',
       date: '2026-09-01',
-      check_in: '2026-09-01T09:30:00+05:30',
-      check_out: '2026-09-01T16:30:00+05:30',
+      check_in: '2026-09-01T09:15:00+05:30',
+      check_out: '2026-09-01T16:15:00+05:30',
       working_hours: 7.0
     }]
   });

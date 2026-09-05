@@ -269,40 +269,76 @@ router.get('/trips/:id', async (req: AuthenticatedRequest, res: Response, next: 
   }
 });
 
-// 5. Update Trip Draft Details
+// 5. Update Trip Details (Pre-approval: DRAFT, SUBMITTED, PENDING)
 router.put('/trips/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
-    const updated = await TripExpenseRepository.updateTripDraft(req.params.id, organizationId, employeeId, req.body);
-    if (!updated) {
-      return res.status(400).json({ success: false, error: 'Trip Expense not found or not in DRAFT status.', code: 'INVALID_TRIP_UPDATE' });
+    const trip = await TripExpenseRepository.getTripById(req.params.id, organizationId);
+    if (!trip) {
+      return res.status(404).json({ success: false, error: 'Trip Expense not found.', code: 'TRIP_NOT_FOUND' });
     }
-    return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense draft updated successfully.' } });
+    if (trip.employee_id !== employeeId) {
+      return res.status(403).json({ success: false, error: 'You are not authorized to edit this trip expense.', code: 'FORBIDDEN' });
+    }
+    if (!['DRAFT', 'SUBMITTED', 'PENDING'].includes(trip.status)) {
+      return res.status(403).json({ success: false, error: `Approved or finalized trip expenses cannot be edited. Current status: ${trip.status}`, code: 'TRIP_LOCKED' });
+    }
+
+    const updated = await TripExpenseRepository.updateTripDraft(req.params.id, organizationId, employeeId, req.body);
+    return res.status(200).json({ success: true, data: { trip: updated, message: 'Trip Expense updated successfully.' } });
   } catch (error) {
     return next(error);
   }
 });
 
-// SUPER_ADMIN ONLY Trip Expense Permanent Deletion Endpoint
-router.delete('/trips/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Trip Expense Deletion Endpoint (Employee Pre-approval Delete OR SUPER_ADMIN Permanent Delete)
+router.delete('/trips/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
     const userId = req.user!.userId;
+    const employeeId = req.user!.employeeId;
+    const role = req.user!.role;
     const { id } = req.params;
 
-    const deleted = await TripExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
-    if (!deleted) {
+    const trip = await TripExpenseRepository.getTripById(id, organizationId);
+    if (!trip) {
       return res.status(404).json({
         success: false,
-        error: 'Trip Expense claim not found or access denied.',
+        error: 'Trip Expense claim not found.',
         code: 'TRIP_NOT_FOUND'
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: { message: 'Trip Expense claim permanently deleted.', trip: deleted }
+    const isOwner = employeeId && employeeId === trip.employee_id;
+    if (isOwner) {
+      if (['DRAFT', 'SUBMITTED', 'PENDING'].includes(trip.status)) {
+        const deleted = await TripExpenseRepository.deleteTripDraft(id, organizationId, employeeId);
+        return res.status(200).json({
+          success: true,
+          data: { message: 'Trip Expense claim deleted successfully.', tripId: id }
+        });
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: `Approved/finalized trip expenses cannot be deleted. Current status: ${trip.status}`,
+          code: 'TRIP_LOCKED'
+        });
+      }
+    }
+
+    if (role === 'SUPER_ADMIN') {
+      const deleted = await TripExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
+      return res.status(200).json({
+        success: true,
+        data: { message: 'Trip Expense claim permanently deleted.', trip: deleted }
+      });
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied to delete this trip expense.',
+      code: 'FORBIDDEN'
     });
   } catch (error) {
     return next(error);
@@ -530,16 +566,24 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
   }
 });
 
-// Update draft single expense
+// Update pre-approval single expense (DRAFT, SUBMITTED, PENDING)
 router.put('/:id', requireEmployee, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
-    const updated = await ExpenseRepository.updateDraft(req.params.id, organizationId, employeeId, req.body);
-    if (!updated) {
-      return res.status(400).json({ success: false, error: 'Expense claim not found or not in DRAFT status.', code: 'INVALID_DRAFT_UPDATE' });
+    const expense = await ExpenseRepository.findById(req.params.id, organizationId);
+    if (!expense) {
+      return res.status(404).json({ success: false, error: 'Expense claim not found.', code: 'EXPENSE_NOT_FOUND' });
     }
-    return res.status(200).json({ success: true, data: { expense: updated, message: 'Draft expense updated successfully.' } });
+    if (expense.employee_id !== employeeId) {
+      return res.status(403).json({ success: false, error: 'You are not authorized to edit this expense claim.', code: 'FORBIDDEN' });
+    }
+    if (!['DRAFT', 'SUBMITTED', 'PENDING'].includes(expense.status)) {
+      return res.status(403).json({ success: false, error: `Approved or finalized expense claims cannot be edited. Current status: ${expense.status}`, code: 'EXPENSE_LOCKED' });
+    }
+
+    const updated = await ExpenseRepository.updateDraft(req.params.id, organizationId, employeeId, req.body);
+    return res.status(200).json({ success: true, data: { expense: updated, message: 'Expense claim updated successfully.' } });
   } catch (error) {
     return next(error);
   }
@@ -633,25 +677,53 @@ router.put('/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MAN
   }
 });
 
-// SUPER_ADMIN ONLY Expense Deletion Endpoint
-router.delete('/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Expense Deletion Endpoint (Employee Pre-approval Delete OR SUPER_ADMIN Permanent Delete)
+router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const organizationId = req.user!.organizationId;
     const userId = req.user!.userId;
+    const employeeId = req.user!.employeeId;
+    const role = req.user!.role;
     const { id } = req.params;
 
-    const deleted = await ExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
-    if (!deleted) {
+    const expense = await ExpenseRepository.findById(id, organizationId);
+    if (!expense) {
       return res.status(404).json({
         success: false,
-        error: 'Expense claim not found or access denied.',
+        error: 'Expense claim not found.',
         code: 'EXPENSE_NOT_FOUND'
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: { message: 'Expense claim permanently deleted.', expense: deleted }
+    const isOwner = employeeId && employeeId === expense.employee_id;
+    if (isOwner) {
+      if (['DRAFT', 'SUBMITTED', 'PENDING'].includes(expense.status)) {
+        const deleted = await ExpenseRepository.deleteExpenseByEmployee(id, organizationId, employeeId, userId);
+        return res.status(200).json({
+          success: true,
+          data: { message: 'Expense claim deleted successfully.', expense: deleted }
+        });
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: `Approved/finalized expense claims cannot be deleted. Current status: ${expense.status}`,
+          code: 'EXPENSE_LOCKED'
+        });
+      }
+    }
+
+    if (role === 'SUPER_ADMIN') {
+      const deleted = await ExpenseRepository.deleteSuperAdmin(id, organizationId, userId);
+      return res.status(200).json({
+        success: true,
+        data: { message: 'Expense claim permanently deleted.', expense: deleted }
+      });
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied to delete this expense claim.',
+      code: 'FORBIDDEN'
     });
   } catch (error) {
     return next(error);

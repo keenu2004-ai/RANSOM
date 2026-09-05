@@ -298,9 +298,14 @@ export class TimesheetRepository {
 
     const task = existing.rows[0];
 
-    // RBAC: Normal employee can only update tasks assigned to them or created by them
-    if (actorRole === 'EMPLOYEE' && task.employee_id !== actorEmployeeId && task.created_by !== actorUserId) {
-      throw new Error('Unauthorized to update this task.');
+    // RBAC: Normal employee can only update tasks assigned to them or created by them while in pre-approval status
+    if (actorRole === 'EMPLOYEE') {
+      if (task.employee_id !== actorEmployeeId && task.created_by !== actorUserId) {
+        throw new Error('Unauthorized to update this task.');
+      }
+      if (!['PLANNED', 'IN_PROGRESS', 'SUBMITTED'].includes(task.status)) {
+        throw new Error(`Approved or finalized tasks cannot be edited. Current status: ${task.status}.`);
+      }
     }
 
     const title = data.title !== undefined ? data.title.trim() : task.title;
@@ -525,8 +530,13 @@ export class TimesheetRepository {
     }
     const task = existing.rows[0];
 
-    if (actorRole === 'EMPLOYEE' && task.employee_id !== actorEmployeeId && task.created_by !== actorUserId) {
-      throw new Error('Unauthorized to delete this task.');
+    if (actorRole === 'EMPLOYEE') {
+      if (task.employee_id !== actorEmployeeId && task.created_by !== actorUserId) {
+        throw new Error('Unauthorized to delete this task.');
+      }
+      if (!['PLANNED', 'IN_PROGRESS', 'SUBMITTED'].includes(task.status)) {
+        throw new Error(`Approved or finalized tasks cannot be deleted. Current status: ${task.status}.`);
+      }
     }
 
     await query(`UPDATE timesheets SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND organization_id = $2`, [taskId, organizationId]);

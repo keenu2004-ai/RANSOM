@@ -230,6 +230,18 @@ export const Attendance: React.FC = () => {
     }
   };
 
+  const handleWithdrawReg = async (id: string) => {
+    if (!confirm('Are you sure you want to withdraw this pending regularization request?')) return;
+    try {
+      await apiFetch(`/attendance/regularize/my/${id}`, { method: 'DELETE' });
+      setRegSuccess('Regularization request withdrawn successfully.');
+      await fetchAttendance(currentYear, currentMonth);
+      setTimeout(() => setRegSuccess(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to withdraw regularization.');
+    }
+  };
+
   const sessions = todaySummary?.sessions || [];
 
   return (
@@ -623,6 +635,13 @@ export const Attendance: React.FC = () => {
                             Reject
                           </button>
                         </div>
+                      ) : r.status === 'PENDING' && r.employee_id === user?.employeeId ? (
+                        <button
+                          onClick={() => handleWithdrawReg(r.id)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                        >
+                          Withdraw
+                        </button>
                       ) : (
                         <span className="text-[11px] text-slate-500 font-mono">--</span>
                       )}

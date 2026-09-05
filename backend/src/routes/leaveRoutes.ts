@@ -12,6 +12,9 @@ router.use(authenticate);
 router.get('/me/balance', LeaveController.myBalance);
 router.get('/monthly-usage', requireEmployee, LeaveController.monthlyUsage);
 router.post('/apply', requireEmployee, LeaveController.apply);
+router.put('/:id', requireEmployee, LeaveController.update);
+router.delete('/:id', requireEmployee, LeaveController.withdraw);
+router.post('/:id/withdraw', requireEmployee, LeaveController.withdraw);
 
 // Administrative & Configuration endpoints (Do NOT require employeeId)
 router.get('/all-balances', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'), LeaveController.allBalances);

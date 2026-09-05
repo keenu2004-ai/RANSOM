@@ -165,6 +165,78 @@ export class AttendanceController {
     }
   }
 
+  // Personal self-service: Update pending regularization
+  static async updateRegularization(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const { id } = req.params;
+      const { requestedPunchIn, requestedPunchOut, reason } = req.body;
+
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      if (!reason || typeof reason !== 'string' || reason.trim() === '') {
+        return res.status(400).json({ success: false, error: 'Reason is required for regularization update.', code: 'INVALID_REGULARIZATION_INPUT' });
+      }
+
+      const updated = await AttendanceRepository.updateRegularization(
+        organizationId,
+        employeeId,
+        id,
+        { requestedPunchIn, requestedPunchOut, reason },
+        req.user!.userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { regularization: updated, message: 'Attendance regularization request updated successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'REGULARIZATION_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('Only pending')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
+  // Personal self-service: Withdraw / delete pending regularization
+  static async withdrawRegularization(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const { id } = req.params;
+
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      const withdrawn = await AttendanceRepository.deleteRegularization(
+        organizationId,
+        employeeId,
+        id,
+        req.user!.userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { regularization: withdrawn, message: 'Attendance regularization request withdrawn successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'REGULARIZATION_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('Only pending')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
   // List Regularization Requests
   static async getRegularizations(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {

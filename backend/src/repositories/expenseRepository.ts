@@ -229,7 +229,7 @@ export class ExpenseRepository {
         receipt_url = COALESCE($12, receipt_url),
         status = COALESCE($13, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $14 AND organization_id = $15 AND employee_id = $16 AND status = 'DRAFT'
+      WHERE id = $14 AND organization_id = $15 AND employee_id = $16 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
       RETURNING *
     `;
 
@@ -246,7 +246,7 @@ export class ExpenseRepository {
       data.description || null,
       data.attachmentName || null,
       data.receiptUrl || null,
-      data.status || 'DRAFT',
+      data.status || undefined,
       id,
       organizationId,
       employeeId
@@ -254,6 +254,30 @@ export class ExpenseRepository {
 
     const res = await query(text, params);
     return res.rows[0] || null;
+  }
+
+  static async deleteExpenseByEmployee(id: string, organizationId: string, employeeId: string, actorUserId?: string) {
+    return withTransaction(async (client) => {
+      const fetchRes = await client.query(
+        `SELECT * FROM expenses WHERE id = $1 AND organization_id = $2 AND employee_id = $3 FOR UPDATE`,
+        [id, organizationId, employeeId]
+      );
+      if (fetchRes.rows.length === 0) return null;
+      const expense = fetchRes.rows[0];
+      if (!['DRAFT', 'SUBMITTED', 'PENDING'].includes(expense.status)) {
+        throw new Error(`Expense claim cannot be deleted in ${expense.status} status.`);
+      }
+
+      await client.query(`DELETE FROM expenses WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+
+      if (actorUserId) {
+        await client.query(`
+          INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
+          VALUES ($1, $2, 'EXPENSE_DELETED', 'expenses', 'Expense', $3, $4)
+        `, [organizationId, actorUserId, id, JSON.stringify({ amount: expense.amount, category: expense.category, status: expense.status })]);
+      }
+      return expense;
+    });
   }
 
   static async submitDraft(id: string, organizationId: string, employeeId: string) {

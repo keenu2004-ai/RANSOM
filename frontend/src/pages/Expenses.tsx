@@ -183,6 +183,7 @@ export const Expenses: React.FC = () => {
   const [showOtherModal, setShowOtherModal] = useState(false);
 
   const [editingChild, setEditingChild] = useState<any | null>(null);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   // File Attachment State
   const [attachment, setAttachment] = useState<{ name: string; url: string } | null>(null);
@@ -605,12 +606,12 @@ export const Expenses: React.FC = () => {
         };
       }
     }
-
     return { receiptUrl: null, attachmentName: null };
   };
 
   // Open Business / Local Travel Single Claim Modal
   const handleOpenSingleModal = (type: 'BUSINESS' | 'LOCAL_TRAVEL') => {
+    setEditingExpenseId(null);
     setSingleClaimType(type);
     setFormError(null);
     setAttachment(null);
@@ -628,6 +629,53 @@ export const Expenses: React.FC = () => {
       endLocation: ''
     });
     setShowSingleModal(true);
+  };
+
+  const handleOpenEditSingle = (exp: any) => {
+    setEditingExpenseId(exp.id);
+    setSingleClaimType(exp.expense_type);
+    setFormError(null);
+    setAttachment(exp.receipt_url ? { name: exp.attachment_name || 'Receipt Document', url: exp.receipt_url } : null);
+    setRawFile(null);
+    setSingleFormData({
+      transactionDate: exp.transaction_date ? new Date(exp.transaction_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      description: exp.description || '',
+      category: exp.category || exp.category_name || (exp.expense_type === 'BUSINESS' ? BUSINESS_CATEGORIES[0] : LOCAL_TRAVEL_CATEGORIES[0]),
+      merchant: exp.merchant || '',
+      currency: exp.currency || 'INR',
+      amount: String(exp.amount || ''),
+      bucket: exp.bucket || BUCKET_OPTIONS[1],
+      transportMode: exp.transport_mode || TRANSPORT_MODES[5],
+      startLocation: exp.start_location || '',
+      endLocation: exp.end_location || ''
+    });
+    setShowSingleModal(true);
+  };
+
+  const handleDeleteExpenseByEmployee = async (exp: any) => {
+    if (!confirm(`Are you sure you want to delete this ${exp.expense_type} claim for ₹${exp.amount}?`)) return;
+    try {
+      await apiFetch(`/expenses/${exp.id}`, { method: 'DELETE' });
+      setSuccessMsg('Expense claim deleted successfully.');
+      setSelectedSingleExpense(null);
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete expense claim.');
+    }
+  };
+
+  const handleDeleteTripByEmployee = async (trip: any) => {
+    if (!confirm(`Are you sure you want to delete this trip claim "${trip.purpose}"?`)) return;
+    try {
+      await apiFetch(`/expenses/trips/${trip.id}`, { method: 'DELETE' });
+      setSuccessMsg('Trip Expense claim deleted successfully.');
+      setActiveTrip(null);
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete trip expense claim.');
+    }
   };
 
   // Submit Business or Local Travel Single Expense
@@ -683,15 +731,23 @@ export const Expenses: React.FC = () => {
         payload.endLocation = singleFormData.endLocation.trim();
       }
 
-      await apiFetch('/expenses', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
+      if (editingExpenseId) {
+        await apiFetch(`/expenses/${editingExpenseId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } else {
+        await apiFetch('/expenses', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+      }
 
       setRawFile(null);
       setAttachment(null);
       setShowSingleModal(false);
-      setSuccessMsg(status === 'DRAFT' ? 'Expense claim saved as draft.' : 'Expense claim submitted successfully.');
+      setEditingExpenseId(null);
+      setSuccessMsg(editingExpenseId ? 'Expense claim updated successfully.' : (status === 'DRAFT' ? 'Expense claim saved as draft.' : 'Expense claim submitted successfully.'));
       fetchData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -3286,6 +3342,33 @@ export const Expenses: React.FC = () => {
                     className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
                   >
                     Reject Claim
+                  </button>
+                </>
+              )}
+              {user?.employeeId === selectedSingleExpense.employee_id && ['DRAFT', 'SUBMITTED', 'PENDING'].includes(selectedSingleExpense.status) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const exp = selectedSingleExpense;
+                      setSelectedSingleExpense(null);
+                      handleOpenEditSingle(exp);
+                    }}
+                    className="w-full sm:w-auto px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Edit Expense</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const exp = selectedSingleExpense;
+                      handleDeleteExpenseByEmployee(exp);
+                    }}
+                    className="w-full sm:w-auto px-3 py-2.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Expense</span>
                   </button>
                 </>
               )}

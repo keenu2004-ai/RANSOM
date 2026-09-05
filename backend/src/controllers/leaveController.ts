@@ -98,6 +98,76 @@ export class LeaveController {
     }
   }
 
+  // Personal self-service: Update existing pending leave request
+  static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const { id } = req.params;
+
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      const parseResult = applyLeaveSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ success: false, error: parseResult.error.errors[0].message, code: 'VALIDATION_ERROR' });
+      }
+
+      const updated = await LeaveRepository.updateLeaveRequest(
+        organizationId,
+        employeeId,
+        id,
+        parseResult.data,
+        req.user!.userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { leaveRequest: updated, message: 'Leave request updated successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('Only pending')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
+  // Personal self-service: Withdraw / delete pending leave request
+  static async withdraw(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const { id } = req.params;
+      const { reason } = req.body || {};
+
+      const cancelled = await LeaveRepository.cancelLeaveRequest(
+        organizationId,
+        req.user!.userId,
+        req.user!.employeeId || null,
+        req.user!.role,
+        id,
+        reason || 'Withdrawn by employee'
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { leaveRequest: cancelled, message: 'Leave request withdrawn successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('already')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
   // Leave list endpoint for Management & Employee self-service
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {

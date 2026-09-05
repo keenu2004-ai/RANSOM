@@ -16,6 +16,8 @@ router.post('/categories', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), As
 router.get('/requests', AssetController.getRequests);
 router.post('/requests', requireEmployee, AssetController.createRequest);
 router.get('/requests/:id', AssetController.getRequestById);
+router.put('/requests/:id', requireEmployee, AssetController.updateRequest);
+router.delete('/requests/:id', requireEmployee, AssetController.deleteRequest);
 router.put('/requests/:id/approve', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AssetController.approveRequest);
 router.put('/requests/:id/reject', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AssetController.rejectRequest);
 router.put('/requests/:id/fulfill', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'), AssetController.fulfillRequest);

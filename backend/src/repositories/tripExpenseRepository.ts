@@ -385,7 +385,7 @@ export class TripExpenseRepository {
     });
   }
 
-  // Update Parent Trip Draft Details
+  // Update Parent Trip Details (pre-approval)
   static async updateTripDraft(id: string, organizationId: string, employeeId: string, data: Partial<CreateTripDTO>) {
     const text = `
       UPDATE trip_expenses SET
@@ -396,7 +396,7 @@ export class TripExpenseRepository {
         end_date = COALESCE($5, end_date),
         currency = COALESCE($6, currency),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND organization_id = $8 AND employee_id = $9 AND status = 'DRAFT'
+      WHERE id = $7 AND organization_id = $8 AND employee_id = $9 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
       RETURNING *
     `;
     const params = [data.purpose || null, data.startPoint || null, data.endPoint || null, data.startDate || null, data.endDate || null, data.currency || null, id, organizationId, employeeId];
@@ -404,9 +404,9 @@ export class TripExpenseRepository {
     return res.rows[0] || null;
   }
 
-  // Delete Parent Trip Draft (Cascades children)
+  // Delete Parent Trip Expense (pre-approval, cascades children)
   static async deleteTripDraft(id: string, organizationId: string, employeeId: string) {
-    const res = await query('DELETE FROM trip_expenses WHERE id = $1 AND organization_id = $2 AND employee_id = $3 AND status = \'DRAFT\' RETURNING id', [id, organizationId, employeeId]);
+    const res = await query("DELETE FROM trip_expenses WHERE id = $1 AND organization_id = $2 AND employee_id = $3 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING') RETURNING id", [id, organizationId, employeeId]);
     return res.rows.length > 0;
   }
 

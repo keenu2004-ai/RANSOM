@@ -84,7 +84,7 @@ export class LeaveRepository {
       SELECT lr.start_date, lr.end_date, lr.total_days, lr.actual_deduction_type, lt.code as leave_type_code, lt.name as leave_type_name
       FROM leave_requests lr
       INNER JOIN leave_types lt ON lr.leave_type_id = lt.id
-      WHERE lr.employee_id = $1 AND lr.organization_id = $2 
+      WHERE lr.employee_id::text = $1 AND lr.organization_id::text = $2
         AND lr.status = 'APPROVED'
         AND (lt.code = 'CL' OR lr.actual_deduction_type ILIKE '%Casual%')
         AND lr.start_date <= $4 AND lr.end_date >= $3
@@ -187,7 +187,7 @@ export class LeaveRepository {
       // Acquire exclusive lock on employee balances for concurrency protection
       await client.query(`
         SELECT id FROM leave_balances
-        WHERE employee_id = $1 AND year = $2 AND organization_id = $3
+        WHERE employee_id::text = $1 AND year = $2 AND organization_id::text = $3
         FOR UPDATE
       `, [employeeId, year, organizationId]);
 
@@ -210,7 +210,7 @@ export class LeaveRepository {
       if (requestedCode === 'CL') {
         if (data.totalDays > 2) {
           // Rule A: Consecutive CL Limit exceeded -> Entire request converts to Privilege
-          const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
+          const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id::text = $1 AND code IN ('EL', 'PL')", [organizationId]);
           if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
           targetLeaveTypeId = plTypeRes.rows[0].id;
           actualDeductionType = plTypeRes.rows[0].name;
@@ -239,7 +239,7 @@ export class LeaveRepository {
             const monthCLUsed = await LeaveRepository.getMonthlyCLUsage(employeeId, organizationId, mYear, mMonth, client);
 
             if (monthCLUsed + reqDaysInMonth > 2) {
-              const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id = $1 AND code IN ('EL', 'PL')", [organizationId]);
+              const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id::text = $1 AND code IN ('EL', 'PL')", [organizationId]);
               if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
               targetLeaveTypeId = plTypeRes.rows[0].id;
               actualDeductionType = plTypeRes.rows[0].name;
@@ -254,7 +254,7 @@ export class LeaveRepository {
       const balRes = await client.query(`
         SELECT id, quota, used, pending, available
         FROM leave_balances
-        WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3 AND organization_id = $4
+        WHERE employee_id::text = $1 AND leave_type_id::text = $2 AND year = $3 AND organization_id::text = $4
         FOR UPDATE
       `, [employeeId, targetLeaveTypeId, year, organizationId]);
 
@@ -297,12 +297,179 @@ export class LeaveRepository {
     });
   }
 
+  static async updateLeaveRequest(
+    organizationId: string,
+    employeeId: string,
+    requestId: string,
+    data: { leaveTypeId: string; startDate: string; endDate: string; totalDays: number; reason: string },
+    actorUserId?: string
+  ) {
+    return withTransaction(async (client) => {
+      const reqRes = await client.query(`
+        SELECT id, employee_id, leave_type_id, requested_leave_type_id, start_date, end_date, total_days, reason, status
+        FROM leave_requests
+        WHERE id::text = $1 AND organization_id::text = $2
+        FOR UPDATE
+      `, [requestId, organizationId]);
+
+      if (reqRes.rows.length === 0) {
+        throw new Error('Leave request not found.');
+      }
+
+      const existingReq = reqRes.rows[0];
+      if (String(existingReq.employee_id) !== String(employeeId)) {
+        throw new Error('You are not authorized to edit this leave request.');
+      }
+
+      if (existingReq.status !== 'PENDING') {
+        throw new Error(`Only pending leave requests can be edited. Current status: ${existingReq.status}.`);
+      }
+
+      const oldYear = new Date(existingReq.start_date).getFullYear();
+      const newYear = new Date(data.startDate).getFullYear();
+
+      // 1. Release old reservation on existing leave_balances
+      await client.query(`
+        UPDATE leave_balances
+        SET
+          pending = GREATEST(0, pending - $1),
+          available = available + $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
+      `, [existingReq.total_days, employeeId, existingReq.leave_type_id, oldYear, organizationId]);
+
+      // 2. Determine new target leave type and check CL rules if CL requested
+      const typeRes = await client.query('SELECT id, name, code, is_active FROM leave_types WHERE id::text = $1 AND organization_id::text = $2', [data.leaveTypeId, organizationId]);
+      if (typeRes.rows.length === 0 || !typeRes.rows[0].is_active) {
+        throw new Error('The selected leave type is no longer active or valid.');
+      }
+      const requestedTypeRow = typeRes.rows[0];
+      const requestedCode = requestedTypeRow.code;
+
+      let targetLeaveTypeId = data.leaveTypeId;
+      let actualDeductionType = requestedTypeRow.name;
+      let conversionReason: string | null = null;
+
+      if (requestedCode === 'CL') {
+        if (data.totalDays > 2) {
+          const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id::text = $1 AND code IN ('EL', 'PL')", [organizationId]);
+          if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
+          targetLeaveTypeId = plTypeRes.rows[0].id;
+          actualDeductionType = plTypeRes.rows[0].name;
+          conversionReason = 'Casual Leave request exceeds maximum consecutive CL limit.';
+        } else {
+          const start = new Date(data.startDate);
+          const end = new Date(data.endDate);
+          const monthDaysCount: Record<string, { year: number; month: number; days: number }> = {};
+          const cur = new Date(start);
+
+          while (cur <= end) {
+            const y = cur.getFullYear();
+            const m = cur.getMonth() + 1;
+            const key = `${y}-${m}`;
+            if (!monthDaysCount[key]) {
+              monthDaysCount[key] = { year: y, month: m, days: 0 };
+            }
+            monthDaysCount[key].days += 1;
+            cur.setDate(cur.getDate() + 1);
+          }
+
+          for (const key of Object.keys(monthDaysCount)) {
+            const { year: mYear, month: mMonth, days: reqDaysInMonth } = monthDaysCount[key];
+            const monthCLUsed = await LeaveRepository.getMonthlyCLUsage(employeeId, organizationId, mYear, mMonth, client);
+
+            if (monthCLUsed + reqDaysInMonth > 2) {
+              const plTypeRes = await client.query("SELECT id, name FROM leave_types WHERE organization_id::text = $1 AND code IN ('EL', 'PL')", [organizationId]);
+              if (plTypeRes.rows.length === 0) throw new Error('Privilege / Earned Leave type not configured.');
+              targetLeaveTypeId = plTypeRes.rows[0].id;
+              actualDeductionType = plTypeRes.rows[0].name;
+              conversionReason = 'Monthly Casual Leave quota exhausted.';
+              break;
+            }
+          }
+        }
+      }
+
+      // 3. Check and reserve balance on new target leave_balances
+      const balRes = await client.query(`
+        SELECT id, quota, used, pending, available
+        FROM leave_balances
+        WHERE employee_id::text = $1 AND leave_type_id::text = $2 AND year = $3 AND organization_id::text = $4
+        FOR UPDATE
+      `, [employeeId, targetLeaveTypeId, newYear, organizationId]);
+
+      if (balRes.rows.length === 0) {
+        throw new Error('Leave balance record not found for the selected type and year.');
+      }
+
+      const balance = balRes.rows[0];
+      const availableNum = parseFloat(balance.available || '0');
+
+      if (availableNum < data.totalDays) {
+        throw new Error(`Insufficient leave balance. Available: ${availableNum} days, Requested: ${data.totalDays} days.`);
+      }
+
+      // 4. Reserve new balance
+      await client.query(`
+        UPDATE leave_balances
+        SET
+          pending = pending + $1,
+          available = available - $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [data.totalDays, balance.id]);
+
+      // 5. Update existing leave_requests row
+      const updatedReqRes = await client.query(`
+        UPDATE leave_requests
+        SET
+          leave_type_id = $1,
+          requested_leave_type_id = $2,
+          actual_deduction_type = $3,
+          conversion_reason = $4,
+          start_date = $5,
+          end_date = $6,
+          total_days = $7,
+          reason = $8,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id::text = $9 AND organization_id::text = $10
+        RETURNING *
+      `, [
+        targetLeaveTypeId,
+        data.leaveTypeId,
+        actualDeductionType,
+        conversionReason,
+        data.startDate,
+        data.endDate,
+        data.totalDays,
+        data.reason,
+        requestId,
+        organizationId
+      ]);
+
+      if (actorUserId) {
+        await client.query(`
+          INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values, new_values)
+          VALUES ($1, $2, 'LEAVE_UPDATED', 'leaves', 'LeaveRequest', $3, $4, $5)
+        `, [
+          organizationId,
+          actorUserId,
+          requestId,
+          JSON.stringify({ totalDays: existingReq.total_days, leaveTypeId: existingReq.leave_type_id, reason: existingReq.reason }),
+          JSON.stringify({ totalDays: data.totalDays, leaveTypeId: targetLeaveTypeId, reason: data.reason })
+        ]);
+      }
+
+      return updatedReqRes.rows[0];
+    });
+  }
+
   static async updateStatus(id: string, organizationId: string, status: 'APPROVED' | 'REJECTED' | 'CANCELLED', reviewerEmployeeId?: string, rejectionReason?: string) {
     return withTransaction(async (client) => {
       const reqRes = await client.query(`
         SELECT id, employee_id, leave_type_id, start_date, total_days, status, actual_deduction_type
         FROM leave_requests
-        WHERE id = $1 AND organization_id = $2
+        WHERE id::text = $1 AND organization_id::text = $2
         FOR UPDATE
       `, [id, organizationId]);
 
@@ -324,23 +491,23 @@ export class LeaveRepository {
             pending = pending - $1,
             used = used + $1,
             updated_at = CURRENT_TIMESTAMP
-          WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
+          WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
         `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
-      } else if (status === 'REJECTED') {
+      } else if (status === 'REJECTED' || status === 'CANCELLED') {
         await client.query(`
           UPDATE leave_balances
           SET 
-            pending = pending - $1,
+            pending = GREATEST(0, pending - $1),
             available = available + $1,
             updated_at = CURRENT_TIMESTAMP
-          WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4 AND organization_id = $5
+          WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
         `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
       }
 
       const updatedRes = await client.query(`
         UPDATE leave_requests
         SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $3, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4 AND organization_id = $5
+        WHERE id::text = $4 AND organization_id::text = $5
         RETURNING *
       `, [status, reviewerEmployeeId || null, rejectionReason || null, id, organizationId]);
 

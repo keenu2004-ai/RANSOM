@@ -306,6 +306,79 @@ export class AssetController {
     }
   }
 
+  static async updateRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const userId = req.user!.userId;
+      const { id } = req.params;
+
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      const validated = createAssetRequestSchema.parse(req.body);
+      const updated = await AssetRepository.updateRequestByEmployee(
+        organizationId,
+        employeeId,
+        id,
+        {
+          categoryId: validated.categoryId || undefined,
+          reason: validated.reason,
+          priority: validated.priority,
+          requiredDate: validated.requiredDate || undefined
+        },
+        userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { request: updated, message: 'Asset request updated successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'REQUEST_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('cannot be edited')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
+  static async deleteRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const organizationId = req.user!.organizationId;
+      const employeeId = req.user!.employeeId;
+      const userId = req.user!.userId;
+      const { id } = req.params;
+
+      if (!employeeId) {
+        return res.status(400).json({ success: false, error: 'Employee profile required.', code: 'EMPLOYEE_PROFILE_REQUIRED' });
+      }
+
+      const withdrawn = await AssetRepository.deleteRequestByEmployee(
+        organizationId,
+        employeeId,
+        id,
+        userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { request: withdrawn, message: 'Asset request withdrawn successfully.' }
+      });
+    } catch (error: any) {
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({ success: false, code: 'REQUEST_NOT_FOUND', error: error.message });
+      }
+      if (error.message?.includes('not authorized') || error.message?.includes('cannot be withdrawn')) {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+      }
+      return next(error);
+    }
+  }
+
   static async getRequests(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;

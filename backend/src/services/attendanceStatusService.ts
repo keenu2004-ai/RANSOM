@@ -108,9 +108,9 @@ export class AttendanceStatusService {
 
   /**
    * Evaluates check-in timestamp against exact Master Attendance Rules:
-   * Rule A (PRESENT): 09:00:00 to 09:15:00
-   * Rule B (SHORT LEAVE): 09:15:01 to 09:30:00
-   * Rule C (LATE PRESENT): 09:30:01 to 10:59:59
+   * Rule A (PRESENT): before 09:15:00
+   * Rule B (LATE CHECK-IN): 09:15:00 to 09:29:59
+   * Rule C (SHORT LEAVE): 09:30:00 to 10:59:59
    * Rule D (HALF DAY): 11:00:00 to 12:59:59
    * Rule E (ABSENT): 13:00:00 onward
    */
@@ -139,22 +139,21 @@ export class AttendanceStatusService {
 
       const totalSecs = hour * 3600 + minute * 60 + second;
 
-      // 09:00:00 is 32400s
       // 09:15:00 is 33300s
       // 09:30:00 is 34200s
       // 11:00:00 is 39600s
       // 13:00:00 is 46800s
 
-      if (totalSecs <= 33300) {
-        return 'PRESENT'; // 09:00 - 09:15
-      } else if (totalSecs <= 34200) {
-        return 'SHORT_LEAVE'; // 09:15:01 - 09:30:00
+      if (totalSecs < 33300) {
+        return 'PRESENT'; // < 09:15:00
+      } else if (totalSecs < 34200) {
+        return 'LATE_PRESENT'; // 09:15:00 - 09:29:59 (LATE CHECK-IN)
       } else if (totalSecs < 39600) {
-        return 'LATE_PRESENT'; // 09:30:01 - 10:59:59
+        return 'SHORT_LEAVE'; // 09:30:00 - 10:59:59 (SHORT LEAVE)
       } else if (totalSecs < 46800) {
-        return 'HALF_DAY'; // 11:00:00 - 12:59:59
+        return 'HALF_DAY'; // 11:00:00 - 12:59:59 (HALF DAY)
       } else {
-        return 'ABSENT'; // 13:00:00 onward
+        return 'ABSENT'; // 13:00:00 onward (ABSENT)
       }
     } catch {
       return 'PRESENT';

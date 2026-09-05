@@ -516,6 +516,100 @@ export class AttendanceRepository {
     });
   }
 
+  static async updateRegularization(
+    organizationId: string,
+    employeeId: string,
+    id: string,
+    data: { requestedPunchIn?: string; requestedPunchOut?: string; reason: string },
+    actorUserId?: string
+  ) {
+    return withTransaction(async (client) => {
+      const fetchRes = await client.query(
+        `SELECT * FROM attendance_regularizations WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+        [id, organizationId]
+      );
+
+      if (fetchRes.rows.length === 0) {
+        throw new Error('Regularization request not found.');
+      }
+
+      const reg = fetchRes.rows[0];
+      if (String(reg.employee_id) !== String(employeeId)) {
+        throw new Error('You are not authorized to edit this regularization request.');
+      }
+
+      if (reg.status !== 'PENDING') {
+        throw new Error(`Only pending regularization requests can be edited. Current status: ${reg.status}.`);
+      }
+
+      const updatedRes = await client.query(
+        `UPDATE attendance_regularizations
+         SET requested_punch_in = COALESCE($1, requested_punch_in),
+             requested_punch_out = COALESCE($2, requested_punch_out),
+             reason = $3,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4 AND organization_id = $5
+         RETURNING *`,
+        [
+          data.requestedPunchIn ? new Date(data.requestedPunchIn).toISOString() : null,
+          data.requestedPunchOut ? new Date(data.requestedPunchOut).toISOString() : null,
+          data.reason.trim(),
+          id,
+          organizationId
+        ]
+      );
+
+      if (actorUserId) {
+        await client.query(
+          `INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+           VALUES ($1, $2, 'ATTENDANCE_REGULARIZATION_UPDATED', 'attendance', 'AttendanceRegularization', $3, $4)`,
+          [organizationId, actorUserId, id, JSON.stringify({ reason: data.reason })]
+        );
+      }
+
+      return updatedRes.rows[0];
+    });
+  }
+
+  static async deleteRegularization(
+    organizationId: string,
+    employeeId: string,
+    id: string,
+    actorUserId?: string
+  ) {
+    return withTransaction(async (client) => {
+      const fetchRes = await client.query(
+        `SELECT * FROM attendance_regularizations WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+        [id, organizationId]
+      );
+
+      if (fetchRes.rows.length === 0) {
+        throw new Error('Regularization request not found.');
+      }
+
+      const reg = fetchRes.rows[0];
+      if (String(reg.employee_id) !== String(employeeId)) {
+        throw new Error('You are not authorized to withdraw this regularization request.');
+      }
+
+      if (reg.status !== 'PENDING') {
+        throw new Error(`Only pending regularization requests can be withdrawn. Current status: ${reg.status}.`);
+      }
+
+      await client.query(`DELETE FROM attendance_regularizations WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+
+      if (actorUserId) {
+        await client.query(
+          `INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
+           VALUES ($1, $2, 'ATTENDANCE_REGULARIZATION_WITHDRAWN', 'attendance', 'AttendanceRegularization', $3, $4)`,
+          [organizationId, actorUserId, id, JSON.stringify({ attendance_date: reg.attendance_date, reason: reg.reason })]
+        );
+      }
+
+      return reg;
+    });
+  }
+
   static async getRegularizations(organizationId: string, filters: { employeeId?: string; status?: string }) {
     let whereClause = `WHERE r.organization_id = $1`;
     const params: any[] = [organizationId];

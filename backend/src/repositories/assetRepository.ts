@@ -810,6 +810,64 @@ export class AssetRepository {
     });
   }
 
+  static async updateRequestByEmployee(
+    organizationId: string,
+    employeeId: string,
+    id: string,
+    data: { categoryId?: string; reason: string; priority?: string; requiredDate?: string },
+    userId: string
+  ) {
+    return withTransaction(async (client) => {
+      const fetchRes = await client.query(`SELECT * FROM asset_requests WHERE id = $1 AND organization_id = $2 FOR UPDATE`, [id, organizationId]);
+      if (fetchRes.rows.length === 0) throw new Error('Asset request not found.');
+      const req = fetchRes.rows[0];
+      if (String(req.employee_id) !== String(employeeId)) throw new Error('You are not authorized to edit this asset request.');
+      if (req.status !== 'SUBMITTED') throw new Error(`Approved or finalized asset requests cannot be edited. Current status: ${req.status}.`);
+
+      const updatedRes = await client.query(`
+        UPDATE asset_requests
+        SET category_id = COALESCE($1, category_id),
+            reason = $2,
+            priority = COALESCE($3, priority),
+            required_date = COALESCE($4, required_date),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5 AND organization_id = $6
+        RETURNING *
+      `, [data.categoryId || null, data.reason.trim(), data.priority || null, data.requiredDate || null, id, organizationId]);
+
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
+        VALUES ($1, $2, 'REQUEST_UPDATED', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, userId, id, JSON.stringify({ reason: data.reason })]);
+
+      return updatedRes.rows[0];
+    });
+  }
+
+  static async deleteRequestByEmployee(
+    organizationId: string,
+    employeeId: string,
+    id: string,
+    userId: string
+  ) {
+    return withTransaction(async (client) => {
+      const fetchRes = await client.query(`SELECT * FROM asset_requests WHERE id = $1 AND organization_id = $2 FOR UPDATE`, [id, organizationId]);
+      if (fetchRes.rows.length === 0) throw new Error('Asset request not found.');
+      const req = fetchRes.rows[0];
+      if (String(req.employee_id) !== String(employeeId)) throw new Error('You are not authorized to withdraw this asset request.');
+      if (req.status !== 'SUBMITTED') throw new Error(`Approved or finalized asset requests cannot be withdrawn. Current status: ${req.status}.`);
+
+      await client.query(`DELETE FROM asset_requests WHERE id = $1 AND organization_id = $2`, [id, organizationId]);
+
+      await client.query(`
+        INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, old_values)
+        VALUES ($1, $2, 'REQUEST_WITHDRAWN', 'ASSETS', 'asset_requests', $3, $4)
+      `, [organizationId, userId, id, JSON.stringify({ requestNumber: req.request_number, reason: req.reason })]);
+
+      return req;
+    });
+  }
+
   static async getRequests(
     organizationId: string,
     filters: { employeeId?: string; status?: string }

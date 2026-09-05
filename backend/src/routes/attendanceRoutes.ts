@@ -18,6 +18,9 @@ router.post('/break', requireEmployee, AttendanceController.updateBreak);
 // Attendance Regularization endpoints
 router.post('/regularize', requireEmployee, AttendanceController.applyRegularization);
 router.get('/regularize', AttendanceController.getRegularizations);
+router.put('/regularize/my/:id', requireEmployee, AttendanceController.updateRegularization);
+router.delete('/regularize/my/:id', requireEmployee, AttendanceController.withdrawRegularization);
+router.post('/regularize/my/:id/withdraw', requireEmployee, AttendanceController.withdrawRegularization);
 router.put('/regularize/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'), AttendanceController.processRegularization);
 
 // Export attendance endpoint (Protected by authentication & role authorization checks)
