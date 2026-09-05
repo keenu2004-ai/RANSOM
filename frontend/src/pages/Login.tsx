@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme, Theme } from '../context/ThemeContext';
-import { AlertCircle, ShieldCheck, Loader2, KeyRound, ArrowRight, UserX, RefreshCw, Palette, Check } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Loader2, KeyRound, ArrowRight, UserX, RefreshCw } from 'lucide-react';
 import {
   initializeMsal,
   executeMicrosoftRedirectLogin,
@@ -14,13 +13,11 @@ import { TheiakshiLogo } from '../components/TheiakshiLogo';
 
 export const Login: React.FC = () => {
   const { user, loginWithMicrosoft, login, error, clearError } = useAuth();
-  const { theme, setTheme, themes, currentThemeMeta } = useTheme();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'microsoft' | 'password'>('microsoft');
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
   // Password form state
   const [email, setEmail] = useState('');
@@ -29,23 +26,6 @@ export const Login: React.FC = () => {
 
   // Guard against concurrent clicks or rapid re-renders
   const isExecutingRef = useRef(false);
-  const themeRef = useRef<HTMLDivElement>(null);
-
-  // Close theme menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (isThemeMenuOpen && themeRef.current && !themeRef.current.contains(target)) {
-        setIsThemeMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [isThemeMenuOpen]);
 
   // Process MSAL redirect result or silent token on initial page load
   useEffect(() => {
@@ -183,82 +163,6 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden transition-colors duration-200">
-      {/* Top Right Theme Selector */}
-      <div ref={themeRef} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
-        <button
-          type="button"
-          onClick={() => setIsThemeMenuOpen(prev => !prev)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm"
-          title={`Theme: ${currentThemeMeta.name}`}
-          aria-label="Select Theme"
-        >
-          <div className="flex items-center -space-x-1 shrink-0">
-            <span
-              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-              style={{ backgroundColor: currentThemeMeta.palette.bg }}
-            />
-            <span
-              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-              style={{ backgroundColor: currentThemeMeta.palette.secondary }}
-            />
-            <span
-              className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-              style={{ backgroundColor: currentThemeMeta.palette.primary }}
-            />
-          </div>
-          <span className="text-xs font-semibold">{currentThemeMeta.name}</span>
-          <Palette className="w-3.5 h-3.5 opacity-60 shrink-0 text-[var(--primary)]" />
-        </button>
-
-        {isThemeMenuOpen && (
-          <div className="absolute right-0 mt-2.5 w-64 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 p-2 space-y-1">
-            <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              Color Theme
-            </div>
-            {themes.map(t => {
-              const isActive = theme === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    setTheme(t.id as Theme);
-                    setIsThemeMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--primary)] shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex items-center -space-x-1 shrink-0">
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                        style={{ backgroundColor: t.palette.bg }}
-                      />
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                        style={{ backgroundColor: t.palette.secondary }}
-                      />
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-                        style={{ backgroundColor: t.palette.primary }}
-                      />
-                    </div>
-                    <div>
-                      <p className="font-bold text-xs text-[var(--text-primary)]">{t.name}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.subtitle}</p>
-                    </div>
-                  </div>
-                  {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Main Authentication Card */}
       <div className="w-full max-w-[520px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-3xl p-8 sm:p-10 shadow-[var(--card-shadow)] relative z-10 space-y-7">
 
@@ -269,7 +173,7 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--text-heading)] tracking-tight">
               THEIAKSHI
             </h1>
             <p className="text-xs font-semibold text-[var(--text-secondary)] tracking-[0.15em] uppercase">
@@ -278,7 +182,7 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Security Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-soft)] border border-[var(--border-subtle)] rounded-full text-xs font-semibold text-[var(--text-secondary)] shadow-sm">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-soft)] border border-[var(--border-subtle)] rounded-full text-xs font-semibold text-[var(--primary)] shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
             <span>Microsoft Entra ID Protected</span>
           </div>
@@ -288,7 +192,7 @@ export const Login: React.FC = () => {
         {isUnlinkedAccountError ? (
           <div className="p-5 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl space-y-4 text-left">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-rose-100 border border-[var(--action-danger-bg)]/30 rounded-xl shrink-0 text-rose-700">
+              <div className="p-2.5 bg-white border border-[var(--action-danger-bg)]/30 rounded-xl shrink-0 text-[var(--action-danger-bg)]">
                 <UserX className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -305,7 +209,7 @@ export const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSelectAccountSignIn}
-                className="w-full sm:w-auto px-4 py-2 bg-rose-700 hover:opacity-90 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-hover)] text-[var(--action-danger-text)] font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Use Another Microsoft Account</span>
@@ -328,10 +232,10 @@ export const Login: React.FC = () => {
           /* Standard Error Messages */
           currentErrorMessage && (
             <div className="p-3.5 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] text-xs flex items-start gap-2.5 shadow-sm">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-[var(--action-danger-bg)] shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <p className="font-bold text-[var(--action-danger-bg)]">Authentication Error</p>
-                <p className="text-rose-700 leading-relaxed">{currentErrorMessage}</p>
+                <p className="text-[var(--action-danger-bg)] leading-relaxed">{currentErrorMessage}</p>
               </div>
             </div>
           )

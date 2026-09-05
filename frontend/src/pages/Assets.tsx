@@ -801,7 +801,7 @@ export const Assets: React.FC = () => {
                       )}
 
                       {isManagerOrAdmin && a.status === 'ASSIGNED' && (
-                        <button onClick={() => handleOpenReturn(a)} className="px-2 py-0.5 bg-[var(--badge-warning-bg)] hover:bg-amber-900 border border-[var(--badge-warning-border)] text-[var(--badge-warning-text)] rounded text-[10px] font-bold">
+                        <button onClick={() => handleOpenReturn(a)} className="px-2 py-0.5 bg-[var(--badge-warning-bg)] hover:opacity-90 border border-[var(--badge-warning-border)] text-[var(--badge-warning-text)] rounded text-[10px] font-bold">
                           Return
                         </button>
                       )}
@@ -990,7 +990,7 @@ export const Assets: React.FC = () => {
                           <button onClick={() => handleApproveRequest(r.id)} className="px-2 py-1 bg-[var(--badge-success-bg)] hover:bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded text-[10px] font-bold">
                             Approve
                           </button>
-                          <button onClick={() => handleRejectRequest(r.id)} className="px-2 py-1 bg-[var(--action-danger-soft)] hover:bg-rose-900 border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold">
+                          <button onClick={() => handleRejectRequest(r.id)} className="px-2 py-1 bg-[var(--action-danger-soft)] hover:bg-[var(--action-danger-soft-hover)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded text-[10px] font-bold">
                             Reject
                           </button>
                         </>
@@ -1022,7 +1022,7 @@ export const Assets: React.FC = () => {
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between border-b border-[var(--border-default)] pb-3">
               <div className="flex items-start gap-3">
-                <div className="p-3 bg-[var(--action-danger-soft)] text-rose-500 rounded-full border border-[var(--action-danger-bg)]/30 shrink-0">
+                <div className="p-3 bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] rounded-full border border-[var(--action-danger-bg)]/30 shrink-0">
                   <AlertOctagon className="w-6 h-6" />
                 </div>
                 <div>
@@ -1203,7 +1203,7 @@ export const Assets: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button type="button" onClick={() => setShowStatusModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[var(--badge-warning-bg)] hover:bg-amber-400 text-white rounded-xl font-bold uppercase shadow">UPDATE STATUS</button>
+                <button type="submit" className="px-5 py-2 btn-theme-primary rounded-xl font-bold uppercase shadow">UPDATE STATUS</button>
               </div>
             </form>
           </div>
@@ -1391,7 +1391,7 @@ export const Assets: React.FC = () => {
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button type="button" onClick={() => setShowReturnModal(false)} className="px-4 py-2 bg-[var(--bg-surface-muted)] text-[var(--text-primary)] rounded-xl font-medium">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[var(--badge-warning-bg)] hover:bg-amber-400 text-white rounded-xl font-bold uppercase shadow">CONFIRM RETURN</button>
+                <button type="submit" className="px-5 py-2 btn-theme-primary rounded-xl font-bold uppercase shadow">CONFIRM RETURN</button>
               </div>
             </form>
           </div>

@@ -40,7 +40,7 @@ export const AuditLogs: React.FC = () => {
                     <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--text-muted)]">{new Date(l.created_at).toLocaleString()}</td>
                     <td className="px-6 py-3.5 font-semibold text-[var(--text-primary)]">{l.actor_email || 'System'}</td>
                     <td className="px-6 py-3.5 font-mono text-[var(--primary)]">{l.module}</td>
-                    <td className="px-6 py-3.5 font-bold text-amber-700">{l.action}</td>
+                    <td className="px-6 py-3.5 font-bold text-[var(--primary)]">{l.action}</td>
                     <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{l.entity_name}</td>
                   </tr>
                 ))

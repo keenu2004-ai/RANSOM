@@ -297,10 +297,10 @@ export const AdminControl: React.FC = () => {
                               {canResetPassword && !isSelf && (
                                 <button
                                   onClick={() => handleOpenResetModal(u)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--badge-warning-text)] border border-[var(--border-subtle)] rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
                                   title="Reset User Password"
                                 >
-                                  <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                                  <KeyRound className="w-3.5 h-3.5 text-[var(--primary)]" />
                                   <span>Reset Password</span>
                                 </button>
                               )}
@@ -353,7 +353,7 @@ export const AdminControl: React.FC = () => {
 
             {editError && (
               <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[var(--action-danger-bg)] text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[var(--action-danger-bg)]" />
                 <span>{editError}</span>
               </div>
             )}
@@ -371,33 +371,20 @@ export const AdminControl: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Assign System Role</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Select HRMS Role</label>
                 <select
+                  disabled={editingUser.id === currentUser?.userId}
                   value={selectedRole}
                   onChange={e => setSelectedRole(e.target.value)}
-                  disabled={editingUser.id === currentUser?.userId || allowedRolesForCurrentActor.length === 0}
-                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] text-xs px-3 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none disabled:opacity-50 shadow-sm"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] text-xs px-3 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none shadow-sm disabled:opacity-50"
                 >
-                  {(allowedRolesForCurrentActor.length > 0 ? allowedRolesForCurrentActor : ['SUPER_ADMIN', 'HR_MANAGER', 'OPERATIONAL_MANAGER', 'EMPLOYEE']).map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                  Allowed roles: {allowedRolesForCurrentActor.join(', ')}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Account Status</label>
-                <select
-                  value={selectedStatus}
-                  onChange={e => setSelectedStatus(e.target.value)}
-                  disabled={editingUser.id === currentUser?.userId}
-                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] text-xs px-3 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none disabled:opacity-50 shadow-sm"
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                  <option value="SUSPENDED">SUSPENDED</option>
+                  <option value="EMPLOYEE">EMPLOYEE (Standard Staff Access)</option>
+                  <option value="OPERATIONAL_MANAGER">OPERATIONAL_MANAGER (Department Management)</option>
+                  <option value="HR_MANAGER">HR_MANAGER (Workforce Administration)</option>
+                  <option value="ADMIN">ADMIN (Organization Administrator)</option>
+                  {currentUser?.role === 'SUPER_ADMIN' && (
+                    <option value="SUPER_ADMIN">SUPER_ADMIN (Full System Root)</option>
+                  )}
                 </select>
               </div>
 
@@ -412,9 +399,9 @@ export const AdminControl: React.FC = () => {
                 <button
                   type="submit"
                   disabled={saving || editingUser.id === currentUser?.userId}
-                  className="px-4 py-2 btn-theme-primary font-semibold text-xs rounded-xl shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 btn-theme-primary font-bold text-xs rounded-xl shadow-sm disabled:opacity-50 cursor-pointer"
                 >
-                  {saving ? 'Saving Access...' : 'Save Role Assignment'}
+                  {saving ? 'Saving...' : 'Save Role Assignment'}
                 </button>
               </div>
             </form>
@@ -428,7 +415,7 @@ export const AdminControl: React.FC = () => {
           <div className="w-full max-w-md bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-amber-600" />
+                <KeyRound className="w-5 h-5 text-[var(--primary)]" />
                 <h3 className="font-bold text-[var(--text-primary)] text-sm">Administrator Password Reset</h3>
               </div>
               <button onClick={() => setResettingUser(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
@@ -438,7 +425,7 @@ export const AdminControl: React.FC = () => {
 
             {resetErrorMsg && (
               <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-xl text-[var(--action-danger-bg)] text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[var(--action-danger-bg)]" />
                 <span>{resetErrorMsg}</span>
               </div>
             )}
@@ -446,7 +433,7 @@ export const AdminControl: React.FC = () => {
             <form onSubmit={handleAdminResetPasswordSubmit} className="space-y-4">
               <div className="p-3 bg-[var(--bg-surface-muted)] rounded-xl border border-[var(--border-subtle)] text-xs space-y-1">
                 <p className="text-[var(--text-secondary)] font-medium">Target Account: <span className="text-[var(--text-primary)] font-bold">{resettingUser.email}</span></p>
-                <p className="text-[var(--text-secondary)] font-medium">Linked Employee: <span className="text-[var(--badge-warning-text)] font-mono">{resettingUser.employee_name ? `${resettingUser.employee_name} (${resettingUser.employee_code})` : 'Management Only'}</span></p>
+                <p className="text-[var(--text-secondary)] font-medium">Linked Employee: <span className="text-[var(--primary)] font-mono">{resettingUser.employee_name ? `${resettingUser.employee_name} (${resettingUser.employee_code})` : 'Management Only'}</span></p>
               </div>
 
               <div>
@@ -467,7 +454,7 @@ export const AdminControl: React.FC = () => {
                     value={tempPasswordInput}
                     onChange={e => setTempPasswordInput(e.target.value)}
                     placeholder="Enter or generate temporary password..."
-                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--badge-warning-text)] font-mono text-xs pl-3 pr-20 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none shadow-sm"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] font-mono text-xs pl-3 pr-20 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none shadow-sm"
                   />
                   <div className="absolute right-2 top-2 flex items-center gap-1">
                     <button
@@ -501,7 +488,7 @@ export const AdminControl: React.FC = () => {
                 <button
                   type="submit"
                   disabled={resetting || !tempPasswordInput}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 btn-theme-primary font-bold text-xs rounded-xl shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {resetting ? 'Resetting Password...' : 'Confirm Reset Password'}
                 </button>

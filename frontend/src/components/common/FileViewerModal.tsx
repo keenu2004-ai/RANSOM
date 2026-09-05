@@ -243,23 +243,23 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
 
           {error && !loading && (
             <div className="max-w-md p-6 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-center space-y-3 m-4">
-              <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
+              <AlertCircle className="w-8 h-8 text-[var(--action-danger-bg)] mx-auto" />
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-[var(--action-danger-bg)]">Unable to View Document</h4>
-                <p className="text-xs text-rose-700">{error}</p>
+                <p className="text-xs text-[var(--action-danger-bg)]">{error}</p>
               </div>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={loadFileBlob}
-                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Retry
                 </button>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-bg)] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-hover)] text-[var(--action-danger-text)] rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Close
                 </button>

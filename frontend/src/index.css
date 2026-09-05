@@ -3,174 +3,138 @@
 @tailwind utilities;
 
 /* ============================================================
-   THEIAKSHI ENTERPRISE HRMS — GLOBAL 2-THEME SYSTEM
-   1. VANILLA: Vanilla Custard (#FFF9EB), Misty Sage (#9FB2AC), Bloodstone (#5D0D18)
-   2. MERINO:  Merino (#F5EEDD), Rock Blue (#84B3CE), Venice Blue (#16587B)
+   THEIAKSHI ENTERPRISE HRMS — UNIFIED BRAND DESIGN SYSTEM
+   Exact 5-Color Reference Palette:
+   - #CAEBC7 : Soft Green (Dominant Workspace / App Background)
+   - #306B55 : Deep Green (Primary Brand & Primary Actions)
+   - #C7EBDD : Mint (Secondary Light Surfaces & Accents)
+   - #EAC7C7 : Soft Rose (Soft Attention & Warning Indicators)
+   - #6B3030 : Deep Burgundy (Deep Complementary & Destructive Actions)
+   - #FFFFFF : Pure White (Elevated Content Cards, Tables, Forms)
    ============================================================ */
 
-:root,
-[data-theme="vanilla"],
-.vanilla {
-  --bg-app: #FFF9EB;
+:root {
+  /* Workspace & Surfaces */
+  --bg-app: #CAEBC7;
   --bg-surface: #FFFFFF;
   --bg-surface-elevated: #FFFFFF;
-  --bg-surface-muted: #F8F2E4;
-  --bg-surface-secondary: #9FB2AC;
-  --bg-surface-hover: #F2EADB;
-  --bg-surface-active: #EBE1CE;
+  --bg-surface-muted: #F2FAF5;
+  --bg-surface-secondary: #C7EBDD;
+  --bg-surface-hover: #D8F2E7;
+  --bg-surface-active: #C7EBDD;
 
-  --border-subtle: rgba(159, 178, 172, 0.28);
-  --border-default: rgba(159, 178, 172, 0.48);
-  --border-strong: #9FB2AC;
-  --border-primary: #5D0D18;
+  /* Borders */
+  --border-subtle: rgba(48, 107, 85, 0.14);
+  --border-default: rgba(48, 107, 85, 0.24);
+  --border-strong: #306B55;
+  --border-primary: #306B55;
 
-  --text-primary: #2B1D19;
-  --text-heading: #5D0D18;
-  --text-secondary: #5E534E;
-  --text-muted: #8E827C;
-  --text-inverse: #FFF9EB;
+  /* Typography */
+  --text-primary: #1B332A;
+  --text-heading: #306B55;
+  --text-secondary: #3D5A4E;
+  --text-muted: #6B8579;
+  --text-inverse: #FFFFFF;
 
-  --primary: #5D0D18;
-  --primary-hover: #460A12;
-  --primary-soft: rgba(93, 13, 24, 0.08);
-  --primary-soft-hover: rgba(93, 13, 24, 0.14);
-  --primary-text: #FFF9EB;
+  /* Primary Brand Actions (#306B55) */
+  --primary: #306B55;
+  --primary-hover: #245241;
+  --primary-soft: rgba(48, 107, 85, 0.10);
+  --primary-soft-hover: rgba(48, 107, 85, 0.18);
+  --primary-text: #FFFFFF;
 
-  --secondary: #9FB2AC;
-  --secondary-hover: #8EA29C;
-  --secondary-soft: rgba(159, 178, 172, 0.20);
-  --secondary-text: #5D0D18;
+  /* Secondary Accents (#C7EBDD) */
+  --secondary: #C7EBDD;
+  --secondary-hover: #B4E6D2;
+  --secondary-soft: rgba(199, 235, 221, 0.50);
+  --secondary-text: #306B55;
 
-  --sidebar-bg: #FAF3E3;
-  --sidebar-border: rgba(159, 178, 172, 0.35);
-  --sidebar-text: #5E534E;
-  --sidebar-hover: rgba(159, 178, 172, 0.18);
-  --sidebar-active-bg: #5D0D18;
-  --sidebar-active-text: #FFF9EB;
+  /* Attention & Soft Accents (#EAC7C7) */
+  --accent-attention: #EAC7C7;
+  --accent-attention-text: #6B3030;
+  --accent-attention-border: rgba(107, 48, 48, 0.25);
 
-  --header-bg: #FFFDF7;
-  --header-border: rgba(159, 178, 172, 0.30);
+  /* Deep Complementary & Critical Actions (#6B3030) */
+  --action-danger-bg: #6B3030;
+  --action-danger-hover: #542424;
+  --action-danger-text: #FFFFFF;
+  --action-danger-soft: #EAC7C7;
+  --action-danger-soft-hover: #DFC0C0;
 
+  /* Navigation Sidebar */
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: rgba(48, 107, 85, 0.12);
+  --sidebar-text: #3D5A4E;
+  --sidebar-hover: #C7EBDD;
+  --sidebar-active-bg: #306B55;
+  --sidebar-active-text: #FFFFFF;
+
+  /* Header */
+  --header-bg: #FFFFFF;
+  --header-border: rgba(48, 107, 85, 0.12);
+
+  /* Forms & Controls */
   --input-bg: #FFFFFF;
-  --input-border: rgba(159, 178, 172, 0.50);
-  --input-focus: #5D0D18;
+  --input-border: rgba(48, 107, 85, 0.22);
+  --input-focus: #306B55;
 
-  --card-shadow: 0 1px 3px rgba(93, 13, 24, 0.04), 0 4px 14px rgba(159, 178, 172, 0.12);
-  --card-shadow-hover: 0 6px 20px rgba(93, 13, 24, 0.08);
+  /* Shadows */
+  --card-shadow: 0 1px 3px rgba(48, 107, 85, 0.04), 0 4px 12px rgba(48, 107, 85, 0.06);
+  --card-shadow-hover: 0 4px 18px rgba(48, 107, 85, 0.10);
 
-  --action-danger-bg: #5D0D18;
-  --action-danger-hover: #460A12;
-  --action-danger-text: #FFF9EB;
-  --action-danger-soft: rgba(93, 13, 24, 0.08);
+  /* Chart Colors */
+  --chart-primary: #306B55;
+  --chart-secondary: #6B3030;
+  --chart-fill: #C7EBDD;
+  --chart-accent: #EAC7C7;
+  --chart-gradient-from: rgba(48, 107, 85, 0.25);
+  --chart-gradient-to: rgba(199, 235, 221, 0.02);
+  --chart-grid: rgba(48, 107, 85, 0.12);
+  --chart-axis: #6B8579;
 
-  --chart-primary: #5D0D18;
-  --chart-secondary: #9FB2AC;
-  --chart-gradient-from: rgba(93, 13, 24, 0.30);
-  --chart-gradient-to: rgba(93, 13, 24, 0.01);
-  --chart-grid: rgba(159, 178, 172, 0.25);
-  --chart-axis: #8E827C;
+  /* Status Badges */
+  --status-present-bg: #CAEBC7;
+  --status-present-text: #306B55;
+  --status-present-border: rgba(48, 107, 85, 0.25);
 
-  --status-present-bg: rgba(159, 178, 172, 0.25);
-  --status-present-text: #2B453C;
-  --status-present-border: rgba(159, 178, 172, 0.60);
+  --status-pending-bg: #C7EBDD;
+  --status-pending-text: #306B55;
+  --status-pending-border: rgba(48, 107, 85, 0.25);
 
-  --status-late-bg: rgba(220, 150, 50, 0.16);
-  --status-late-text: #8A4C05;
-  --status-late-border: rgba(220, 150, 50, 0.35);
+  --status-late-bg: #EAC7C7;
+  --status-late-text: #6B3030;
+  --status-late-border: rgba(107, 48, 48, 0.25);
 
-  --status-absent-bg: rgba(93, 13, 24, 0.12);
-  --status-absent-text: #5D0D18;
-  --status-absent-border: rgba(93, 13, 24, 0.30);
+  --status-absent-bg: #EAC7C7;
+  --status-absent-text: #6B3030;
+  --status-absent-border: rgba(107, 48, 48, 0.25);
 
-  --status-pending-bg: rgba(159, 178, 172, 0.15);
-  --status-pending-text: #455752;
-  --status-pending-border: rgba(159, 178, 172, 0.40);
+  --badge-success-bg: #CAEBC7;
+  --badge-success-text: #306B55;
+  --badge-success-border: rgba(48, 107, 85, 0.25);
 
-  --scrollbar-track: #FFF9EB;
-  --scrollbar-thumb: rgba(159, 178, 172, 0.50);
-  --scrollbar-thumb-hover: #9FB2AC;
-}
+  --badge-warning-bg: #EAC7C7;
+  --badge-warning-text: #6B3030;
+  --badge-warning-border: rgba(107, 48, 48, 0.25);
 
-[data-theme="merino"],
-.merino {
-  --bg-app: #F5EEDD;
-  --bg-surface: #FFFFFF;
-  --bg-surface-elevated: #FFFFFF;
-  --bg-surface-muted: #EDE5D2;
-  --bg-surface-secondary: #84B3CE;
-  --bg-surface-hover: #E5DDC7;
-  --bg-surface-active: #DDD3BB;
+  --badge-info-bg: #C7EBDD;
+  --badge-info-text: #306B55;
+  --badge-info-border: rgba(48, 107, 85, 0.25);
 
-  --border-subtle: rgba(132, 179, 206, 0.28);
-  --border-default: rgba(132, 179, 206, 0.48);
-  --border-strong: #84B3CE;
-  --border-primary: #16587B;
+  /* KPI Icons */
+  --kpi-emp-bg: #EAC7C7;
+  --kpi-emp-icon: #6B3030;
+  --kpi-present-bg: #C7EBDD;
+  --kpi-present-icon: #306B55;
+  --kpi-leave-bg: #CAEBC7;
+  --kpi-leave-icon: #306B55;
+  --kpi-plan-bg: #EAC7C7;
+  --kpi-plan-icon: #6B3030;
 
-  --text-primary: #1A2830;
-  --text-heading: #16587B;
-  --text-secondary: #4A5E6B;
-  --text-muted: #788E9C;
-  --text-inverse: #F5EEDD;
-
-  --primary: #16587B;
-  --primary-hover: #104460;
-  --primary-soft: rgba(22, 88, 123, 0.08);
-  --primary-soft-hover: rgba(22, 88, 123, 0.14);
-  --primary-text: #F5EEDD;
-
-  --secondary: #84B3CE;
-  --secondary-hover: #72A5C2;
-  --secondary-soft: rgba(132, 179, 206, 0.20);
-  --secondary-text: #16587B;
-
-  --sidebar-bg: #EFE6D3;
-  --sidebar-border: rgba(132, 179, 206, 0.35);
-  --sidebar-text: #4A5E6B;
-  --sidebar-hover: rgba(132, 179, 206, 0.18);
-  --sidebar-active-bg: #16587B;
-  --sidebar-active-text: #F5EEDD;
-
-  --header-bg: #FAF5E9;
-  --header-border: rgba(132, 179, 206, 0.30);
-
-  --input-bg: #FFFFFF;
-  --input-border: rgba(132, 179, 206, 0.50);
-  --input-focus: #16587B;
-
-  --card-shadow: 0 1px 3px rgba(22, 88, 123, 0.04), 0 4px 14px rgba(132, 179, 206, 0.12);
-  --card-shadow-hover: 0 6px 20px rgba(22, 88, 123, 0.08);
-
-  --action-danger-bg: #16587B;
-  --action-danger-hover: #104460;
-  --action-danger-text: #F5EEDD;
-  --action-danger-soft: rgba(22, 88, 123, 0.08);
-
-  --chart-primary: #16587B;
-  --chart-secondary: #84B3CE;
-  --chart-gradient-from: rgba(22, 88, 123, 0.30);
-  --chart-gradient-to: rgba(22, 88, 123, 0.01);
-  --chart-grid: rgba(132, 179, 206, 0.25);
-  --chart-axis: #788E9C;
-
-  --status-present-bg: rgba(132, 179, 206, 0.25);
-  --status-present-text: #16587B;
-  --status-present-border: rgba(132, 179, 206, 0.60);
-
-  --status-late-bg: rgba(220, 150, 50, 0.16);
-  --status-late-text: #8A4C05;
-  --status-late-border: rgba(220, 150, 50, 0.35);
-
-  --status-absent-bg: rgba(22, 88, 123, 0.14);
-  --status-absent-text: #16587B;
-  --status-absent-border: rgba(22, 88, 123, 0.35);
-
-  --status-pending-bg: rgba(132, 179, 206, 0.15);
-  --status-pending-text: #355364;
-  --status-pending-border: rgba(132, 179, 206, 0.40);
-
-  --scrollbar-track: #F5EEDD;
-  --scrollbar-thumb: rgba(132, 179, 206, 0.50);
-  --scrollbar-thumb-hover: #84B3CE;
+  /* Custom Scrollbar */
+  --scrollbar-track: #CAEBC7;
+  --scrollbar-thumb: rgba(48, 107, 85, 0.28);
+  --scrollbar-thumb-hover: #306B55;
 }
 
 /* ============================================================
@@ -317,7 +281,7 @@
 .theme-modal {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 40px rgba(48, 107, 85, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .theme-input {
@@ -385,4 +349,15 @@
 
 .btn-theme-danger:hover {
   background-color: var(--action-danger-hover);
+}
+
+.btn-theme-soft-danger {
+  background-color: var(--action-danger-soft);
+  color: var(--action-danger-bg);
+  border: 1px solid var(--action-danger-bg);
+  transition: background-color 150ms ease;
+}
+
+.btn-theme-soft-danger:hover {
+  background-color: var(--action-danger-soft-hover);
 }

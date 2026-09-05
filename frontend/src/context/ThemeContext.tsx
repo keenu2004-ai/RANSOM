@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-export type Theme = 'vanilla' | 'merino';
+import React, { createContext, useContext, useEffect } from 'react';
 
 export interface ThemeMeta {
-  id: Theme;
+  id: string;
   name: string;
   subtitle: string;
   description: string;
@@ -11,92 +9,50 @@ export interface ThemeMeta {
     bg: string;
     secondary: string;
     primary: string;
+    accent: string;
+    destructive: string;
   };
 }
 
-export const THEMES: ThemeMeta[] = [
-  {
-    id: 'vanilla',
-    name: 'Vanilla',
-    subtitle: 'Vanilla • Misty Sage • Bloodstone',
-    description: 'Warm, elegant and sophisticated',
-    palette: {
-      bg: '#FFF9EB',
-      secondary: '#9FB2AC',
-      primary: '#5D0D18'
-    }
-  },
-  {
-    id: 'merino',
-    name: 'Merino',
-    subtitle: 'Merino • Rock Blue • Venice Blue',
-    description: 'Calm, modern and professional',
-    palette: {
-      bg: '#F5EEDD',
-      secondary: '#84B3CE',
-      primary: '#16587B'
-    }
+export const THEME_PALETTE: ThemeMeta = {
+  id: 'theiakshi',
+  name: 'Theiakshi HRMS',
+  subtitle: 'Soft Green • Mint • Deep Green • Rose • Burgundy',
+  description: 'A calm workspace for a more productive tomorrow',
+  palette: {
+    bg: '#CAEBC7',
+    secondary: '#C7EBDD',
+    primary: '#306B55',
+    accent: '#EAC7C7',
+    destructive: '#6B3030'
   }
-];
+};
 
 interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  cycleTheme: () => void;
-  themes: ThemeMeta[];
+  theme: string;
   currentThemeMeta: ThemeMeta;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: 'theiakshi',
+  currentThemeMeta: THEME_PALETTE
+});
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    try {
-      const saved = localStorage.getItem('theiakshi_theme');
-      if (saved === 'vanilla' || saved === 'merino') {
-        return saved;
-      }
-    } catch {}
-    return 'vanilla';
-  });
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
-
-  const cycleTheme = () => {
-    setThemeState(prev => (prev === 'vanilla' ? 'merino' : 'vanilla'));
-  };
-
   useEffect(() => {
-    try {
-      localStorage.setItem('theiakshi_theme', theme);
-    } catch {}
     const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    root.classList.remove('pastel', 'sage', 'neutral', 'dark', 'light');
-    root.classList.add(theme);
-  }, [theme]);
-
-  const currentThemeMeta = THEMES.find(t => t.id === theme) || THEMES[0];
+    root.setAttribute('data-theme', 'theiakshi');
+    root.classList.remove('vanilla', 'merino', 'pastel', 'sage', 'neutral', 'dark', 'light');
+    root.classList.add('theiakshi');
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, cycleTheme, themes: THEMES, currentThemeMeta }}>
+    <ThemeContext.Provider value={{ theme: 'theiakshi', currentThemeMeta: THEME_PALETTE }}>
       {children}
     </ThemeContext.Provider>
   );
 };
 
 export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    return {
-      theme: 'vanilla' as Theme,
-      setTheme: () => {},
-      cycleTheme: () => {},
-      themes: THEMES,
-      currentThemeMeta: THEMES[0]
-    };
-  }
-  return context;
+  return useContext(ThemeContext);
 };

@@ -7,14 +7,11 @@ import {
   CheckCheck,
   X,
   LogOut,
-  UserRound,
-  Palette,
-  Check
+  UserRound
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
-import { useTheme, Theme } from '../../context/ThemeContext';
 import { apiFetch } from '../../services/api-client';
 import { TheiakshiLogo } from '../TheiakshiLogo';
 
@@ -25,7 +22,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { todaySummary, actionLoading, handlePunch } = useAttendance();
-  const { theme, setTheme, themes, currentThemeMeta } = useTheme();
   const activeSession = todaySummary?.activeSession || null;
   const hasActiveSession = !!activeSession;
   const navigate = useNavigate();
@@ -37,11 +33,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [notifLoading, setNotifLoading] = useState(false);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
-  const themeRef = useRef<HTMLDivElement>(null);
   const notifBellRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +43,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   useEffect(() => {
     setIsNotificationsOpen(false);
     setIsProfileOpen(false);
-    setIsThemeMenuOpen(false);
   }, [location.pathname]);
 
   // Handle ESC key
@@ -58,7 +51,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       if (e.key === 'Escape') {
         setIsNotificationsOpen(false);
         setIsProfileOpen(false);
-        setIsThemeMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -106,26 +98,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       document.removeEventListener('touchstart', handleProfileClickOutside);
     };
   }, [isProfileOpen]);
-
-  // Close theme menu when clicking outside
-  useEffect(() => {
-    const handleThemeClickOutside = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (
-        isThemeMenuOpen &&
-        themeRef.current &&
-        !themeRef.current.contains(target)
-      ) {
-        setIsThemeMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleThemeClickOutside);
-    document.addEventListener('touchstart', handleThemeClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleThemeClickOutside);
-      document.removeEventListener('touchstart', handleThemeClickOutside);
-    };
-  }, [isThemeMenuOpen]);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -219,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
       </div>
 
-      {/* Right Controls: Attendance Punch, Theme Selector, Bell, Profile */}
+      {/* Right Controls: Attendance Punch, Bell, Profile */}
       <div className="flex items-center gap-1.5 sm:gap-3 relative shrink-0">
         {/* Quick Check-in/out Punch Button */}
         {user?.employeeId && (
@@ -243,84 +215,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <span className="text-[11px] sm:text-xs font-semibold">{hasActiveSession ? 'Punch Out' : 'Punch In'}</span>
           </button>
         )}
-
-        {/* ─── COMPACT THEME SELECTOR ─── */}
-        <div ref={themeRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setIsThemeMenuOpen(prev => !prev)}
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm"
-            title={`Current theme: ${currentThemeMeta.name}. Click to change.`}
-            aria-label="Select Theme"
-            aria-expanded={isThemeMenuOpen}
-          >
-            <div className="flex items-center -space-x-1 shrink-0">
-              <span
-                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-                style={{ backgroundColor: currentThemeMeta.palette.bg }}
-              />
-              <span
-                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-                style={{ backgroundColor: currentThemeMeta.palette.secondary }}
-              />
-              <span
-                className="w-2.5 h-2.5 rounded-full ring-1 ring-[var(--border-default)]"
-                style={{ backgroundColor: currentThemeMeta.palette.primary }}
-              />
-            </div>
-            <span className="hidden sm:inline text-xs font-semibold">{currentThemeMeta.name}</span>
-            <Palette className="w-3.5 h-3.5 opacity-60 shrink-0 text-[var(--primary)]" />
-          </button>
-
-          {/* Theme Selector Popover */}
-          {isThemeMenuOpen && (
-            <div className="absolute right-0 mt-2.5 w-72 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 p-2 space-y-1.5">
-              <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                Select Color Palette
-              </div>
-              {themes.map(t => {
-                const isActive = theme === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTheme(t.id as Theme);
-                      setIsThemeMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--primary)] shadow-sm'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center -space-x-1.5 shrink-0">
-                        <span
-                          className="w-4 h-4 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: t.palette.bg }}
-                        />
-                        <span
-                          className="w-4 h-4 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: t.palette.secondary }}
-                        />
-                        <span
-                          className="w-4 h-4 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: t.palette.primary }}
-                        />
-                      </div>
-                      <div>
-                        <p className="font-bold text-xs text-[var(--text-primary)]">{t.name}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.subtitle}</p>
-                      </div>
-                    </div>
-                    {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         {/* Notifications Bell Button */}
         <div className="relative">
@@ -495,7 +389,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   type="button"
                   onClick={handleLogout}
                   disabled={logoutLoading}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-semibold text-rose-700 hover:bg-[var(--action-danger-soft)] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-semibold text-[var(--action-danger-bg)] hover:bg-[var(--action-danger-soft)] transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {logoutLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

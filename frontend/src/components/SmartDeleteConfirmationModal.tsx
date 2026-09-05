@@ -82,10 +82,10 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--action-danger-soft)]">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-rose-100 text-rose-700 border border-[var(--action-danger-bg)]/30">
+            <div className="p-2 rounded-xl bg-white text-[var(--action-danger-bg)] border border-[var(--action-danger-bg)]/30">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">{title}</h3>
+            <h3 className="text-base font-bold text-[var(--action-danger-bg)]">{title}</h3>
           </div>
           <button
             onClick={onClose}
@@ -144,7 +144,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
 
             {/* Validation Message */}
             {validationError && (
-              <div className="text-xs text-rose-700 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 p-2.5 rounded-xl flex items-center space-x-1.5">
+              <div className="text-xs text-[var(--action-danger-bg)] bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 p-2.5 rounded-xl flex items-center space-x-1.5 font-medium">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0" />
                 <span>{validationError}</span>
               </div>
@@ -169,7 +169,7 @@ export const SmartDeleteConfirmationModal: React.FC<SmartDeleteConfirmationModal
             disabled={!isExactMatch || isLoading}
             className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center space-x-2 transition cursor-pointer ${
               isExactMatch && !isLoading
-                ? 'bg-rose-700 hover:opacity-90 text-white shadow-sm'
+                ? 'bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-hover)] text-white shadow-sm'
                 : 'bg-[var(--bg-surface-muted)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-subtle)]'
             }`}
           >

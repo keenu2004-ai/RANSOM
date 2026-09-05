@@ -222,12 +222,12 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
           <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-between shadow-sm">
             <div>
               <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Absent</span>
-              <p className="text-2xl font-extrabold text-rose-700 mt-0.5">
+              <p className="text-2xl font-extrabold text-[var(--action-danger-bg)] mt-0.5">
                 {summaryOverride?.absent !== undefined ? summaryOverride.absent : summaryStats.absent}
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 flex items-center justify-center">
-              <XCircle className="w-5 h-5 text-rose-700" />
+              <XCircle className="w-5 h-5 text-[var(--action-danger-bg)]" />
             </div>
           </div>
         </div>

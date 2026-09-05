@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAttendance } from '../context/AttendanceContext';
-import { useTheme } from '../context/ThemeContext';
 import { apiFetch } from '../services/api-client';
 import { getDisplayName } from '../utils/displayName';
 import {
@@ -91,7 +90,6 @@ export const DesktopKpiCard = KpiCard;
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { todaySummary } = useAttendance();
-  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -202,11 +200,9 @@ export const Dashboard: React.FC = () => {
   // Recent leave requests list
   const leaveRequestsData: any[] = dashboardData?.recentLeaveRequests || [];
 
-  // Chart theme color resolver
-  const getThemeChartColor = () => {
-    if (theme === 'merino') return '#16587B'; // Venice Blue
-    return '#5D0D18'; // Bloodstone (Vanilla default)
-  };
+  // Chart primary brand and complementary accent colors
+  const chartLineColor = '#306B55';
+  const chartFillColor = '#C7EBDD';
 
   return (
     <div className="space-y-6 pb-8">
@@ -323,8 +319,8 @@ export const Dashboard: React.FC = () => {
             <svg className="w-full h-44 overflow-visible relative z-10" viewBox="0 0 700 160" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="themeAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={getThemeChartColor()} stopOpacity="0.25" />
-                  <stop offset="100%" stopColor={getThemeChartColor()} stopOpacity="0.0" />
+                  <stop offset="0%" stopColor={chartFillColor} stopOpacity="0.8" />
+                  <stop offset="100%" stopColor={chartFillColor} stopOpacity="0.05" />
                 </linearGradient>
               </defs>
 
@@ -337,7 +333,7 @@ export const Dashboard: React.FC = () => {
               {/* Theme Curve Line */}
               <polyline
                 fill="none"
-                stroke={getThemeChartColor()}
+                stroke={chartLineColor}
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -352,7 +348,7 @@ export const Dashboard: React.FC = () => {
                   cy={pt.y}
                   r="4.5"
                   fill="var(--bg-surface)"
-                  stroke={getThemeChartColor()}
+                  stroke={chartLineColor}
                   strokeWidth="2.5"
                   className="hover:r-6 transition-all cursor-pointer"
                 >
@@ -432,8 +428,7 @@ export const Dashboard: React.FC = () => {
               <div className="flex items-center justify-center py-2">
                 {/* Clean Donut representation */}
                 <div
-                  className="w-32 h-32 rounded-full border-8 flex items-center justify-center shadow-sm relative"
-                  style={{ borderColor: getThemeChartColor() }}
+                  className="w-32 h-32 rounded-full border-8 border-[var(--primary)] flex items-center justify-center shadow-sm relative"
                 >
                   <div className="w-20 h-20 rounded-full bg-[var(--bg-surface)] flex flex-col items-center justify-center text-center">
                     <span className="text-xs text-[var(--text-muted)] font-medium">Depts</span>
@@ -446,7 +441,7 @@ export const Dashboard: React.FC = () => {
                 {departmentData.map((d) => (
                   <div key={d.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color || getThemeChartColor() }}></span>
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color || 'var(--primary)' }}></span>
                       <span className="font-semibold text-[var(--text-secondary)]">{d.name}</span>
                     </div>
                     <span className="font-mono text-[var(--text-muted)]">{d.percentage}% ({d.count})</span>
