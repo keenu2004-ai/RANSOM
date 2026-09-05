@@ -615,7 +615,7 @@ export const Reports: React.FC = () => {
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-white">Delete Archived Report Permanently?</h3>
                 <p className="text-xs text-rose-300/90 font-medium">
-                  This permanently deletes the archived report from Google Drive and removes its archive record from RANSOM. This action cannot be undone.
+                  This permanently deletes the archived report from Google Drive and removes its archive record from Theiakshi. This action cannot be undone.
                 </p>
               </div>
             </div>

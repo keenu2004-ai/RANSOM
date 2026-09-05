@@ -1,23 +1,28 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AttendanceProvider } from './context/AttendanceContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Employees } from './pages/Employees';
-import { Attendance } from './pages/Attendance';
-import { Leave } from './pages/Leave';
-import { Holidays } from './pages/Holidays';
-import { Expenses } from './pages/Expenses';
-import { Timesheets } from './pages/Timesheets';
-import { Assets } from './pages/Assets';
-import { Notifications } from './pages/Notifications';
-import { Reports } from './pages/Reports';
-import { AuditLogs } from './pages/AuditLogs';
-import { Settings } from './pages/Settings';
-import { AdminControl } from './pages/AdminControl';
+import { PageSkeleton } from './components/common/PageSkeleton';
 import { hasPermission, normalizeRole } from './utils/permissions';
+import { RefreshCw } from 'lucide-react';
+
+// Route-level code splitting for performance optimization
+const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Employees = React.lazy(() => import('./pages/Employees').then(m => ({ default: m.Employees })));
+const Attendance = React.lazy(() => import('./pages/Attendance').then(m => ({ default: m.Attendance })));
+const Leave = React.lazy(() => import('./pages/Leave').then(m => ({ default: m.Leave })));
+const Holidays = React.lazy(() => import('./pages/Holidays').then(m => ({ default: m.Holidays })));
+const Expenses = React.lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
+const Timesheets = React.lazy(() => import('./pages/Timesheets').then(m => ({ default: m.Timesheets })));
+const Assets = React.lazy(() => import('./pages/Assets').then(m => ({ default: m.Assets })));
+const Notifications = React.lazy(() => import('./pages/Notifications').then(m => ({ default: m.Notifications })));
+const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(m => ({ default: m.AuditLogs })));
+const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const AdminControl = React.lazy(() => import('./pages/AdminControl').then(m => ({ default: m.AdminControl })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[]; requiredPermission?: string }> = ({
   children,
@@ -28,8 +33,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-cyan-400 font-medium text-sm">
-        Loading RANSOM Workspace...
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-cyan-400 font-medium text-xs">
+        <RefreshCw className="w-6 h-6 animate-spin text-cyan-400" />
+        <span>Loading...</span>
       </div>
     );
   }
@@ -60,10 +66,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
     );
   }
 
-  return <Layout>{children}</Layout>;
+  return (
+    <Layout>
+      <Suspense fallback={<PageSkeleton />}>
+        {children}
+      </Suspense>
+    </Layout>
+  );
 };
-
-import { ThemeProvider } from './context/ThemeContext';
 
 export const App: React.FC = () => {
   return (

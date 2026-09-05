@@ -28,33 +28,53 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('theiakshi_auth_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('theiakshi_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('theiakshi_auth_token');
   });
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    const savedToken = localStorage.getItem('theiakshi_auth_token');
+    const savedUser = localStorage.getItem('theiakshi_auth_user');
+    // If we have both token and saved user, we can immediately bootstrap session without blocking loading screen
+    return Boolean(savedToken && !savedUser);
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const checkAuth = async () => {
       const savedToken = localStorage.getItem('theiakshi_auth_token');
       if (savedToken) {
         try {
           const res = await apiFetch<{ user: User }>('/auth/me');
-          setUser(res.user);
-          localStorage.setItem('theiakshi_auth_user', JSON.stringify(res.user));
+          if (isMounted) {
+            setUser(res.user);
+            localStorage.setItem('theiakshi_auth_user', JSON.stringify(res.user));
+          }
         } catch (err: any) {
-          localStorage.removeItem('theiakshi_auth_token');
-          localStorage.removeItem('theiakshi_auth_user');
-          setUser(null);
-          setToken(null);
+          if (isMounted) {
+            localStorage.removeItem('theiakshi_auth_token');
+            localStorage.removeItem('theiakshi_auth_user');
+            setUser(null);
+            setToken(null);
+          }
         }
       }
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     };
     checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loginWithMicrosoft = async (msToken: string) => {

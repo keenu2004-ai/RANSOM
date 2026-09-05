@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch, apiDownload, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
+import { FileViewerModal } from '../components/common/FileViewerModal';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { getFinancialYearPeriod } from '../utils/financialYear';
@@ -197,6 +198,9 @@ export const Expenses: React.FC = () => {
   // Details View Modal
   const [selectedSingleExpense, setSelectedSingleExpense] = useState<any | null>(null);
 
+  // In-App File Viewer Modal
+  const [activeViewFile, setActiveViewFile] = useState<{ url: string; name: string } | null>(null);
+
   // Super Admin Delete State
   const [deleteConfirmExpense, setDeleteConfirmExpense] = useState<any | null>(null);
   const [deleteConfirmTrip, setDeleteConfirmTrip] = useState<any | null>(null);
@@ -215,6 +219,7 @@ export const Expenses: React.FC = () => {
     showOtherModal ||
     showFinalSubmitModal ||
     selectedSingleExpense ||
+    activeViewFile ||
     deleteConfirmExpense ||
     deleteConfirmTrip ||
     showCategoryAnalyticsModal ||
@@ -223,7 +228,6 @@ export const Expenses: React.FC = () => {
 
   useEffect(() => {
     if (isAnyModalOpen) {
-      // Auto-close dropdown when a modal opens so dropdown never interferes with active modal
       setShowDownloadDropdown(false);
 
       const previousOverflow = document.body.style.overflow;
@@ -231,8 +235,9 @@ export const Expenses: React.FC = () => {
 
       const handleGlobalKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          // Strict priority order: Close highest z-index confirmation overlay first, then level 4 modal
-          if (deleteConfirmExpense) {
+          if (activeViewFile) {
+            setActiveViewFile(null);
+          } else if (deleteConfirmExpense) {
             setDeleteConfirmExpense(null);
           } else if (deleteConfirmTrip) {
             setDeleteConfirmTrip(null);
@@ -270,6 +275,7 @@ export const Expenses: React.FC = () => {
     }
   }, [
     isAnyModalOpen,
+    activeViewFile,
     deleteConfirmExpense,
     deleteConfirmTrip,
     showFinalSubmitModal,
@@ -352,29 +358,30 @@ export const Expenses: React.FC = () => {
     setMgmtError(null);
 
     try {
-      const summaryRes = await apiFetch(`/expenses/management/summary?startYear=${selectedStartYear}`);
-      setMgmtSummary(summaryRes?.summary || null);
+      const [summaryRes, overviewRes, analyticsRes, recentRes] = await Promise.all([
+        apiFetch(`/expenses/management/summary?startYear=${selectedStartYear}`).catch(() => null),
+        apiFetch(`/expenses/management/employees`, {
+          params: {
+            startYear: selectedStartYear,
+            search: mgmtSearch,
+            departmentId: mgmtDeptFilter,
+            status: mgmtStatusFilter,
+            page: mgmtPagination.page,
+            limit: mgmtPagination.limit
+          }
+        }).catch(() => null),
+        apiFetch(`/expenses/management/analytics?startYear=${selectedStartYear}`).catch(() => null),
+        apiFetch(`/expenses/management/recent?startYear=${selectedStartYear}&limit=5`).catch(() => null)
+      ]);
 
-      const overviewRes = await apiFetch(`/expenses/management/employees`, {
-        params: {
-          startYear: selectedStartYear,
-          search: mgmtSearch,
-          departmentId: mgmtDeptFilter,
-          status: mgmtStatusFilter,
-          page: mgmtPagination.page,
-          limit: mgmtPagination.limit
-        }
-      });
+      setMgmtSummary(summaryRes?.summary || null);
 
       setMgmtOverview(overviewRes?.employees || []);
       if (overviewRes?.pagination) {
         setMgmtPagination(overviewRes.pagination);
       }
 
-      const analyticsRes = await apiFetch(`/expenses/management/analytics?startYear=${selectedStartYear}`);
       setMgmtAnalytics(analyticsRes || null);
-
-      const recentRes = await apiFetch(`/expenses/management/recent?startYear=${selectedStartYear}&limit=5`);
       setMgmtRecent(recentRes?.recentRequests || []);
     } catch (err: any) {
       console.error('Failed to load expense management data:', err);
@@ -468,18 +475,28 @@ export const Expenses: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const promises: Promise<any>[] = [];
       if (user?.employeeId) {
-        const myRes = await apiFetch('/expenses/my').catch(() => null);
-        setMyExpenses(myRes?.expenses || myRes?.data?.expenses || []);
+        promises.push(apiFetch('/expenses/my').catch(() => null));
+        promises.push(apiFetch('/expenses/trips/my').catch(() => null));
+      } else {
+        promises.push(Promise.resolve(null), Promise.resolve(null));
+      }
+      if (isManagerOrAdmin) {
+        promises.push(apiFetch('/expenses').catch(() => null));
+        promises.push(apiFetch('/expenses/trips/workforce').catch(() => null));
+      } else {
+        promises.push(Promise.resolve(null), Promise.resolve(null));
+      }
 
-        const myTripRes = await apiFetch('/expenses/trips/my').catch(() => null);
+      const [myRes, myTripRes, allRes, allTripRes] = await Promise.all(promises);
+
+      if (user?.employeeId) {
+        setMyExpenses(myRes?.expenses || myRes?.data?.expenses || []);
         setMyTrips(myTripRes?.trips || myTripRes?.data?.trips || []);
       }
       if (isManagerOrAdmin) {
-        const allRes = await apiFetch('/expenses').catch(() => null);
         setAllExpenses(allRes?.expenses || allRes?.data?.expenses || []);
-
-        const allTripRes = await apiFetch('/expenses/trips/workforce').catch(() => null);
         setAllTrips(allTripRes?.trips || allTripRes?.data?.trips || []);
       }
     } catch (err) {
@@ -2270,7 +2287,13 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {t.receipt_url && (
-                            <a href={getSecureFileUrl(t.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <button
+                              type="button"
+                              onClick={() => setActiveViewFile({ url: t.receipt_url, name: `${t.transport_mode || 'Travel'}_Receipt` })}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              File
+                            </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -2321,7 +2344,13 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {a.receipt_url && (
-                            <a href={getSecureFileUrl(a.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <button
+                              type="button"
+                              onClick={() => setActiveViewFile({ url: a.receipt_url, name: 'Accommodation_Receipt' })}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              File
+                            </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -2373,7 +2402,13 @@ export const Expenses: React.FC = () => {
                         <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(o.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         <div className="flex items-center gap-2">
                           {o.receipt_url && (
-                            <a href={getSecureFileUrl(o.receipt_url)} target="_blank" rel="noreferrer" className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[10px] font-bold">File</a>
+                            <button
+                              type="button"
+                              onClick={() => setActiveViewFile({ url: o.receipt_url, name: `${o.category || 'Other'}_Receipt` })}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              File
+                            </button>
                           )}
                           {activeTrip.status === 'DRAFT' && (
                             <>
@@ -3763,15 +3798,20 @@ export const Expenses: React.FC = () => {
                       {selectedSingleExpense.attachment_name || selectedSingleExpense.attachmentName || selectedSingleExpense.receipt_name || selectedSingleExpense.receiptName || 'Receipt / Document'}
                     </span>
                   </div>
-                  <a
-                    href={getSecureFileUrl(selectedSingleExpense.receipt_url || selectedSingleExpense.receiptUrl || selectedSingleExpense.attachment_url || selectedSingleExpense.attachmentUrl)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fileUrl = selectedSingleExpense.receipt_url || selectedSingleExpense.receiptUrl || selectedSingleExpense.attachment_url || selectedSingleExpense.attachmentUrl;
+                      const fileName = selectedSingleExpense.attachment_name || selectedSingleExpense.attachmentName || selectedSingleExpense.receipt_name || selectedSingleExpense.receiptName || 'Receipt_Document';
+                      if (fileUrl) {
+                        setActiveViewFile({ url: fileUrl, name: fileName });
+                      }
+                    }}
                     className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>View File</span>
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
@@ -4229,6 +4269,15 @@ export const Expenses: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* In-App Authenticated File Viewer */}
+      {activeViewFile && (
+        <FileViewerModal
+          fileUrl={activeViewFile.url}
+          fileName={activeViewFile.name}
+          onClose={() => setActiveViewFile(null)}
+        />
       )}
     </div>
   );
