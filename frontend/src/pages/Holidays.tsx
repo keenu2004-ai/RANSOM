@@ -322,7 +322,7 @@ export const Holidays: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-[var(--color-primary-soft)] text-[var(--color-primary)] rounded-2xl border border-[var(--border-subtle)] shadow-sm">
+          <div className="p-3 bg-[var(--primary-soft)] text-[var(--primary)] rounded-2xl border border-[var(--border-subtle)] shadow-sm">
             <CalendarCheck className="w-6 h-6" />
           </div>
           <div>
@@ -334,7 +334,7 @@ export const Holidays: React.FC = () => {
         {isManagement && (
           <button
             onClick={() => handleOpenAddModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add Holiday</span>
@@ -351,7 +351,7 @@ export const Holidays: React.FC = () => {
             <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.totalHolidays}</div>
             <div className="text-[11px] text-[var(--text-muted)]">This year</div>
           </div>
-          <div className="p-3 bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--border-subtle)] rounded-xl">
+          <div className="p-3 bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--border-subtle)] rounded-xl">
             <CalendarIcon className="w-6 h-6" />
           </div>
         </div>
@@ -364,7 +364,7 @@ export const Holidays: React.FC = () => {
               <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.northHolidays}</div>
               <div className="text-[11px] text-[var(--text-muted)]">Assigned holidays</div>
             </div>
-            <div className="p-3 bg-[var(--color-info-soft)] text-[var(--color-info)] border border-[var(--color-info)]/20 rounded-xl">
+            <div className="p-3 bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)] rounded-xl">
               <Globe className="w-6 h-6" />
             </div>
           </div>
@@ -378,7 +378,7 @@ export const Holidays: React.FC = () => {
               <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.southHolidays}</div>
               <div className="text-[11px] text-[var(--text-muted)]">Assigned holidays</div>
             </div>
-            <div className="p-3 bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20 rounded-xl">
+            <div className="p-3 bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)] rounded-xl">
               <Users className="w-6 h-6" />
             </div>
           </div>
@@ -391,7 +391,7 @@ export const Holidays: React.FC = () => {
             <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.upcomingHolidays}</div>
             <div className="text-[11px] text-[var(--text-muted)]">Next 30 days</div>
           </div>
-          <div className="p-3 bg-[var(--color-warning-soft)] text-[var(--color-warning)] border border-[var(--color-warning)]/20 rounded-xl">
+          <div className="p-3 bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)] rounded-xl">
             <Clock className="w-6 h-6" />
           </div>
         </div>
@@ -426,19 +426,19 @@ export const Holidays: React.FC = () => {
             <div className="flex items-center bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] p-1 rounded-xl text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('month')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'month' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'month' ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 Month
               </button>
               <button
                 onClick={() => setActiveTab('week')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'week' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'week' ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 Week
               </button>
               <button
                 onClick={() => setActiveTab('list')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'list' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'list' ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 List
               </button>
@@ -446,7 +446,7 @@ export const Holidays: React.FC = () => {
           </div>
 
           {/* 7-Column Sunday -> Saturday Grid Header */}
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--color-primary)] border-b border-[var(--border-subtle)] pb-2">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--primary)] border-b border-[var(--border-subtle)] pb-2">
             <div>Sun</div>
             <div>Mon</div>
             <div>Tue</div>
@@ -470,13 +470,13 @@ export const Holidays: React.FC = () => {
                     !cell.isCurrentMonth
                       ? 'bg-[var(--bg-surface-muted)]/40 border-[var(--border-subtle)] text-[var(--text-muted)] opacity-40'
                       : isToday
-                      ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-primary)]/40'
+                      ? 'bg-[var(--primary-soft)] border-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/40'
                       : 'bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] hover:bg-[var(--bg-surface-muted)] hover:border-[var(--border-default)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
-                      isToday ? 'bg-[var(--color-primary)] text-white font-extrabold' : 'text-[var(--text-secondary)]'
+                      isToday ? 'bg-[var(--primary)] text-white font-extrabold' : 'text-[var(--text-secondary)]'
                     }`}>
                       {cell.dayNum}
                     </span>
@@ -497,10 +497,10 @@ export const Holidays: React.FC = () => {
                             if (isManagement) handleOpenEditModal(h);
                           }}
                           className={`p-1.5 rounded-lg border text-[10px] space-y-0.5 shadow-sm transition-all ${
-                            isNorth ? 'bg-[var(--color-info-soft)] border-[var(--color-info)]/30 text-[var(--color-info)]' :
-                            isSouth ? 'bg-[var(--color-success-soft)] border-[var(--color-success)]/30 text-[var(--color-success)]' :
-                            isAll ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)]/30 text-[var(--color-primary)]' :
-                            'bg-[var(--color-warning-soft)] border-[var(--color-warning)]/30 text-[var(--color-warning)]'
+                            isNorth ? 'bg-[var(--badge-info-bg)] border-[var(--badge-info-border)] text-[var(--badge-info-text)]' :
+                            isSouth ? 'bg-[var(--badge-success-bg)] border-[var(--badge-success-border)] text-[var(--badge-success-text)]' :
+                            isAll ? 'bg-[var(--primary-soft)] border-[var(--primary)]/30 text-[var(--primary)]' :
+                            'bg-[var(--badge-warning-bg)] border-[var(--badge-warning-border)] text-[var(--badge-warning-text)]'
                           }`}
                         >
                           <div className="font-extrabold truncate leading-tight">{h.title}</div>
@@ -538,7 +538,7 @@ export const Holidays: React.FC = () => {
                 placeholder="Search holidays..."
                 value={listSearch}
                 onChange={e => setListSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                className="w-full pl-9 pr-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
 
@@ -547,7 +547,7 @@ export const Holidays: React.FC = () => {
               <button
                 onClick={() => setListRegionFilter('ALL')}
                 className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                  listRegionFilter === 'ALL' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
+                  listRegionFilter === 'ALL' ? 'bg-[var(--primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                 }`}
               >
                 All
@@ -555,7 +555,7 @@ export const Holidays: React.FC = () => {
               <button
                 onClick={() => setListRegionFilter('UPCOMING')}
                 className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                  listRegionFilter === 'UPCOMING' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
+                  listRegionFilter === 'UPCOMING' ? 'bg-[var(--primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                 }`}
               >
                 Upcoming
@@ -565,7 +565,7 @@ export const Holidays: React.FC = () => {
                   <button
                     onClick={() => setListRegionFilter('NORTH')}
                     className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                      listRegionFilter === 'NORTH' ? 'bg-[var(--color-info)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
+                      listRegionFilter === 'NORTH' ? 'bg-[var(--primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                     }`}
                   >
                     North Region
@@ -573,7 +573,7 @@ export const Holidays: React.FC = () => {
                   <button
                     onClick={() => setListRegionFilter('SOUTH')}
                     className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                      listRegionFilter === 'SOUTH' ? 'bg-[var(--color-success)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
+                      listRegionFilter === 'SOUTH' ? 'bg-[var(--primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                     }`}
                   >
                     South Region
@@ -597,9 +597,9 @@ export const Holidays: React.FC = () => {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <div className={`p-2 rounded-xl border ${
-                          isNorth ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border-[var(--color-info)]/30' :
-                          isSouth ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border-[var(--color-success)]/30' :
-                          'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]'
+                          isNorth ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border-[var(--badge-info-border)]' :
+                          isSouth ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                          'bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--border-subtle)]'
                         }`}>
                           <CalendarIcon className="w-4 h-4" />
                         </div>
@@ -612,25 +612,25 @@ export const Holidays: React.FC = () => {
                       <div className="flex items-center gap-1">
                         {isManagement ? (
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                            isNorth ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border-[var(--color-info)]/30' :
-                            isSouth ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border-[var(--color-success)]/30' :
-                            isAll ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]' :
-                            'bg-[var(--color-warning-soft)] text-[var(--color-warning)] border-[var(--color-warning)]/30'
+                            isNorth ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border-[var(--badge-info-border)]' :
+                            isSouth ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border-[var(--badge-success-border)]' :
+                            isAll ? 'bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--border-subtle)]' :
+                            'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border-[var(--badge-warning-border)]'
                           }`}>
                             {isNorth ? 'North Region' : isSouth ? 'South Region' : isAll ? 'All Employees' : `${h.assigned_employee_count || 0} Employees`}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--border-subtle)]">
                             Company Holiday
                           </span>
                         )}
 
                         {isManagement && (
                           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenEditModal(h)} className="p-1 text-[var(--text-muted)] hover:text-[var(--color-primary)] cursor-pointer" title="Edit">
+                            <button onClick={() => handleOpenEditModal(h)} className="p-1 text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer" title="Edit">
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={(e) => handleDelete(h.id, e)} className="p-1 text-[var(--text-muted)] hover:text-[var(--color-danger)] cursor-pointer" title="Delete">
+                            <button onClick={(e) => handleDelete(h.id, e)} className="p-1 text-[var(--text-muted)] hover:text-[var(--action-danger-bg)] cursor-pointer" title="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -661,7 +661,7 @@ export const Holidays: React.FC = () => {
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-[var(--color-primary-soft)] text-[var(--color-primary)] rounded-xl border border-[var(--border-subtle)]">
+                <div className="p-2 bg-[var(--primary-soft)] text-[var(--primary)] rounded-xl border border-[var(--border-subtle)]">
                   <CalendarIcon className="w-5 h-5" />
                 </div>
                 <div>
@@ -677,7 +677,7 @@ export const Holidays: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="p-3 bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/30 text-[var(--color-danger)] text-xs rounded-xl flex items-center gap-2">
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{formError}</span>
               </div>
@@ -693,7 +693,7 @@ export const Holidays: React.FC = () => {
                     value={formData.title}
                     onChange={e => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g. Diwali, Christmas, Local Holiday"
-                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                   />
                 </div>
 
@@ -704,7 +704,7 @@ export const Holidays: React.FC = () => {
                     required
                     value={formData.date}
                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-mono focus:border-[var(--color-primary)] focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-mono focus:border-[var(--primary)] focus:outline-none"
                   />
                 </div>
               </div>
@@ -715,7 +715,7 @@ export const Holidays: React.FC = () => {
                   <select
                     value={formData.holidayType}
                     onChange={e => setFormData({ ...formData, holidayType: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--color-primary)] focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--primary)] focus:outline-none"
                   >
                     <option value="COMPANY">Company Holiday</option>
                     <option value="NATIONAL">National Holiday</option>
@@ -730,7 +730,7 @@ export const Holidays: React.FC = () => {
                     <select
                       value={formData.region}
                       onChange={e => setFormData({ ...formData, region: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-semibold focus:border-[var(--color-primary)] focus:outline-none"
+                      className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-semibold focus:border-[var(--primary)] focus:outline-none"
                     >
                       <option value="NORTH">North Region</option>
                       <option value="SOUTH">South Region</option>
@@ -746,7 +746,7 @@ export const Holidays: React.FC = () => {
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Add a short description..."
-                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                 />
               </div>
 
@@ -758,7 +758,7 @@ export const Holidays: React.FC = () => {
                     onClick={() => setFormData({ ...formData, assignmentScope: 'ALL' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'ALL'
-                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        ? 'bg-[var(--primary-soft)] border-[var(--primary)] ring-2 ring-[var(--primary)]/20 text-[var(--text-primary)] font-bold'
                         : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
@@ -770,7 +770,7 @@ export const Holidays: React.FC = () => {
                     onClick={() => setFormData({ ...formData, assignmentScope: 'REGION' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'REGION'
-                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        ? 'bg-[var(--primary-soft)] border-[var(--primary)] ring-2 ring-[var(--primary)]/20 text-[var(--text-primary)] font-bold'
                         : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
@@ -782,7 +782,7 @@ export const Holidays: React.FC = () => {
                     onClick={() => setFormData({ ...formData, assignmentScope: 'EMPLOYEES' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'EMPLOYEES'
-                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        ? 'bg-[var(--primary-soft)] border-[var(--primary)] ring-2 ring-[var(--primary)]/20 text-[var(--text-primary)] font-bold'
                         : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
@@ -803,7 +803,7 @@ export const Holidays: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleSelectAllVisible}
-                        className="text-[10px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer"
+                        className="text-[10px] font-bold text-[var(--primary)] hover:underline cursor-pointer"
                       >
                         Select All Visible
                       </button>
@@ -825,7 +825,7 @@ export const Holidays: React.FC = () => {
                       placeholder="Search employees by name or code..."
                       value={empSearch}
                       onChange={e => setEmpSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                      className="w-full pl-8 pr-3 py-1.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                     />
                   </div>
 
@@ -838,7 +838,7 @@ export const Holidays: React.FC = () => {
                           onClick={() => handleToggleEmployeeSelect(emp.id)}
                           className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all text-xs ${
                             isChecked
-                              ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] text-[var(--text-primary)] font-semibold'
+                              ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--text-primary)] font-semibold'
                               : 'bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]'
                           }`}
                         >
@@ -847,7 +847,7 @@ export const Holidays: React.FC = () => {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => {}}
-                              className="rounded border-[var(--border-default)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                              className="rounded border-[var(--border-default)] text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
                             <div>
                               <span>{emp.first_name} {emp.last_name}</span>
@@ -856,8 +856,8 @@ export const Holidays: React.FC = () => {
                           </div>
 
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                            emp.region === 'SOUTH' ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20' :
-                            emp.region === 'NORTH' ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border border-[var(--color-info)]/20' :
+                            emp.region === 'SOUTH' ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]' :
+                            emp.region === 'NORTH' ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)]' :
                             'bg-[var(--bg-surface-muted)] text-[var(--text-muted)]'
                           }`}>
                             {emp.region || 'Unassigned'}
@@ -882,7 +882,7 @@ export const Holidays: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-xl font-semibold text-xs shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-xl font-semibold text-xs shadow-sm cursor-pointer"
                 >
                   Save Holiday
                 </button>

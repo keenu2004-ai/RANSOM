@@ -257,8 +257,14 @@ export const AdminControl: React.FC = () => {
                       return (
                         <tr key={u.id} className="hover:bg-[var(--bg-surface-hover)] transition-colors">
                           <td className="px-6 py-4 font-semibold text-[var(--text-primary)]">
-                            <div>{u.email}</div>
-                            {isSelf && <span className="text-[10px] text-[var(--primary)] font-normal">(Current Account)</span>}
+                            <a
+                              href={`mailto:${u.email}`}
+                              className="text-xs font-semibold text-[var(--text-primary)] hover:text-[var(--primary)] hover:underline block truncate max-w-[240px]"
+                              title={`Send email to ${u.email}`}
+                            >
+                              {u.email}
+                            </a>
+                            {isSelf && <span className="text-[10px] text-[var(--primary)] font-normal block">(Current Account)</span>}
                           </td>
                           <td className="px-6 py-4">
                             {u.employee_name ? (

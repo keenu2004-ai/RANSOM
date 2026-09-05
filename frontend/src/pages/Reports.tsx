@@ -294,7 +294,7 @@ export const Reports: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-[var(--color-primary)]" />
+            <BarChart3 className="w-6 h-6 text-[var(--primary)]" />
             <span>Reports & Archiving Repository</span>
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-1">Enterprise reporting suite, multi-sheet XLSX exports, and private report archives</p>
@@ -304,7 +304,7 @@ export const Reports: React.FC = () => {
           onClick={() => apiDownload('/reports/export-csv')}
           className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-primary)] text-xs font-semibold rounded-xl border border-[var(--border-default)] transition-all cursor-pointer self-start sm:self-auto shadow-sm"
         >
-          <Download className="w-4 h-4 text-[var(--color-primary)]" />
+          <Download className="w-4 h-4 text-[var(--primary)]" />
           <span>Export Workforce CSV</span>
         </button>
       </div>
@@ -313,13 +313,13 @@ export const Reports: React.FC = () => {
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[var(--color-primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--color-primary)]">
+            <div className="p-2.5 bg-[var(--primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--primary)]">
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 <span>Weekly Plan & Field Visit Excel Export</span>
-                <span className="px-2 py-0.5 bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20 text-[10px] font-mono rounded-full font-bold">TRUE .XLSX</span>
+                <span className="px-2 py-0.5 bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)] text-[10px] font-mono rounded-full font-bold">TRUE .XLSX</span>
               </h2>
               <p className="text-xs text-[var(--text-secondary)]">Generates 6-sheet workbook: Weekly Plan, Executive Summary, Carry Forward, Opportunities, History, & Monthly Tracker</p>
             </div>
@@ -330,7 +330,7 @@ export const Reports: React.FC = () => {
               type="button"
               disabled={downloading}
               onClick={handleGenerateWeeklyPlanXlsx}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 min-w-[140px] cursor-pointer w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 min-w-[140px] cursor-pointer w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
               <span>{downloading ? 'Generating...' : 'Download Excel'}</span>
@@ -342,7 +342,7 @@ export const Reports: React.FC = () => {
               onClick={handleArchiveWeeklyPlan}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-default)] font-semibold text-xs rounded-xl transition-all disabled:opacity-50 min-w-[130px] cursor-pointer w-full sm:w-auto shadow-sm"
             >
-              {archivingWeekly ? <Loader2 className="w-4 h-4 animate-spin text-[var(--color-primary)]" /> : <Archive className="w-4 h-4 text-[var(--color-primary)]" />}
+              {archivingWeekly ? <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" /> : <Archive className="w-4 h-4 text-[var(--primary)]" />}
               <span>Archive Export</span>
             </button>
           </div>
@@ -353,7 +353,7 @@ export const Reports: React.FC = () => {
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Planned</span>
-              <Clock className="w-3.5 h-3.5 text-[var(--color-info)]" />
+              <Clock className="w-3.5 h-3.5 text-[var(--badge-info-text)]" />
             </div>
             <div className="text-lg font-bold text-[var(--text-primary)] font-mono">{summaryData.planned}</div>
           </div>
@@ -361,47 +361,47 @@ export const Reports: React.FC = () => {
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>In Progress</span>
-              <PlayCircle className="w-3.5 h-3.5 text-[var(--color-warning)]" />
+              <PlayCircle className="w-3.5 h-3.5 text-[var(--badge-warning-text)]" />
             </div>
-            <div className="text-lg font-bold text-[var(--color-warning)] font-mono">{summaryData.inProgress}</div>
+            <div className="text-lg font-bold text-[var(--badge-warning-text)] font-mono">{summaryData.inProgress}</div>
           </div>
 
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Completed</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-success)]" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--badge-success-text)]" />
             </div>
-            <div className="text-lg font-bold text-[var(--color-success)] font-mono">{summaryData.completed}</div>
+            <div className="text-lg font-bold text-[var(--badge-success-text)] font-mono">{summaryData.completed}</div>
           </div>
 
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Cancelled</span>
-              <XCircle className="w-3.5 h-3.5 text-[var(--color-danger)]" />
+              <XCircle className="w-3.5 h-3.5 text-[var(--action-danger-bg)]" />
             </div>
-            <div className="text-lg font-bold text-[var(--color-danger)] font-mono">{summaryData.cancelled}</div>
+            <div className="text-lg font-bold text-[var(--action-danger-bg)] font-mono">{summaryData.cancelled}</div>
           </div>
 
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Carry Forward</span>
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+              <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--primary)]" />
             </div>
-            <div className="text-lg font-bold text-[var(--color-primary)] font-mono">{summaryData.carryForward}</div>
+            <div className="text-lg font-bold text-[var(--primary)] font-mono">{summaryData.carryForward}</div>
           </div>
 
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Pipeline (₹)</span>
-              <DollarSign className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+              <DollarSign className="w-3.5 h-3.5 text-[var(--primary)]" />
             </div>
-            <div className="text-sm font-bold text-[var(--color-primary)] font-mono">₹{summaryData.pipelineValue.toLocaleString('en-IN')}</div>
+            <div className="text-sm font-bold text-[var(--primary)] font-mono">₹{summaryData.pipelineValue.toLocaleString('en-IN')}</div>
           </div>
         </div>
 
         {/* Filter Controls Grid */}
         <div className="bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
             <Filter className="w-3.5 h-3.5" />
             <span>Filter Parameters</span>
           </div>
@@ -414,7 +414,7 @@ export const Reports: React.FC = () => {
                 type="date"
                 value={weekStart}
                 onChange={e => setWeekStart(e.target.value)}
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
 
@@ -424,7 +424,7 @@ export const Reports: React.FC = () => {
                 type="date"
                 value={weekEnd}
                 onChange={e => setWeekEnd(e.target.value)}
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
 
@@ -435,7 +435,7 @@ export const Reports: React.FC = () => {
                 <select
                   value={filterEmployeeId}
                   onChange={e => setFilterEmployeeId(e.target.value)}
-                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
                 >
                   <option value="">All Workforce</option>
                   {employees.map(emp => (
@@ -463,7 +463,7 @@ export const Reports: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
               >
                 <option value="">All Statuses</option>
                 <option value="PLANNED">Planned</option>
@@ -481,7 +481,7 @@ export const Reports: React.FC = () => {
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[var(--color-primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--color-primary)]">
+            <div className="p-2.5 bg-[var(--primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--primary)]">
               <Calendar className="w-6 h-6" />
             </div>
             <div>
@@ -494,7 +494,7 @@ export const Reports: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(parseInt(e.target.value, 10))}
-              className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+              className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
             >
               {monthsList.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -505,14 +505,14 @@ export const Reports: React.FC = () => {
               type="number"
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
-              className="w-20 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)] font-mono"
+              className="w-20 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono"
             />
 
             <button
               type="button"
               disabled={archivingMonthly}
               onClick={handleArchiveMonthlyReport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
               {archivingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
               <span>Generate & Archive Month</span>
@@ -525,7 +525,7 @@ export const Reports: React.FC = () => {
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between">
           <div className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-2">
-            <FileCheck className="w-4 h-4 text-[var(--color-primary)]" />
+            <FileCheck className="w-4 h-4 text-[var(--primary)]" />
             <span>Archived Reports & Document Repository ({archives.length})</span>
           </div>
         </div>
@@ -555,7 +555,7 @@ export const Reports: React.FC = () => {
                   <tr key={arch.id} className="hover:bg-[var(--bg-surface-elevated)] transition-colors">
                     <td className="px-6 py-3.5 font-bold text-[var(--text-primary)]">{arch.report_name}</td>
                     <td className="px-6 py-3.5 font-mono">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--border-subtle)]">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--border-subtle)]">
                         {arch.report_type}
                       </span>
                     </td>
@@ -570,7 +570,7 @@ export const Reports: React.FC = () => {
                         onClick={() => handleDownloadArchive(arch)}
                         className="px-3 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] disabled:opacity-50 text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <Download className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                        <Download className="w-3.5 h-3.5 text-[var(--primary)]" />
                         <span>{downloadingArchiveId === arch.id ? 'Downloading...' : 'Download'}</span>
                       </button>
 
@@ -578,7 +578,7 @@ export const Reports: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenDeleteModal(arch)}
-                          className="px-3 py-1.5 bg-[var(--color-danger-soft)] hover:bg-[var(--color-danger)]/20 text-[var(--color-danger)] border border-[var(--color-danger)]/30 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 bg-[var(--action-danger-soft)] hover:bg-[var(--action-danger-soft-hover)] text-[var(--action-danger-bg)] border border-[var(--accent-attention-border)] rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Delete</span>
@@ -595,8 +595,8 @@ export const Reports: React.FC = () => {
 
       {/* Toast Notification Banner */}
       {deleteSuccessMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-surface-elevated)] border border-[var(--color-success)] text-[var(--color-success)] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <CheckCircle2 className="w-5 h-5 text-[var(--color-success)] shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-surface-elevated)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <CheckCircle2 className="w-5 h-5 text-[var(--badge-success-text)] shrink-0" />
           <span className="text-xs font-semibold">{deleteSuccessMessage}</span>
         </div>
       )}
@@ -607,12 +607,12 @@ export const Reports: React.FC = () => {
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
             {/* Modal Header */}
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/20 rounded-xl text-[var(--color-danger)] shrink-0">
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-xl text-[var(--action-danger-bg)] shrink-0">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-[var(--text-primary)]">Delete Archived Report Permanently?</h3>
-                <p className="text-xs text-[var(--color-danger)] font-medium">
+                <p className="text-xs text-[var(--action-danger-bg)] font-medium">
                   This permanently deletes the archived report from Google Drive and removes its archive record from Theiakshi. This action cannot be undone.
                 </p>
               </div>
@@ -620,7 +620,7 @@ export const Reports: React.FC = () => {
 
             {/* Error banner inside modal */}
             {deleteErrorMessage && (
-              <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/30 rounded-xl p-3 text-xs text-[var(--color-danger)]">
+              <div className="bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-xl p-3 text-xs text-[var(--action-danger-bg)]">
                 {deleteErrorMessage}
               </div>
             )}
@@ -633,7 +633,7 @@ export const Reports: React.FC = () => {
               </div>
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
                 <span className="text-[var(--text-secondary)] font-semibold">Report Type</span>
-                <span className="text-[var(--color-primary)] font-mono font-bold">{deleteModalArchive.report_type}</span>
+                <span className="text-[var(--primary)] font-mono font-bold">{deleteModalArchive.report_type}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
                 <span className="text-[var(--text-secondary)] font-semibold">Period</span>
@@ -656,14 +656,14 @@ export const Reports: React.FC = () => {
             {/* Required Input Confirmation */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-[var(--text-secondary)]">
-                Type <span className="text-[var(--color-danger)] font-mono font-bold">DELETE</span> to confirm permanent removal:
+                Type <span className="text-[var(--action-danger-bg)] font-mono font-bold">DELETE</span> to confirm permanent removal:
               </label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={e => setDeleteConfirmText(e.target.value)}
                 placeholder="Type DELETE"
-                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] focus:border-[var(--color-danger)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] font-mono focus:outline-none"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] focus:border-[var(--action-danger-bg)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] font-mono focus:outline-none"
               />
             </div>
 
@@ -681,7 +681,7 @@ export const Reports: React.FC = () => {
                 type="button"
                 disabled={deleteConfirmText.trim() !== 'DELETE' || isDeletingArchive}
                 onClick={handlePerformDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-danger)] hover:opacity-90 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--action-danger-bg)] hover:bg-[var(--action-danger-hover)] disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 {isDeletingArchive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Delete Permanently</span>
@@ -695,7 +695,7 @@ export const Reports: React.FC = () => {
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between">
           <div className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[var(--color-primary)]" />
+            <Users className="w-4 h-4 text-[var(--primary)]" />
             <span>Departmental Workforce Headcount Distribution</span>
           </div>
         </div>
@@ -713,7 +713,7 @@ export const Reports: React.FC = () => {
               {report.map((r, idx) => (
                 <tr key={idx} className="hover:bg-[var(--bg-surface-elevated)] transition-colors">
                   <td className="px-6 py-3.5 font-bold text-[var(--text-primary)]">{r.department || 'General Admin'}</td>
-                  <td className="px-6 py-3.5 font-mono text-[var(--color-primary)] font-bold">{r.total_employees}</td>
+                  <td className="px-6 py-3.5 font-mono text-[var(--primary)] font-bold">{r.total_employees}</td>
                   <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{r.full_time}</td>
                   <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{r.contract}</td>
                 </tr>

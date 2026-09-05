@@ -23,6 +23,7 @@ const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default:
 const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const AdminControl = React.lazy(() => import('./pages/AdminControl').then(m => ({ default: m.AdminControl })));
+const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[]; requiredPermission?: string }> = ({
   children,
@@ -99,7 +100,7 @@ export const App: React.FC = () => {
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
 
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Suspense fallback={<PageSkeleton />}><NotFound /></Suspense>} />
             </Routes>
           </BrowserRouter>
         </AttendanceProvider>

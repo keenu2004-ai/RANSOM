@@ -24,17 +24,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const role = user?.role;
 
-  // Prevent background body scrolling when mobile drawer is open
+  // Prevent background body scrolling and close on Escape key when mobile drawer is open
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && setMobileOpen) {
+          setMobileOpen(false);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, setMobileOpen]);
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, perm: null },
@@ -128,14 +138,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
 
           {/* Drawer Container (100dvh Viewport Height) */}
-          <div className="relative z-10 w-[min(85vw,320px)] h-[100dvh] bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-left duration-200 pointer-events-auto pt-[max(0px,env(safe-area-inset-top))] pb-[max(0px,env(safe-area-inset-bottom))]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            className="relative z-10 w-[min(85vw,320px)] h-[100dvh] bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-left duration-200 pointer-events-auto pt-[max(0px,env(safe-area-inset-top))] pb-[max(0px,env(safe-area-inset-bottom))]"
+          >
             {/* Header with Logo & Close */}
             <div className="p-4 bg-[var(--bg-surface)] border-b border-[var(--sidebar-border)] flex items-center justify-between">
               <TheiakshiLogo variant="full" size="md" />
               <button
                 type="button"
                 onClick={() => setMobileOpen && setMobileOpen(false)}
-                className="p-1.5 text-[var(--sidebar-text)] hover:text-[var(--text-primary)] hover:bg-[var(--sidebar-hover)] rounded-lg transition-colors cursor-pointer"
+                className="p-2 text-[var(--sidebar-text)] hover:text-[var(--text-primary)] hover:bg-[var(--sidebar-hover)] rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Close navigation menu"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -151,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     to={item.path}
                     onClick={() => setMobileOpen && setMobileOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
                         isActive
                           ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-sm'
                           : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--text-primary)]'

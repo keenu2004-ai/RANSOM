@@ -393,8 +393,24 @@ export const Employees: React.FC = () => {
                         <td className="px-6 py-4 font-mono font-bold text-[var(--primary)]">{emp.employee_code}</td>
                         <td className="px-6 py-4">
                           <div className="font-semibold text-[var(--text-primary)]">{emp.first_name} {emp.last_name}</div>
-                          <div className="text-[11px] text-[var(--text-secondary)]">{emp.email}</div>
-                          {emp.phone && <div className="text-[10px] text-[var(--text-muted)] font-mono">{emp.phone}</div>}
+                          {emp.email && (
+                            <a
+                              href={`mailto:${emp.email}`}
+                              className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline block truncate max-w-[220px]"
+                              title={`Send email to ${emp.email}`}
+                            >
+                              {emp.email}
+                            </a>
+                          )}
+                          {emp.phone && (
+                            <a
+                              href={`tel:${emp.phone.replace(/[^+\d]/g, '')}`}
+                              className="text-[10px] text-[var(--text-muted)] font-mono hover:text-[var(--primary)] hover:underline block"
+                              title={`Call ${emp.phone}`}
+                            >
+                              {emp.phone}
+                            </a>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center gap-1 font-medium text-[var(--text-secondary)]">

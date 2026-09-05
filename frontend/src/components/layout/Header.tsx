@@ -363,9 +363,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     <p className="text-sm font-bold text-[var(--text-primary)] truncate">
                       {profileName}
                     </p>
-                    <p className="text-[11px] text-[var(--text-muted)] truncate">
-                      {user?.email}
-                    </p>
+                    {user?.email && (
+                      <a
+                        href={`mailto:${user.email}`}
+                        className="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] hover:underline truncate block"
+                        title={`Send email to ${user.email}`}
+                      >
+                        {user.email}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
