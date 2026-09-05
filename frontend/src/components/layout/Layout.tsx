@@ -7,9 +7,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#020817] text-[#F8FAFC] overflow-hidden">
-      <Sidebar 
-        mobileOpen={mobileOpen} 
+    <div className="flex h-screen bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden transition-colors duration-200">
+      <Sidebar
+        mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
         collapsed={collapsed}
         setCollapsed={setCollapsed}

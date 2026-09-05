@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { normalizeDateOnly } from '../../utils/dateUtils';
-import { 
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, 
-  CheckCircle2, XCircle, Clock, AlertTriangle, Palmtree, Award, Briefcase, X
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter,
+  CheckCircle2, XCircle, Clock, Palmtree, Award, Briefcase, X
 } from 'lucide-react';
 
 export interface CalendarEvent {
@@ -34,7 +34,6 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
   initialMonth = new Date().getMonth(),
   onMonthChange,
   onEventClick,
-  title = "Unified Organizational Calendar",
   subtitle = "Attendance, leave, company holidays, and weekly project tasks in one unified view",
   attendanceOnly = false,
   summaryOverride
@@ -72,13 +71,6 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
     setCurrentMonth(newM);
     setCurrentYear(newY);
     if (onMonthChange) onMonthChange(newY, newM);
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    setCurrentYear(today.getFullYear());
-    setCurrentMonth(today.getMonth());
-    if (onMonthChange) onMonthChange(today.getFullYear(), today.getMonth());
   };
 
   // Month Matrix Computation
@@ -170,53 +162,42 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
       }
     });
 
-    // Estimate working days in month (Mon-Fri)
-    let workingDays = 0;
-    for (let day = 1; day <= monthData.daysInMonth; day++) {
-      const dateObj = new Date(currentYear, currentMonth, day);
-      const dayOfWeek = dateObj.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        workingDays++;
-      }
-    }
-
-    return { present, absent, halfDay, leave, holidays, tasks, workingDays };
-  }, [events, currentYear, currentMonth, monthData.daysInMonth]);
+    return { present, absent, halfDay, leave, holidays, tasks };
+  }, [events, currentYear, currentMonth]);
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June", 
+    "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
 
   return (
     <div className="space-y-6">
       {/* Calendar Header & Month Navigation */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-sm">
         <div>
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-base font-extrabold text-[var(--text-primary)] flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-[var(--primary)]" />
             <span>{monthNames[currentMonth]} {currentYear}</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Main Month Navigation Controls: [<] [Month Year] [>] */}
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="p-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition-all cursor-pointer"
+            className="p-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl transition-all cursor-pointer shadow-sm"
             title="Previous Month"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <div className="px-4 py-2 bg-slate-950 border border-cyan-500/30 text-cyan-400 font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm">
+          <div className="px-4 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm">
             <span>{monthNames[currentMonth]} {currentYear}</span>
           </div>
           <button
             type="button"
             onClick={handleNextMonth}
-            className="p-2 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl transition-all cursor-pointer"
+            className="p-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl transition-all cursor-pointer shadow-sm"
             title="Next Month"
           >
             <ChevronRight className="w-4 h-4" />
@@ -227,134 +208,133 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
       {/* Monthly Summary Bar */}
       {attendanceOnly ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between shadow-md">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-between shadow-sm">
             <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Present</span>
-              <p className="text-2xl font-extrabold text-emerald-400 mt-0.5">
+              <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Present</span>
+              <p className="text-2xl font-extrabold text-emerald-700 mt-0.5">
                 {summaryOverride?.present !== undefined ? summaryOverride.present : summaryStats.present}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
             </div>
           </div>
-          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between shadow-md">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-between shadow-sm">
             <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Absent</span>
-              <p className="text-2xl font-extrabold text-rose-400 mt-0.5">
+              <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Absent</span>
+              <p className="text-2xl font-extrabold text-rose-700 mt-0.5">
                 {summaryOverride?.absent !== undefined ? summaryOverride.absent : summaryStats.absent}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-              <XCircle className="w-5 h-5 text-rose-400" />
+            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center">
+              <XCircle className="w-5 h-5 text-rose-700" />
             </div>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Present</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Present</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <p className="text-lg font-extrabold text-emerald-400 mt-1">{summaryStats.present}</p>
+            <p className="text-lg font-extrabold text-emerald-700 mt-1">{summaryStats.present}</p>
           </div>
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Absent</span>
-              <XCircle className="w-4 h-4 text-rose-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Absent</span>
+              <XCircle className="w-4 h-4 text-rose-600" />
             </div>
-            <p className="text-lg font-extrabold text-rose-400 mt-1">{summaryStats.absent}</p>
+            <p className="text-lg font-extrabold text-rose-700 mt-1">{summaryStats.absent}</p>
           </div>
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Half Day</span>
-              <Clock className="w-4 h-4 text-amber-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Half Day</span>
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
-            <p className="text-lg font-extrabold text-amber-400 mt-1">{summaryStats.halfDay}</p>
+            <p className="text-lg font-extrabold text-amber-700 mt-1">{summaryStats.halfDay}</p>
           </div>
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Leave</span>
-              <Palmtree className="w-4 h-4 text-indigo-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Leave</span>
+              <Palmtree className="w-4 h-4 text-purple-600" />
             </div>
-            <p className="text-lg font-extrabold text-indigo-400 mt-1">{summaryStats.leave}</p>
+            <p className="text-lg font-extrabold text-purple-700 mt-1">{summaryStats.leave}</p>
           </div>
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Holidays</span>
-              <Award className="w-4 h-4 text-purple-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Holidays</span>
+              <Award className="w-4 h-4 text-[var(--primary)]" />
             </div>
-            <p className="text-lg font-extrabold text-purple-400 mt-1">{summaryStats.holidays}</p>
+            <p className="text-lg font-extrabold text-[var(--primary)] mt-1">{summaryStats.holidays}</p>
           </div>
-          <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tasks</span>
-              <Briefcase className="w-4 h-4 text-cyan-400" />
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Tasks</span>
+              <Briefcase className="w-4 h-4 text-[var(--text-secondary)]" />
             </div>
-            <p className="text-lg font-extrabold text-cyan-400 mt-1">{summaryStats.tasks}</p>
+            <p className="text-lg font-extrabold text-[var(--text-primary)] mt-1">{summaryStats.tasks}</p>
           </div>
         </div>
       )}
 
-      {/* Filter Toggles & Accessibility Legend (Only shown for non-attendance calendars) */}
+      {/* Filter Toggles & Accessibility Legend */}
       {!attendanceOnly && (
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/70 border border-slate-800 rounded-xl text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl text-xs shadow-sm">
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="font-semibold text-slate-400 flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Event Filters:</span>
+            <span className="font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-[var(--primary)]" />
+              <span>Filters:</span>
             </span>
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-              <input type="checkbox" checked={showAttendance} onChange={e => setShowAttendance(e.target.checked)} className="rounded accent-cyan-500" />
+            <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <input type="checkbox" checked={showAttendance} onChange={e => setShowAttendance(e.target.checked)} className="rounded accent-[var(--primary)]" />
               <span>Attendance</span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-              <input type="checkbox" checked={showLeave} onChange={e => setShowLeave(e.target.checked)} className="rounded accent-indigo-500" />
+            <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <input type="checkbox" checked={showLeave} onChange={e => setShowLeave(e.target.checked)} className="rounded accent-[var(--primary)]" />
               <span>Leave</span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-              <input type="checkbox" checked={showHolidays} onChange={e => setShowHolidays(e.target.checked)} className="rounded accent-purple-500" />
+            <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <input type="checkbox" checked={showHolidays} onChange={e => setShowHolidays(e.target.checked)} className="rounded accent-[var(--primary)]" />
               <span>Holidays</span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white">
-              <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} className="rounded accent-cyan-500" />
-              <span>Tasks / Weekly Plan</span>
+            <label className="flex items-center gap-1.5 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} className="rounded accent-[var(--primary)]" />
+              <span>Tasks</span>
             </label>
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Present</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Absent</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Half Day</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> Leave</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span> Holiday</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400"></span> Task</span>
+          <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--text-muted)] flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-600"></span> Present</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-600"></span> Absent</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-600"></span> Half Day</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Leave</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--primary)]"></span> Holiday</span>
           </div>
         </div>
       )}
 
       {/* Main Month Grid */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm">
         {/* Weekday Labels */}
-        <div className="grid grid-cols-7 bg-slate-950/80 border-b border-slate-800 text-center py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          <div className="text-rose-400/90">Sun</div>
+        <div className="grid grid-cols-7 bg-[var(--bg-surface-muted)] border-b border-[var(--border-subtle)] text-center py-2.5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+          <div className="text-rose-700">Sun</div>
           <div>Mon</div>
           <div>Tue</div>
           <div>Wed</div>
           <div>Thu</div>
           <div>Fri</div>
-          <div className="text-rose-400/90">Sat</div>
+          <div className="text-rose-700">Sat</div>
         </div>
 
         {/* Month Weeks */}
-        <div className="divide-y divide-slate-800/60">
+        <div className="divide-y divide-[var(--border-subtle)]">
           {monthData.weeks.map((week, wIdx) => (
-            <div key={wIdx} className="grid grid-cols-7 divide-x divide-slate-800/60">
+            <div key={wIdx} className="grid grid-cols-7 divide-x divide-[var(--border-subtle)]">
               {week.map((cell, cIdx) => {
                 if (!cell.date || !cell.dateStr) {
-                  return <div key={cIdx} className="min-h-[110px] bg-slate-950/30" />;
+                  return <div key={cIdx} className="min-h-[105px] bg-[var(--bg-surface-muted)]/30" />;
                 }
 
                 const dayNum = cell.date.getDate();
@@ -367,39 +347,43 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
                   <div
                     key={cIdx}
                     onClick={() => dayEvents.length > 0 && setSelectedDayEvents({ dateStr: cell.dateStr!, events: dayEvents })}
-                    className={`min-h-[110px] p-2 transition-all cursor-pointer relative group flex flex-col justify-between ${
-                      isToday ? 'bg-cyan-950/30 border-2 border-cyan-500/50' : isWeekend ? 'bg-slate-950/20 hover:bg-slate-800/30' : 'hover:bg-slate-800/40'
+                    className={`min-h-[105px] p-2 transition-all cursor-pointer relative group flex flex-col justify-between ${
+                      isToday
+                        ? 'bg-[var(--primary-soft)]/50 border-2 border-[var(--primary)]'
+                        : isWeekend
+                        ? 'bg-[var(--bg-surface-muted)]/40 hover:bg-[var(--bg-surface-hover)]'
+                        : 'hover:bg-[var(--bg-surface-hover)]'
                     }`}
                   >
                     {/* Day Number Header */}
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
-                        isToday ? 'bg-cyan-500 text-slate-950' : isWeekend ? 'text-rose-400' : 'text-slate-300'
+                        isToday ? 'bg-[var(--primary)] text-white' : isWeekend ? 'text-rose-700 font-extrabold' : 'text-[var(--text-primary)]'
                       }`}>
                         {dayNum}
                       </span>
                       {dayEvents.length > 0 && (
-                        <span className="text-[10px] font-mono text-cyan-400 font-bold px-1 rounded bg-slate-800">
+                        <span className="text-[10px] font-mono text-[var(--primary)] font-bold px-1 rounded bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)]">
                           {dayEvents.length}
                         </span>
                       )}
                     </div>
 
                     {/* Day Events Badges */}
-                    <div className="space-y-1 overflow-y-auto max-h-[75px] scrollbar-thin">
+                    <div className="space-y-1 overflow-y-auto max-h-[70px] custom-scrollbar">
                       {dayEvents.slice(0, 3).map((evt, eIdx) => {
-                        let badgeBg = "bg-slate-800 text-slate-300 border-slate-700";
+                        let badgeStyle = "bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border-[var(--border-subtle)]";
                         if (evt.type === 'ATTENDANCE') {
                           const st = (evt.status || '').toUpperCase();
-                          if (st === 'PRESENT') badgeBg = "bg-emerald-950/60 text-emerald-300 border-emerald-800/60";
-                          else if (st === 'ABSENT') badgeBg = "bg-rose-950/60 text-rose-300 border-rose-800/60";
-                          else if (st === 'HALF_DAY') badgeBg = "bg-amber-950/60 text-amber-300 border-amber-800/60";
+                          if (st === 'PRESENT') badgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
+                          else if (st === 'ABSENT') badgeStyle = "bg-rose-50 text-rose-800 border-rose-200";
+                          else if (st === 'HALF_DAY') badgeStyle = "bg-purple-50 text-purple-800 border-purple-200";
                         } else if (evt.type === 'LEAVE') {
-                          badgeBg = "bg-indigo-950/60 text-indigo-300 border-indigo-800/60";
+                          badgeStyle = "bg-purple-50 text-purple-800 border-purple-200";
                         } else if (evt.type === 'HOLIDAY') {
-                          badgeBg = "bg-purple-950/60 text-purple-300 border-purple-800/60";
+                          badgeStyle = "bg-blue-50 text-blue-800 border-blue-200";
                         } else if (evt.type === 'TASK' || evt.type === 'WEEKLY_PLAN') {
-                          badgeBg = "bg-cyan-950/60 text-cyan-300 border-cyan-800/60";
+                          badgeStyle = "bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border-[var(--border-subtle)]";
                         }
 
                         return (
@@ -410,7 +394,7 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
                               if (onEventClick) onEventClick(evt);
                               else setSelectedDayEvents({ dateStr: cell.dateStr!, events: dayEvents });
                             }}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border truncate transition-all hover:scale-[1.02] ${badgeBg}`}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border truncate transition-all ${badgeStyle}`}
                             title={`${evt.type}: ${evt.title}`}
                           >
                             <span className="font-semibold">{evt.title}</span>
@@ -418,7 +402,7 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
                         );
                       })}
                       {dayEvents.length > 3 && (
-                        <div className="text-[9px] text-slate-400 font-semibold text-center pt-0.5">
+                        <div className="text-[9px] text-[var(--text-muted)] font-semibold text-center pt-0.5">
                           +{dayEvents.length - 3} more
                         </div>
                       )}
@@ -433,47 +417,47 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
       {/* Day Details Modal on Cell Click */}
       {selectedDayEvents && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-cyan-400" />
+                <h3 className="font-bold text-base text-[var(--text-primary)] flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-[var(--primary)]" />
                   <span>Date Details: {selectedDayEvents.dateStr}</span>
                 </h3>
-                <p className="text-xs text-slate-400">{selectedDayEvents.events.length} event(s) recorded for this day</p>
+                <p className="text-xs text-[var(--text-muted)]">{selectedDayEvents.events.length} event(s) recorded for this day</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedDayEvents(null)}
-                className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg"
+                className="p-1 hover:bg-[var(--bg-surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
               {selectedDayEvents.events.map((evt, idx) => (
-                <div key={idx} className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1">
+                <div key={idx} className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-cyan-400">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-surface)] text-[var(--primary)] border border-[var(--border-subtle)]">
                       {evt.type}
                     </span>
                     {evt.status && (
-                      <span className="text-[11px] font-mono text-slate-300 font-semibold">
+                      <span className="text-[11px] font-mono text-[var(--text-secondary)] font-semibold">
                         Status: {evt.status}
                       </span>
                     )}
                   </div>
-                  <h4 className="font-semibold text-sm text-slate-100">{evt.title}</h4>
+                  <h4 className="font-semibold text-sm text-[var(--text-primary)]">{evt.title}</h4>
                   {evt.employeeName && (
-                    <p className="text-xs text-slate-400">Employee: <span className="text-slate-200 font-medium">{evt.employeeName}</span></p>
+                    <p className="text-xs text-[var(--text-muted)]">Employee: <span className="text-[var(--text-primary)] font-medium">{evt.employeeName}</span></p>
                   )}
                   {evt.metadata && (
-                    <div className="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-800/80">
-                      {evt.metadata.check_in && <p>Check In: <span className="font-mono text-emerald-400">{new Date(evt.metadata.check_in).toLocaleTimeString()}</span></p>}
-                      {evt.metadata.check_out && <p>Check Out: <span className="font-mono text-cyan-400">{new Date(evt.metadata.check_out).toLocaleTimeString()}</span></p>}
-                      {evt.metadata.working_hours && <p>Working Hours: <span className="font-mono text-slate-200">{evt.metadata.working_hours} hrs</span></p>}
+                    <div className="text-[11px] text-[var(--text-muted)] space-y-0.5 pt-1 border-t border-[var(--border-subtle)]">
+                      {evt.metadata.check_in && <p>Check In: <span className="font-mono text-emerald-700">{new Date(evt.metadata.check_in).toLocaleTimeString()}</span></p>}
+                      {evt.metadata.check_out && <p>Check Out: <span className="font-mono text-[var(--text-primary)]">{new Date(evt.metadata.check_out).toLocaleTimeString()}</span></p>}
+                      {evt.metadata.working_hours && <p>Working Hours: <span className="font-mono text-[var(--text-primary)]">{evt.metadata.working_hours} hrs</span></p>}
                       {evt.metadata.description && <p>Description: {evt.metadata.description}</p>}
                     </div>
                   )}
@@ -485,7 +469,7 @@ export const SharedCalendar: React.FC<SharedCalendarProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDayEvents(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
+                className="px-4 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-primary)] text-xs font-semibold rounded-xl cursor-pointer"
               >
                 Close
               </button>

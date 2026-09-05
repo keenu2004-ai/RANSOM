@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AlertCircle, ShieldCheck, Loader2, KeyRound, ArrowRight, UserX, RefreshCw } from 'lucide-react';
-import { 
-  initializeMsal, 
-  executeMicrosoftRedirectLogin, 
-  executeMicrosoftPopupLogin, 
+import { useTheme, Theme } from '../context/ThemeContext';
+import { AlertCircle, ShieldCheck, Loader2, KeyRound, ArrowRight, UserX, RefreshCw, Palette, Check } from 'lucide-react';
+import {
+  initializeMsal,
+  executeMicrosoftRedirectLogin,
+  executeMicrosoftPopupLogin,
   executeMicrosoftSelectAccountLogin,
-  getSilentIdToken 
+  getSilentIdToken
 } from '../config/msalConfig';
 import { TheiakshiLogo } from '../components/TheiakshiLogo';
 
 export const Login: React.FC = () => {
   const { user, loginWithMicrosoft, login, error, clearError } = useAuth();
+  const { theme, setTheme, themes, currentThemeMeta } = useTheme();
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState<'microsoft' | 'password'>('microsoft');
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
   // Password form state
   const [email, setEmail] = useState('');
@@ -26,6 +29,23 @@ export const Login: React.FC = () => {
 
   // Guard against concurrent clicks or rapid re-renders
   const isExecutingRef = useRef(false);
+  const themeRef = useRef<HTMLDivElement>(null);
+
+  // Close theme menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (isThemeMenuOpen && themeRef.current && !themeRef.current.contains(target)) {
+        setIsThemeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isThemeMenuOpen]);
 
   // Process MSAL redirect result or silent token on initial page load
   useEffect(() => {
@@ -35,7 +55,6 @@ export const Login: React.FC = () => {
       if (user) return;
 
       try {
-        // Step 1: Process redirect result if returning from Microsoft Entra ID
         const redirectResult = await initializeMsal();
         if (redirectResult?.idToken) {
           if (!isMounted) return;
@@ -47,7 +66,6 @@ export const Login: React.FC = () => {
           return;
         }
 
-        // Step 2: Check for existing session token silently ONLY IF user hasn't explicitly logged out
         const isExplicitLogout = localStorage.getItem('theiakshi_explicit_logout') === 'true';
         if (!isExplicitLogout) {
           const silentIdToken = await getSilentIdToken();
@@ -90,7 +108,6 @@ export const Login: React.FC = () => {
       return;
     }
 
-    // User explicitly clicked SSO button, remove explicit logout flag
     localStorage.removeItem('theiakshi_explicit_logout');
 
     isExecutingRef.current = true;
@@ -99,7 +116,6 @@ export const Login: React.FC = () => {
     clearError();
 
     try {
-      // Primary Single-Redirect Flow (Prevents popup blocking & block_nested_popups)
       await executeMicrosoftRedirectLogin();
     } catch (err: any) {
       console.error('Microsoft sign-in error:', err);
@@ -166,62 +182,109 @@ export const Login: React.FC = () => {
                                  currentErrorMessage?.includes('UNAUTHORIZED_USER');
 
   return (
-    <div className="min-h-screen bg-[#020817] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-cyan-500 selection:text-white">
-      {/* Background Decorative Glows */}
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/3 left-10 w-[350px] h-[350px] bg-red-600/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-[var(--bg-app)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden transition-colors duration-200">
+      {/* Top Right Theme Selector */}
+      <div ref={themeRef} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <button
+          type="button"
+          onClick={() => setIsThemeMenuOpen(prev => !prev)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm"
+          title={`Theme: ${currentThemeMeta.name}`}
+          aria-label="Select Theme"
+        >
+          <span
+            className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50 shrink-0"
+            style={{ backgroundColor: currentThemeMeta.swatch.primary }}
+          />
+          <span className="text-xs font-semibold">{currentThemeMeta.name}</span>
+          <Palette className="w-3.5 h-3.5 opacity-60 shrink-0" />
+        </button>
+
+        {isThemeMenuOpen && (
+          <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 p-2 space-y-1">
+            <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              Color Theme
+            </div>
+            {themes.map(t => {
+              const isActive = theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setTheme(t.id as Theme);
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                      style={{ backgroundColor: t.swatch.primary }}
+                    />
+                    <span>{t.name}</span>
+                  </div>
+                  {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Main Authentication Card */}
-      <div className="w-full max-w-[560px] bg-[#0A1424]/90 border border-white/10 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/80 backdrop-blur-xl relative z-10 space-y-8">
-        
+      <div className="w-full max-w-[520px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-3xl p-8 sm:p-10 shadow-[var(--card-shadow)] relative z-10 space-y-7">
+
         {/* Top Brand Header */}
-        <div className="text-center flex flex-col items-center space-y-4">
-          <div className="p-3 bg-[#07111F] border border-white/5 rounded-2xl shadow-inner relative group">
-            <div className="absolute inset-0 bg-red-500/10 rounded-2xl blur-md opacity-50 group-hover:opacity-100 transition-opacity" />
-            <TheiakshiLogo variant="full" size="xl" className="relative z-10" />
+        <div className="text-center flex flex-col items-center space-y-3">
+          <div className="p-3 bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-2xl shadow-sm">
+            <TheiakshiLogo variant="full" size="lg" />
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
               THEIAKSHI
             </h1>
-            <p className="text-xs font-semibold text-cyan-400 uppercase tracking-[0.2em]">
-              ENTERPRISE HUMAN RESOURCE SYSTEM
+            <p className="text-xs font-semibold text-[var(--text-secondary)] tracking-[0.15em] uppercase">
+              HUMAN RESOURCE MANAGEMENT
             </p>
           </div>
 
           {/* Security Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-cyan-950/40 border border-cyan-500/30 rounded-full text-xs font-semibold text-cyan-300 shadow-sm">
-            <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--primary-soft)] border border-[var(--border-subtle)] rounded-full text-xs font-semibold text-[var(--text-secondary)] shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
             <span>Microsoft Entra ID Protected</span>
           </div>
         </div>
 
         {/* Dedicated Unlinked Account Status Card */}
         {isUnlinkedAccountError ? (
-          <div className="p-6 bg-rose-950/40 border border-rose-500/30 rounded-2xl space-y-5 text-left animate-in fade-in duration-200">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-rose-900/40 border border-rose-500/40 rounded-xl shrink-0 text-rose-400">
-                <UserX className="w-6 h-6" />
+          <div className="p-5 bg-rose-50 border border-rose-200 rounded-2xl space-y-4 text-left">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-rose-100 border border-rose-200 rounded-xl shrink-0 text-rose-700">
+                <UserX className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-rose-200 uppercase tracking-wide">
+                <h3 className="text-xs font-bold text-rose-900 uppercase tracking-wide">
                   Microsoft Identity Not Linked
                 </h3>
-                <p className="text-xs text-rose-300/90 leading-relaxed">
+                <p className="text-xs text-rose-800 leading-relaxed">
                   Your Microsoft account was authenticated successfully, but it is not currently linked to an authorized Theiakshi account.
                 </p>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-rose-500/20 flex flex-col sm:flex-row items-center gap-3">
+            <div className="pt-2 border-t border-rose-200 flex flex-col sm:flex-row items-center gap-2.5">
               <button
                 type="button"
                 onClick={handleSelectAccountSignIn}
-                className="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="w-full sm:w-auto px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-3.5 h-3.5" />
                 <span>Use Another Microsoft Account</span>
               </button>
               <button
@@ -231,9 +294,9 @@ export const Login: React.FC = () => {
                   clearError();
                   setActiveTab('password');
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 bg-white/10 hover:bg-white/15 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <KeyRound className="w-4 h-4 text-cyan-400" />
+                <KeyRound className="w-3.5 h-3.5 text-slate-600" />
                 <span>Sign in with Password</span>
               </button>
             </div>
@@ -241,25 +304,25 @@ export const Login: React.FC = () => {
         ) : (
           /* Standard Error Messages */
           currentErrorMessage && (
-            <div className="p-4 bg-rose-950/60 border border-rose-600/50 rounded-2xl text-rose-200 text-xs flex items-start gap-3 shadow-lg animate-in fade-in duration-200">
-              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start gap-2.5 shadow-sm">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <p className="font-bold text-rose-100">Authentication Error</p>
-                <p className="text-rose-300/90 leading-relaxed">{currentErrorMessage}</p>
+                <p className="font-bold text-rose-900">Authentication Error</p>
+                <p className="text-rose-700 leading-relaxed">{currentErrorMessage}</p>
               </div>
             </div>
           )
         )}
 
         {/* Authentication Mode Tabs */}
-        <div className="flex bg-[#050B14] p-1 rounded-2xl border border-white/10">
+        <div className="flex bg-[var(--bg-surface-muted)] p-1 rounded-2xl border border-[var(--border-subtle)]">
           <button
             type="button"
             onClick={() => setActiveTab('microsoft')}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'microsoft'
-                ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
@@ -269,10 +332,10 @@ export const Login: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('password')}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'password'
-                ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             <KeyRound className="w-4 h-4" />
@@ -287,37 +350,37 @@ export const Login: React.FC = () => {
               type="button"
               onClick={handleMicrosoftSignIn}
               disabled={loading}
-              className="w-full py-4 px-6 bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 font-bold rounded-2xl text-base shadow-xl shadow-cyan-500/10 transition-all disabled:opacity-60 flex items-center justify-center gap-3 border border-white/20 cursor-pointer group"
+              className="w-full py-3.5 px-6 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] text-[var(--text-primary)] font-bold rounded-2xl text-sm shadow-sm transition-all disabled:opacity-60 flex items-center justify-center gap-3 cursor-pointer group"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin text-slate-800" />
-                  <span className="font-extrabold text-slate-900">Signing in with Microsoft...</span>
+                  <Loader2 className="w-4 h-4 animate-spin text-[var(--text-secondary)]" />
+                  <span>Signing in with Microsoft...</span>
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5 shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 23 23">
+                  <svg className="w-4 h-4 shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 23 23">
                     <path fill="#f35325" d="M1 1h10v10H1z"/>
                     <path fill="#81bc06" d="M12 1h10v10H12z"/>
                     <path fill="#05a6f0" d="M1 12h10v10H1z"/>
                     <path fill="#ffba08" d="M12 12h10v10H12z"/>
                   </svg>
-                  <span className="font-extrabold text-slate-900 tracking-tight">Sign in with Microsoft</span>
+                  <span>Sign in with Microsoft</span>
                 </>
               )}
             </button>
 
-            <p className="text-center text-[11px] text-slate-400 font-medium">
+            <p className="text-center text-[11px] text-[var(--text-muted)] font-medium">
               Enterprise Single Sign-On powered by Microsoft 365 Entra ID.
             </p>
           </div>
         )}
 
-        {/* TAB 2: Legacy Email & Password Sign In */}
+        {/* TAB 2: Password Sign In */}
         {activeTab === 'password' && (
           <form onSubmit={handlePasswordSignIn} className="space-y-4 text-left">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                 Email Address
               </label>
               <input
@@ -326,12 +389,12 @@ export const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@theiakshi.com"
-                className="w-full px-4 py-3 bg-[#050B14] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors placeholder:text-slate-600"
+                className="w-full px-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--primary)] transition-colors placeholder:text-[var(--text-muted)] shadow-sm"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                 Password
               </label>
               <input
@@ -340,14 +403,14 @@ export const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-[#050B14] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors placeholder:text-slate-600"
+                className="w-full px-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--primary)] transition-colors placeholder:text-[var(--text-muted)] shadow-sm"
               />
             </div>
 
             <button
               type="submit"
               disabled={passwordLoading || !email || !password}
-              className="w-full py-3.5 px-6 bg-cyan-600 hover:bg-cyan-500 active:scale-[0.99] text-white font-bold rounded-2xl text-sm shadow-lg shadow-cyan-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              className="w-full py-3 px-6 btn-theme-primary font-bold rounded-xl text-sm shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
             >
               {passwordLoading ? (
                 <>
@@ -362,14 +425,14 @@ export const Login: React.FC = () => {
               )}
             </button>
 
-            <p className="text-center text-[11px] text-slate-400 font-medium pt-1">
+            <p className="text-center text-[11px] text-[var(--text-muted)] font-medium pt-1">
               Legacy password login for existing Theiakshi accounts.
             </p>
           </form>
         )}
 
         {/* Footer info */}
-        <div className="text-center pt-2 border-t border-white/5 text-[11px] text-slate-500">
+        <div className="text-center pt-2 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
           © {new Date().getFullYear()} Theiakshi. All rights reserved.
         </div>
       </div>

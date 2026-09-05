@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
-import { 
+import {
   BarChart3, Download, Calendar, Filter, FileSpreadsheet,
   CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Archive, FileCheck, Loader2, Trash2, AlertTriangle
 } from 'lucide-react';
@@ -293,35 +293,35 @@ export const Reports: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-cyan-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-[var(--color-primary)]" />
             <span>Reports & Archiving Repository</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Enterprise reporting suite, multi-sheet XLSX exports, and private report archives</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Enterprise reporting suite, multi-sheet XLSX exports, and private report archives</p>
         </div>
 
         <button
           onClick={() => apiDownload('/reports/export-csv')}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all cursor-pointer self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-primary)] text-xs font-semibold rounded-xl border border-[var(--border-default)] transition-all cursor-pointer self-start sm:self-auto shadow-sm"
         >
-          <Download className="w-4 h-4 text-cyan-400" />
+          <Download className="w-4 h-4 text-[var(--color-primary)]" />
           <span>Export Workforce CSV</span>
         </button>
       </div>
 
       {/* SECTION 1: WEEKLY WORK & FIELD VISIT EXPORT SYSTEM (CANONICAL XLSX) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400">
+            <div className="p-2.5 bg-[var(--color-primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--color-primary)]">
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 <span>Weekly Plan & Field Visit Excel Export</span>
-                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono rounded-full font-bold">TRUE .XLSX</span>
+                <span className="px-2 py-0.5 bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20 text-[10px] font-mono rounded-full font-bold">TRUE .XLSX</span>
               </h2>
-              <p className="text-xs text-slate-400">Generates 6-sheet workbook: Weekly Plan, Executive Summary, Carry Forward, Opportunities, History, & Monthly Tracker</p>
+              <p className="text-xs text-[var(--text-secondary)]">Generates 6-sheet workbook: Weekly Plan, Executive Summary, Carry Forward, Opportunities, History, & Monthly Tracker</p>
             </div>
           </div>
 
@@ -330,7 +330,7 @@ export const Reports: React.FC = () => {
               type="button"
               disabled={downloading}
               onClick={handleGenerateWeeklyPlanXlsx}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 min-w-[140px] cursor-pointer w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 min-w-[140px] cursor-pointer w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
               <span>{downloading ? 'Generating...' : 'Download Excel'}</span>
@@ -340,9 +340,9 @@ export const Reports: React.FC = () => {
               type="button"
               disabled={archivingWeekly}
               onClick={handleArchiveWeeklyPlan}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 font-bold text-xs rounded-xl transition-all disabled:opacity-50 min-w-[130px] cursor-pointer w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-default)] font-semibold text-xs rounded-xl transition-all disabled:opacity-50 min-w-[130px] cursor-pointer w-full sm:w-auto shadow-sm"
             >
-              {archivingWeekly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              {archivingWeekly ? <Loader2 className="w-4 h-4 animate-spin text-[var(--color-primary)]" /> : <Archive className="w-4 h-4 text-[var(--color-primary)]" />}
               <span>Archive Export</span>
             </button>
           </div>
@@ -350,58 +350,58 @@ export const Reports: React.FC = () => {
 
         {/* Live Summary Metrics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Planned</span>
-              <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <Clock className="w-3.5 h-3.5 text-[var(--color-info)]" />
             </div>
-            <div className="text-lg font-bold text-white font-mono">{summaryData.planned}</div>
+            <div className="text-lg font-bold text-[var(--text-primary)] font-mono">{summaryData.planned}</div>
           </div>
 
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>In Progress</span>
-              <PlayCircle className="w-3.5 h-3.5 text-amber-400" />
+              <PlayCircle className="w-3.5 h-3.5 text-[var(--color-warning)]" />
             </div>
-            <div className="text-lg font-bold text-amber-400 font-mono">{summaryData.inProgress}</div>
+            <div className="text-lg font-bold text-[var(--color-warning)] font-mono">{summaryData.inProgress}</div>
           </div>
 
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Completed</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-success)]" />
             </div>
-            <div className="text-lg font-bold text-emerald-400 font-mono">{summaryData.completed}</div>
+            <div className="text-lg font-bold text-[var(--color-success)] font-mono">{summaryData.completed}</div>
           </div>
 
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Cancelled</span>
-              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+              <XCircle className="w-3.5 h-3.5 text-[var(--color-danger)]" />
             </div>
-            <div className="text-lg font-bold text-rose-400 font-mono">{summaryData.cancelled}</div>
+            <div className="text-lg font-bold text-[var(--color-danger)] font-mono">{summaryData.cancelled}</div>
           </div>
 
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Carry Forward</span>
-              <ArrowRightLeft className="w-3.5 h-3.5 text-purple-400" />
+              <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--color-primary)]" />
             </div>
-            <div className="text-lg font-bold text-purple-400 font-mono">{summaryData.carryForward}</div>
+            <div className="text-lg font-bold text-[var(--color-primary)] font-mono">{summaryData.carryForward}</div>
           </div>
 
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
               <span>Pipeline (₹)</span>
-              <DollarSign className="w-3.5 h-3.5 text-cyan-400" />
+              <DollarSign className="w-3.5 h-3.5 text-[var(--color-primary)]" />
             </div>
-            <div className="text-sm font-bold text-cyan-400 font-mono">₹{summaryData.pipelineValue.toLocaleString('en-IN')}</div>
+            <div className="text-sm font-bold text-[var(--color-primary)] font-mono">₹{summaryData.pipelineValue.toLocaleString('en-IN')}</div>
           </div>
         </div>
 
         {/* Filter Controls Grid */}
-        <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+        <div className="bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-xl p-4 space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wider">
             <Filter className="w-3.5 h-3.5" />
             <span>Filter Parameters</span>
           </div>
@@ -409,33 +409,33 @@ export const Reports: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Week Range */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Start Date (Monday)</label>
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Start Date (Monday)</label>
               <input
                 type="date"
                 value={weekStart}
                 onChange={e => setWeekStart(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">End Date (Sunday)</label>
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">End Date (Sunday)</label>
               <input
                 type="date"
                 value={weekEnd}
                 onChange={e => setWeekEnd(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
 
             {/* Employee Filter */}
             {!isEmployee ? (
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Employee</label>
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Assigned Employee</label>
                 <select
                   value={filterEmployeeId}
                   onChange={e => setFilterEmployeeId(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
                 >
                   <option value="">All Workforce</option>
                   {employees.map(emp => (
@@ -447,23 +447,23 @@ export const Reports: React.FC = () => {
               </div>
             ) : (
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Scope</label>
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Scope</label>
                 <input
                   type="text"
                   readOnly
                   value="Personal Workspace"
-                  className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400 cursor-not-allowed"
+                  className="w-full bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-muted)] cursor-not-allowed"
                 />
               </div>
             )}
 
             {/* Status Filter */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Execution Status</label>
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Execution Status</label>
               <select
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
               >
                 <option value="">All Statuses</option>
                 <option value="PLANNED">Planned</option>
@@ -478,15 +478,15 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* SECTION 2: MONTHLY REPORT GENERATION & ARCHIVING */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400">
+            <div className="p-2.5 bg-[var(--color-primary-soft)] border border-[var(--border-subtle)] rounded-xl text-[var(--color-primary)]">
               <Calendar className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Monthly Enterprise HRMS Report & Archiving</h2>
-              <p className="text-xs text-slate-400">Generates immutable monthly snapshot containing Attendance, Leave, Expenses, Assets, and Field Visits</p>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Monthly Enterprise HRMS Report & Archiving</h2>
+              <p className="text-xs text-[var(--text-secondary)]">Generates immutable monthly snapshot containing Attendance, Leave, Expenses, Assets, and Field Visits</p>
             </div>
           </div>
 
@@ -494,7 +494,7 @@ export const Reports: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(parseInt(e.target.value, 10))}
-              className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
             >
               {monthsList.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -505,14 +505,14 @@ export const Reports: React.FC = () => {
               type="number"
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
-              className="w-20 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+              className="w-20 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-primary)] font-mono"
             />
 
             <button
               type="button"
               disabled={archivingMonthly}
               onClick={handleArchiveMonthlyReport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
               {archivingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
               <span>Generate & Archive Month</span>
@@ -522,17 +522,17 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* SECTION 3: ARCHIVED REPORTS REPOSITORY TABLE */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="font-semibold text-xs text-slate-300 flex items-center gap-2">
-            <FileCheck className="w-4 h-4 text-cyan-400" />
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between">
+          <div className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-2">
+            <FileCheck className="w-4 h-4 text-[var(--color-primary)]" />
             <span>Archived Reports & Document Repository ({archives.length})</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase border-b border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase border-b border-[var(--border-default)]">
               <tr>
                 <th className="px-6 py-3">Report Name</th>
                 <th className="px-6 py-3">Type</th>
@@ -543,36 +543,34 @@ export const Reports: React.FC = () => {
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {archives.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 italic">
+                  <td colSpan={7} className="px-6 py-8 text-center text-[var(--text-muted)] italic">
                     No archived reports stored yet. Click "Archive Export" above to preserve a report snapshot.
                   </td>
                 </tr>
               ) : (
                 archives.map(arch => (
-                  <tr key={arch.id} className="hover:bg-slate-800/40">
-                    <td className="px-6 py-3.5 font-bold text-slate-200">{arch.report_name}</td>
+                  <tr key={arch.id} className="hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                    <td className="px-6 py-3.5 font-bold text-[var(--text-primary)]">{arch.report_name}</td>
                     <td className="px-6 py-3.5 font-mono">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        arch.report_type === 'WEEKLY_PLAN' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                      }`}>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--border-subtle)]">
                         {arch.report_type}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 font-mono">{arch.period_year}-{String(arch.period_month || 1).padStart(2, '0')}</td>
-                    <td className="px-6 py-3.5 text-slate-300">{arch.generated_by_name || 'System'}</td>
-                    <td className="px-6 py-3.5 font-mono text-slate-400">{new Date(arch.created_at).toLocaleString()}</td>
-                    <td className="px-6 py-3.5 font-mono text-slate-400">{(arch.file_size / 1024).toFixed(1)} KB</td>
+                    <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{arch.period_year}-{String(arch.period_month || 1).padStart(2, '0')}</td>
+                    <td className="px-6 py-3.5 text-[var(--text-secondary)]">{arch.generated_by_name || 'System'}</td>
+                    <td className="px-6 py-3.5 font-mono text-[var(--text-muted)]">{new Date(arch.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-3.5 font-mono text-[var(--text-muted)]">{(arch.file_size / 1024).toFixed(1)} KB</td>
                     <td className="px-6 py-3.5 text-right flex items-center justify-end gap-2">
                       <button
                         type="button"
                         disabled={downloadingArchiveId === arch.id}
                         onClick={() => handleDownloadArchive(arch)}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-cyan-400 border border-slate-700 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        className="px-3 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] disabled:opacity-50 text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <Download className="w-3.5 h-3.5" />
+                        <Download className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                         <span>{downloadingArchiveId === arch.id ? 'Downloading...' : 'Download'}</span>
                       </button>
 
@@ -580,7 +578,7 @@ export const Reports: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenDeleteModal(arch)}
-                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 bg-[var(--color-danger-soft)] hover:bg-[var(--color-danger)]/20 text-[var(--color-danger)] border border-[var(--color-danger)]/30 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Delete</span>
@@ -597,24 +595,24 @@ export const Reports: React.FC = () => {
 
       {/* Toast Notification Banner */}
       {deleteSuccessMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-surface-elevated)] border border-[var(--color-success)] text-[var(--color-success)] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <CheckCircle2 className="w-5 h-5 text-[var(--color-success)] shrink-0" />
           <span className="text-xs font-semibold">{deleteSuccessMessage}</span>
         </div>
       )}
 
       {/* HIGH-RISK CONFIRMATION MODAL FOR SUPER_ADMIN DELETION */}
       {deleteModalArchive && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
             {/* Modal Header */}
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 shrink-0">
+              <div className="p-3 bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/20 rounded-xl text-[var(--color-danger)] shrink-0">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-white">Delete Archived Report Permanently?</h3>
-                <p className="text-xs text-rose-300/90 font-medium">
+                <h3 className="text-base font-bold text-[var(--text-primary)]">Delete Archived Report Permanently?</h3>
+                <p className="text-xs text-[var(--color-danger)] font-medium">
                   This permanently deletes the archived report from Google Drive and removes its archive record from Theiakshi. This action cannot be undone.
                 </p>
               </div>
@@ -622,50 +620,50 @@ export const Reports: React.FC = () => {
 
             {/* Error banner inside modal */}
             {deleteErrorMessage && (
-              <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-3 text-xs text-rose-300">
+              <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/30 rounded-xl p-3 text-xs text-[var(--color-danger)]">
                 {deleteErrorMessage}
               </div>
             )}
 
             {/* Archive Details */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400 font-semibold">Report Name</span>
-                <span className="text-white font-bold max-w-[220px] truncate">{deleteModalArchive.report_name}</span>
+            <div className="bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] rounded-xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
+                <span className="text-[var(--text-secondary)] font-semibold">Report Name</span>
+                <span className="text-[var(--text-primary)] font-bold max-w-[220px] truncate">{deleteModalArchive.report_name}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400 font-semibold">Report Type</span>
-                <span className="text-cyan-400 font-mono font-bold">{deleteModalArchive.report_type}</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
+                <span className="text-[var(--text-secondary)] font-semibold">Report Type</span>
+                <span className="text-[var(--color-primary)] font-mono font-bold">{deleteModalArchive.report_type}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400 font-semibold">Period</span>
-                <span className="text-white font-mono">{deleteModalArchive.period_year}-{String(deleteModalArchive.period_month || 1).padStart(2, '0')}</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
+                <span className="text-[var(--text-secondary)] font-semibold">Period</span>
+                <span className="text-[var(--text-primary)] font-mono">{deleteModalArchive.period_year}-{String(deleteModalArchive.period_month || 1).padStart(2, '0')}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400 font-semibold">Generated By</span>
-                <span className="text-white">{deleteModalArchive.generated_by_name || 'System'}</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
+                <span className="text-[var(--text-secondary)] font-semibold">Generated By</span>
+                <span className="text-[var(--text-primary)]">{deleteModalArchive.generated_by_name || 'System'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-400 font-semibold">Generated At</span>
-                <span className="text-slate-300 font-mono">{new Date(deleteModalArchive.created_at).toLocaleString()}</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
+                <span className="text-[var(--text-secondary)] font-semibold">Generated At</span>
+                <span className="text-[var(--text-muted)] font-mono">{new Date(deleteModalArchive.created_at).toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-400 font-semibold">File Size</span>
-                <span className="text-slate-300 font-mono">{(deleteModalArchive.file_size / 1024).toFixed(1)} KB</span>
+                <span className="text-[var(--text-secondary)] font-semibold">File Size</span>
+                <span className="text-[var(--text-muted)] font-mono">{(deleteModalArchive.file_size / 1024).toFixed(1)} KB</span>
               </div>
             </div>
 
             {/* Required Input Confirmation */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">
-                Type <span className="text-rose-400 font-mono font-bold">DELETE</span> to confirm permanent removal:
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Type <span className="text-[var(--color-danger)] font-mono font-bold">DELETE</span> to confirm permanent removal:
               </label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={e => setDeleteConfirmText(e.target.value)}
                 placeholder="Type DELETE"
-                className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 font-mono focus:outline-none"
+                className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] focus:border-[var(--color-danger)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] font-mono focus:outline-none"
               />
             </div>
 
@@ -675,7 +673,7 @@ export const Reports: React.FC = () => {
                 type="button"
                 onClick={handleCloseDeleteModal}
                 disabled={isDeletingArchive}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl border border-[var(--border-default)] transition-all cursor-pointer shadow-sm"
               >
                 Cancel
               </button>
@@ -683,7 +681,7 @@ export const Reports: React.FC = () => {
                 type="button"
                 disabled={deleteConfirmText.trim() !== 'DELETE' || isDeletingArchive}
                 onClick={handlePerformDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-danger)] hover:opacity-90 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 {isDeletingArchive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Delete Permanently</span>
@@ -694,16 +692,16 @@ export const Reports: React.FC = () => {
       )}
 
       {/* SECTION 4: DEPARTMENTAL HEADCOUNT TABLE */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="font-semibold text-xs text-slate-300 flex items-center gap-2">
-            <Users className="w-4 h-4 text-cyan-400" />
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between">
+          <div className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[var(--color-primary)]" />
             <span>Departmental Workforce Headcount Distribution</span>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase border-b border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase border-b border-[var(--border-default)]">
               <tr>
                 <th className="px-6 py-3">Department</th>
                 <th className="px-6 py-3">Total Active Headcount</th>
@@ -711,13 +709,13 @@ export const Reports: React.FC = () => {
                 <th className="px-6 py-3">Contract / Intern</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {report.map((r, idx) => (
-                <tr key={idx} className="hover:bg-slate-800/40">
-                  <td className="px-6 py-3.5 font-bold text-slate-200">{r.department || 'General Admin'}</td>
-                  <td className="px-6 py-3.5 font-mono text-cyan-400 font-bold">{r.total_employees}</td>
-                  <td className="px-6 py-3.5 font-mono">{r.full_time}</td>
-                  <td className="px-6 py-3.5 font-mono">{r.contract}</td>
+                <tr key={idx} className="hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                  <td className="px-6 py-3.5 font-bold text-[var(--text-primary)]">{r.department || 'General Admin'}</td>
+                  <td className="px-6 py-3.5 font-mono text-[var(--color-primary)] font-bold">{r.total_employees}</td>
+                  <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{r.full_time}</td>
+                  <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{r.contract}</td>
                 </tr>
               ))}
             </tbody>

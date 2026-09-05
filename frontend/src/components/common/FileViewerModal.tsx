@@ -160,17 +160,17 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[7000] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[7000] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
       {/* Container: Fullscreen on mobile, centered rounded lightbox on desktop */}
-      <div className="w-full h-full sm:max-w-5xl sm:h-[90vh] bg-slate-900 border-0 sm:border border-slate-800 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        
+      <div className="w-full h-full sm:max-w-5xl sm:h-[90vh] bg-[var(--bg-surface-elevated)] border-0 sm:border border-[var(--border-default)] sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-950/90 border-b border-slate-800 shrink-0 gap-3">
+        <div className="flex items-center justify-between px-4 py-3 bg-[var(--bg-surface-muted)] border-b border-[var(--border-subtle)] shrink-0 gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <FileText className="w-5 h-5 text-cyan-400 shrink-0" />
+            <FileText className="w-5 h-5 text-[var(--primary)] shrink-0" />
             <div className="min-w-0">
-              <h3 className="text-xs sm:text-sm font-bold text-white truncate">{cleanFileName}</h3>
-              <p className="text-[10px] text-slate-400 font-mono truncate">
+              <h3 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate">{cleanFileName}</h3>
+              <p className="text-[10px] text-[var(--text-muted)] font-mono truncate">
                 {mimeType || (isPdf ? 'PDF Document' : isImage ? 'Image Document' : 'Receipt Document')}
               </p>
             </div>
@@ -183,16 +183,16 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setScale(s => Math.max(0.5, s - 0.25))}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-lg transition-colors cursor-pointer"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-4 h-4" />
                 </button>
-                <span className="text-[11px] font-mono text-slate-400 px-1 hidden sm:inline">{Math.round(scale * 100)}%</span>
+                <span className="text-[11px] font-mono text-[var(--text-muted)] px-1 hidden sm:inline">{Math.round(scale * 100)}%</span>
                 <button
                   type="button"
                   onClick={() => setScale(s => Math.min(3, s + 0.25))}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-lg transition-colors cursor-pointer"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-4 h-4" />
@@ -200,7 +200,7 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setRotation(r => (r + 90) % 360)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-lg transition-colors cursor-pointer"
                   title="Rotate 90°"
                 >
                   <RotateCw className="w-4 h-4" />
@@ -212,7 +212,7 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
               <button
                 type="button"
                 onClick={handleDownload}
-                className="px-2.5 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 bg-[var(--primary-soft)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] border border-[var(--border-subtle)] rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Download Receipt"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -223,7 +223,7 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="p-2 sm:p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer ml-1"
+              className="p-2 sm:p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-lg transition-colors cursor-pointer ml-1"
               title="Close Viewer (Esc / Back)"
               aria-label="Close Viewer"
             >
@@ -233,20 +233,20 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
         </div>
 
         {/* Content Viewer Body */}
-        <div className="flex-1 bg-slate-950/60 overflow-auto flex items-center justify-center p-2 sm:p-4 relative min-h-0">
+        <div className="flex-1 bg-[var(--bg-app)] overflow-auto flex items-center justify-center p-2 sm:p-4 relative min-h-0">
           {loading && (
             <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-              <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
-              <p className="text-xs text-slate-300 font-medium">Loading document...</p>
+              <RefreshCw className="w-8 h-8 text-[var(--primary)] animate-spin" />
+              <p className="text-xs text-[var(--text-secondary)] font-medium">Loading document...</p>
             </div>
           )}
 
           {error && !loading && (
-            <div className="max-w-md p-6 bg-rose-950/40 border border-rose-800/80 rounded-2xl text-center space-y-3 m-4">
-              <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+            <div className="max-w-md p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3 m-4">
+              <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
               <div className="space-y-1">
-                <h4 className="text-sm font-bold text-white">Unable to View Document</h4>
-                <p className="text-xs text-rose-300">{error}</p>
+                <h4 className="text-sm font-bold text-rose-900">Unable to View Document</h4>
+                <p className="text-xs text-rose-700">{error}</p>
               </div>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button

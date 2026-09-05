@@ -8,13 +8,13 @@ import {
   X,
   LogOut,
   UserRound,
-  Sun,
-  Moon
+  Palette,
+  Check
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAttendance } from '../../context/AttendanceContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, Theme } from '../../context/ThemeContext';
 import { apiFetch } from '../../services/api-client';
 import { TheiakshiLogo } from '../TheiakshiLogo';
 
@@ -25,21 +25,23 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { todaySummary, actionLoading, handlePunch } = useAttendance();
+  const { theme, setTheme, themes, currentThemeMeta } = useTheme();
   const activeSession = todaySummary?.activeSession || null;
   const hasActiveSession = !!activeSession;
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifLoading, setNotifLoading] = useState(false);
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
-
+  const themeRef = useRef<HTMLDivElement>(null);
   const notifBellRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   useEffect(() => {
     setIsNotificationsOpen(false);
     setIsProfileOpen(false);
+    setIsThemeMenuOpen(false);
   }, [location.pathname]);
 
   // Handle ESC key
@@ -55,13 +58,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       if (e.key === 'Escape') {
         setIsNotificationsOpen(false);
         setIsProfileOpen(false);
+        setIsThemeMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handle outside click
+  // Handle outside click for notifications
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
@@ -87,7 +91,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   useEffect(() => {
     const handleProfileClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
-
       if (
         isProfileOpen &&
         profileRef.current &&
@@ -96,15 +99,33 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         setIsProfileOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleProfileClickOutside);
     document.addEventListener('touchstart', handleProfileClickOutside);
-
     return () => {
       document.removeEventListener('mousedown', handleProfileClickOutside);
       document.removeEventListener('touchstart', handleProfileClickOutside);
     };
   }, [isProfileOpen]);
+
+  // Close theme menu when clicking outside
+  useEffect(() => {
+    const handleThemeClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (
+        isThemeMenuOpen &&
+        themeRef.current &&
+        !themeRef.current.contains(target)
+      ) {
+        setIsThemeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleThemeClickOutside);
+    document.addEventListener('touchstart', handleThemeClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleThemeClickOutside);
+      document.removeEventListener('touchstart', handleThemeClickOutside);
+    };
+  }, [isThemeMenuOpen]);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -141,18 +162,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    const query = searchQuery.toLowerCase().trim();
-    if (query.includes('emp')) navigate('/employees');
-    else if (query.includes('att')) navigate('/attendance');
-    else if (query.includes('lea')) navigate('/leave');
-    else if (query.includes('exp')) navigate('/expenses');
-    else if (query.includes('rep')) navigate('/reports');
-    else navigate('/dashboard');
-  };
-
   const handleLogout = async () => {
     if (logoutLoading) return;
 
@@ -176,26 +185,22 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const profileInitials = (() => {
     const source = profileName.trim();
-
     if (!source) return 'U';
-
     const parts = source.split(/\s+/);
-
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     }
-
     return source.substring(0, 2).toUpperCase();
   })();
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#050B14]/90 backdrop-blur-xl border-b border-white/10 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
+    <header className="sticky top-0 z-30 h-16 bg-[var(--header-bg)] border-b border-[var(--header-border)] px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0 transition-colors duration-200 shadow-sm">
       {/* Left: Mobile Hamburger & Logo */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <button
           type="button"
           onClick={onMenuClick}
-          className="lg:hidden p-1.5 sm:p-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+          className="lg:hidden p-1.5 sm:p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-xl transition-colors cursor-pointer"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -208,13 +213,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         {/* Desktop Header Left Branding */}
         <div className="hidden lg:flex items-center gap-3">
           <TheiakshiLogo variant="emblem" size="md" />
-          <span className="font-extrabold text-base text-white tracking-tight">
+          <span className="font-extrabold text-base text-[var(--text-primary)] tracking-tight">
             Theiakshi
           </span>
         </div>
       </div>
 
-      {/* Right Controls: Attendance, Bell, Theme Toggle, Profile */}
+      {/* Right Controls: Attendance Punch, Theme Selector, Bell, Profile */}
       <div className="flex items-center gap-1.5 sm:gap-3 relative shrink-0">
         {/* Quick Check-in/out Punch Button */}
         {user?.employeeId && (
@@ -222,10 +227,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             type="button"
             onClick={handlePunch}
             disabled={actionLoading}
-            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer ${
               hasActiveSession
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
             }`}
             title={hasActiveSession ? 'Active Session - Tap to Check Out' : 'Tap to Check In'}
             aria-label={hasActiveSession ? 'Check Out Attendance' : 'Check In Attendance'}
@@ -235,9 +240,73 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             ) : (
               <Fingerprint className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             )}
-            <span className="text-[10px] sm:text-xs font-medium">{hasActiveSession ? 'Out' : 'In'}</span>
+            <span className="text-[11px] sm:text-xs font-semibold">{hasActiveSession ? 'Punch Out' : 'Punch In'}</span>
           </button>
         )}
+
+        {/* ─── COMPACT THEME SELECTOR ─── */}
+        <div ref={themeRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setIsThemeMenuOpen(prev => !prev)}
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-sm"
+            title={`Current theme: ${currentThemeMeta.name}. Click to change.`}
+            aria-label="Select Theme"
+            aria-expanded={isThemeMenuOpen}
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50 shrink-0"
+              style={{ backgroundColor: currentThemeMeta.swatch.primary }}
+            />
+            <span className="hidden sm:inline text-xs font-semibold">{currentThemeMeta.name}</span>
+            <Palette className="w-3.5 h-3.5 opacity-60 shrink-0" />
+          </button>
+
+          {/* Theme Selector Popover */}
+          {isThemeMenuOpen && (
+            <div className="absolute right-0 mt-2.5 w-60 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 p-2 space-y-1">
+              <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Color Theme
+              </div>
+              {themes.map(t => {
+                const isActive = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTheme(t.id as Theme);
+                      setIsThemeMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[var(--bg-surface-muted)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center -space-x-1">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: t.swatch.bg }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: t.swatch.primary }}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs">{t.name}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-normal">{t.description}</p>
+                      </div>
+                    </div>
+                    {isActive && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Notifications Bell Button */}
         <div className="relative">
@@ -245,14 +314,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             ref={notifBellRef}
             type="button"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className={`p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer relative ${
-              isNotificationsOpen ? 'bg-white/10 border-white/10 text-cyan-400' : ''
+            className={`p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border border-transparent transition-all cursor-pointer relative ${
+              isNotificationsOpen ? 'bg-[var(--bg-surface-muted)] border-[var(--border-subtle)]' : ''
             }`}
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-extrabold text-white ring-2 ring-[#050B14]">
+              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[9px] font-extrabold text-white ring-2 ring-[var(--bg-surface)]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -262,14 +331,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           {isNotificationsOpen && (
             <div
               ref={drawerRef}
-              className="absolute right-0 mt-3 w-80 sm:w-96 bg-[#0A1424] border border-white/10 text-slate-100 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+              className="absolute right-0 mt-2.5 w-80 sm:w-96 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150"
             >
-              <div className="flex items-center justify-between px-4 py-3 bg-[#07111F] border-b border-white/10">
+              <div className="flex items-center justify-between px-4 py-3 bg-[var(--bg-surface-muted)] border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-cyan-400" />
-                  <span className="font-bold text-xs uppercase tracking-wider text-slate-200">Notifications</span>
+                  <Bell className="w-4 h-4 text-[var(--primary)]" />
+                  <span className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/30">
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)] rounded-full border border-[var(--border-subtle)]">
                       {unreadCount} new
                     </span>
                   )}
@@ -277,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 <button
                   type="button"
                   onClick={() => setIsNotificationsOpen(false)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                  className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -285,12 +354,12 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
               <div className="max-h-80 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
                 {notifLoading ? (
-                  <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                  <div className="py-6 text-center text-xs text-[var(--text-muted)] flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
                     <span>Loading alerts...</span>
                   </div>
                 ) : notifications.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-500">
+                  <div className="py-8 text-center text-xs text-[var(--text-muted)]">
                     No recent notifications
                   </div>
                 ) : (
@@ -303,26 +372,26 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                       }}
                       className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                         !n.is_read
-                          ? 'bg-[#0D1728] border-cyan-500/30 text-slate-100 hover:border-cyan-400'
-                          : 'bg-[#050B14]/60 border-white/5 text-slate-400 hover:bg-white/5'
+                          ? 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--primary)] shadow-sm'
+                          : 'bg-[var(--bg-surface-muted)]/50 border-[var(--border-subtle)] text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-slate-200">{n.title}</p>
-                        {!n.is_read && <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0 mt-1" />}
+                        <p className="font-semibold text-[var(--text-primary)]">{n.title}</p>
+                        {!n.is_read && <span className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0 mt-1" />}
                       </div>
-                      <p className="text-slate-300 text-[11px] mt-0.5 leading-snug">{n.message}</p>
+                      <p className="text-[var(--text-secondary)] text-[11px] mt-0.5 leading-snug">{n.message}</p>
                     </div>
                   ))
                 )}
               </div>
 
-              <div className="p-3 bg-[#07111F] border-t border-white/10 flex items-center justify-between text-xs">
+              <div className="p-3 bg-[var(--bg-surface-muted)] border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
                   disabled={unreadCount === 0}
-                  className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 disabled:opacity-40 text-[11px] font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-[var(--primary)] hover:underline disabled:opacity-40 text-[11px] font-semibold transition-colors cursor-pointer"
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Mark all read</span>
@@ -332,54 +401,34 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
 
-        {/* Theme Toggle Button */}
-        {(() => {
-          const { theme, toggleTheme } = useTheme();
-          return (
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer relative"
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-amber-400" />
-              ) : (
-                <Moon className="w-5 h-5 text-indigo-400" />
-              )}
-            </button>
-          );
-        })()}
-
         {/* User Profile Menu */}
         <div ref={profileRef} className="relative">
           <button
             type="button"
             onClick={() => setIsProfileOpen(prev => !prev)}
-            className={`flex items-center gap-2 p-1.5 rounded-xl transition-all cursor-pointer border ${
+            className={`flex items-center gap-2 p-1 rounded-xl transition-all cursor-pointer border ${
               isProfileOpen
-                ? 'bg-white/10 border-white/10'
-                : 'border-transparent hover:bg-white/5'
+                ? 'bg-[var(--bg-surface-muted)] border-[var(--border-default)]'
+                : 'border-transparent hover:bg-[var(--bg-surface-hover)]'
             }`}
             aria-label="Open profile menu"
             aria-expanded={isProfileOpen}
           >
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300 text-xs font-bold">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[var(--primary-soft)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--primary)] text-xs font-bold">
               {profileInitials}
             </div>
 
             <div className="hidden lg:block text-left max-w-[140px]">
-              <p className="text-xs font-semibold text-slate-100 truncate">
+              <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
                 {profileName}
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
-                {user?.role?.replace('_', ' ') || 'User'}
+              <p className="text-[10px] text-[var(--text-muted)] truncate capitalize">
+                {user?.role?.replace('_', ' ').toLowerCase() || 'User'}
               </p>
             </div>
 
             <svg
-              className={`hidden sm:block w-3.5 h-3.5 text-slate-400 transition-transform ${
+              className={`hidden sm:block w-3.5 h-3.5 text-[var(--text-muted)] transition-transform ${
                 isProfileOpen ? 'rotate-180' : ''
               }`}
               viewBox="0 0 20 20"
@@ -395,44 +444,44 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-3 w-72 bg-[#0A1424] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-4 py-4 bg-[#07111F] border-b border-white/10">
+            <div className="absolute right-0 mt-2.5 w-72 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="px-4 py-4 bg-[var(--bg-surface-muted)] border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--primary-soft)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--primary)] font-bold">
                     {profileInitials}
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">
+                    <p className="text-sm font-bold text-[var(--text-primary)] truncate">
                       {profileName}
                     </p>
-                    <p className="text-[11px] text-slate-400 truncate">
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">
                       {user?.email}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-2">
+              <div className="p-2 space-y-1">
                 <button
                   type="button"
                   onClick={() => {
                     setIsProfileOpen(false);
-                    navigate('/profile');
+                    navigate('/settings');
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-xs font-medium text-slate-200 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
-                  <UserRound className="w-4 h-4 text-slate-400" />
-                  <span>My Profile</span>
+                  <UserRound className="w-4 h-4 text-[var(--text-muted)]" />
+                  <span>My Settings</span>
                 </button>
 
-                <div className="my-1 border-t border-white/5" />
+                <div className="my-1 border-t border-[var(--border-subtle)]" />
 
                 <button
                   type="button"
                   onClick={handleLogout}
                   disabled={logoutLoading}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-xs font-semibold text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {logoutLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

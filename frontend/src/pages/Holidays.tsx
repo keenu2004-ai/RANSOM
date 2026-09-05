@@ -322,19 +322,19 @@ export const Holidays: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-purple-600/20 text-purple-400 rounded-2xl border border-purple-500/30 shadow-lg shadow-purple-500/10">
+          <div className="p-3 bg-[var(--color-primary-soft)] text-[var(--color-primary)] rounded-2xl border border-[var(--border-subtle)] shadow-sm">
             <CalendarCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white tracking-tight">Holiday Calendar</h1>
-            <p className="text-xs text-slate-400">Manage and view company and regional holidays assigned to specific employees</p>
+            <h1 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">Holiday Calendar</h1>
+            <p className="text-xs text-[var(--text-secondary)]">Manage and view company and regional holidays assigned to specific employees</p>
           </div>
         </div>
 
         {isManagement && (
           <button
             onClick={() => handleOpenAddModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-600/25 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs rounded-xl shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add Holiday</span>
@@ -342,29 +342,29 @@ export const Holidays: React.FC = () => {
         )}
       </div>
 
-      {/* KPI Cards (Role-Based: Employees see Total & Upcoming; Management sees All 4) */}
+      {/* KPI Cards */}
       <div className={`grid grid-cols-1 ${isManagement ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2'} gap-4`}>
         {/* TOTAL HOLIDAYS */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-sm flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Total Holidays</span>
-            <div className="text-2xl font-extrabold text-white">{kpis.totalHolidays}</div>
-            <div className="text-[11px] text-slate-400">This year</div>
+            <span className="text-xs font-semibold text-[var(--text-secondary)] tracking-wider uppercase">Total Holidays</span>
+            <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.totalHolidays}</div>
+            <div className="text-[11px] text-[var(--text-muted)]">This year</div>
           </div>
-          <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl">
+          <div className="p-3 bg-[var(--color-primary-soft)] text-[var(--color-primary)] border border-[var(--border-subtle)] rounded-xl">
             <CalendarIcon className="w-6 h-6" />
           </div>
         </div>
 
         {/* NORTH REGION - Management Only */}
         {isManagement && (
-          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-sm flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">North Region</span>
-              <div className="text-2xl font-extrabold text-white">{kpis.northHolidays}</div>
-              <div className="text-[11px] text-slate-400">Assigned holidays</div>
+              <span className="text-xs font-semibold text-[var(--text-secondary)] tracking-wider uppercase">North Region</span>
+              <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.northHolidays}</div>
+              <div className="text-[11px] text-[var(--text-muted)]">Assigned holidays</div>
             </div>
-            <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+            <div className="p-3 bg-[var(--color-info-soft)] text-[var(--color-info)] border border-[var(--color-info)]/20 rounded-xl">
               <Globe className="w-6 h-6" />
             </div>
           </div>
@@ -372,26 +372,26 @@ export const Holidays: React.FC = () => {
 
         {/* SOUTH REGION - Management Only */}
         {isManagement && (
-          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-sm flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">South Region</span>
-              <div className="text-2xl font-extrabold text-white">{kpis.southHolidays}</div>
-              <div className="text-[11px] text-slate-400">Assigned holidays</div>
+              <span className="text-xs font-semibold text-[var(--text-secondary)] tracking-wider uppercase">South Region</span>
+              <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.southHolidays}</div>
+              <div className="text-[11px] text-[var(--text-muted)]">Assigned holidays</div>
             </div>
-            <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+            <div className="p-3 bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20 rounded-xl">
               <Users className="w-6 h-6" />
             </div>
           </div>
         )}
 
         {/* UPCOMING HOLIDAYS */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-sm flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Upcoming Holidays</span>
-            <div className="text-2xl font-extrabold text-white">{kpis.upcomingHolidays}</div>
-            <div className="text-[11px] text-slate-400">Next 30 days</div>
+            <span className="text-xs font-semibold text-[var(--text-secondary)] tracking-wider uppercase">Upcoming Holidays</span>
+            <div className="text-2xl font-extrabold text-[var(--text-primary)]">{kpis.upcomingHolidays}</div>
+            <div className="text-[11px] text-[var(--text-muted)]">Next 30 days</div>
           </div>
-          <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+          <div className="p-3 bg-[var(--color-warning-soft)] text-[var(--color-warning)] border border-[var(--color-warning)]/20 rounded-xl">
             <Clock className="w-6 h-6" />
           </div>
         </div>
@@ -401,44 +401,44 @@ export const Holidays: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Left Side: Monthly Holiday Calendar (8 Cols) */}
-        <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+        <div className="lg:col-span-8 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-5 shadow-sm space-y-4">
 
           {/* Calendar Header Controls */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                className="p-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl transition-all"
+                className="p-1.5 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-xl transition-all shadow-sm cursor-pointer"
                 title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <h2 className="text-base font-extrabold text-white tracking-tight px-2">{currentMonthDisplay}</h2>
+              <h2 className="text-base font-extrabold text-[var(--text-primary)] tracking-tight px-2">{currentMonthDisplay}</h2>
               <button
                 onClick={() => setSelectedMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                className="p-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl transition-all"
+                className="p-1.5 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-xl transition-all shadow-sm cursor-pointer"
                 title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+            <div className="flex items-center bg-[var(--bg-surface-muted)] border border-[var(--border-subtle)] p-1 rounded-xl text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('month')}
-                className={`px-3 py-1 rounded-lg transition-all ${activeTab === 'month' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'month' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 Month
               </button>
               <button
                 onClick={() => setActiveTab('week')}
-                className={`px-3 py-1 rounded-lg transition-all ${activeTab === 'week' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'week' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 Week
               </button>
               <button
                 onClick={() => setActiveTab('list')}
-                className={`px-3 py-1 rounded-lg transition-all ${activeTab === 'list' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'list' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)]'}`}
               >
                 List
               </button>
@@ -446,7 +446,7 @@ export const Holidays: React.FC = () => {
           </div>
 
           {/* 7-Column Sunday -> Saturday Grid Header */}
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold uppercase tracking-wider text-purple-400 border-b border-slate-800 pb-2">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--color-primary)] border-b border-[var(--border-subtle)] pb-2">
             <div>Sun</div>
             <div>Mon</div>
             <div>Tue</div>
@@ -468,15 +468,15 @@ export const Holidays: React.FC = () => {
                   onClick={() => isManagement && handleOpenAddModal(cell.dateStr)}
                   className={`min-h-[105px] p-2 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group ${
                     !cell.isCurrentMonth
-                      ? 'bg-slate-950/20 border-slate-900/40 text-slate-600 opacity-40'
+                      ? 'bg-[var(--bg-surface-muted)]/40 border-[var(--border-subtle)] text-[var(--text-muted)] opacity-40'
                       : isToday
-                      ? 'bg-purple-950/30 border-purple-500/80 shadow-md ring-1 ring-purple-500/40'
-                      : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/40 hover:border-slate-700'
+                      ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-primary)]/40'
+                      : 'bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] hover:bg-[var(--bg-surface-muted)] hover:border-[var(--border-default)]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
-                      isToday ? 'bg-purple-600 text-white font-extrabold' : 'text-slate-300'
+                      isToday ? 'bg-[var(--color-primary)] text-white font-extrabold' : 'text-[var(--text-secondary)]'
                     }`}>
                       {cell.dayNum}
                     </span>
@@ -496,11 +496,11 @@ export const Holidays: React.FC = () => {
                             e.stopPropagation();
                             if (isManagement) handleOpenEditModal(h);
                           }}
-                          className={`p-1.5 rounded-lg border text-[10px] space-y-0.5 shadow transition-all ${
-                            isNorth ? 'bg-indigo-950/80 border-indigo-500/50 text-indigo-200' :
-                            isSouth ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200' :
-                            isAll ? 'bg-purple-950/80 border-purple-500/50 text-purple-200' :
-                            'bg-cyan-950/80 border-cyan-500/50 text-cyan-200'
+                          className={`p-1.5 rounded-lg border text-[10px] space-y-0.5 shadow-sm transition-all ${
+                            isNorth ? 'bg-[var(--color-info-soft)] border-[var(--color-info)]/30 text-[var(--color-info)]' :
+                            isSouth ? 'bg-[var(--color-success-soft)] border-[var(--color-success)]/30 text-[var(--color-success)]' :
+                            isAll ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)]/30 text-[var(--color-primary)]' :
+                            'bg-[var(--color-warning-soft)] border-[var(--color-warning)]/30 text-[var(--color-warning)]'
                           }`}
                         >
                           <div className="font-extrabold truncate leading-tight">{h.title}</div>
@@ -513,7 +513,7 @@ export const Holidays: React.FC = () => {
                   </div>
 
                   {dayHols.length === 0 && (
-                    <div className="text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                    <div className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity text-center">
                       + Add
                     </div>
                   )}
@@ -524,21 +524,21 @@ export const Holidays: React.FC = () => {
         </div>
 
         {/* Right Side: Holidays List Panel (4 Cols) */}
-        <div className="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-sm">Holidays List</h3>
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="font-bold text-[var(--text-primary)] text-sm">Holidays List</h3>
             </div>
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
+              <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-3" />
               <input
                 type="text"
                 placeholder="Search holidays..."
                 value={listSearch}
                 onChange={e => setListSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                className="w-full pl-9 pr-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
 
@@ -546,16 +546,16 @@ export const Holidays: React.FC = () => {
             <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-semibold">
               <button
                 onClick={() => setListRegionFilter('ALL')}
-                className={`px-3 py-1 rounded-xl transition-all ${
-                  listRegionFilter === 'ALL' ? 'bg-purple-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                  listRegionFilter === 'ALL' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => setListRegionFilter('UPCOMING')}
-                className={`px-3 py-1 rounded-xl transition-all ${
-                  listRegionFilter === 'UPCOMING' ? 'bg-purple-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                  listRegionFilter === 'UPCOMING' ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                 }`}
               >
                 Upcoming
@@ -564,16 +564,16 @@ export const Holidays: React.FC = () => {
                 <>
                   <button
                     onClick={() => setListRegionFilter('NORTH')}
-                    className={`px-3 py-1 rounded-xl transition-all ${
-                      listRegionFilter === 'NORTH' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                      listRegionFilter === 'NORTH' ? 'bg-[var(--color-info)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                     }`}
                   >
                     North Region
                   </button>
                   <button
                     onClick={() => setListRegionFilter('SOUTH')}
-                    className={`px-3 py-1 rounded-xl transition-all ${
-                      listRegionFilter === 'SOUTH' ? 'bg-emerald-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                      listRegionFilter === 'SOUTH' ? 'bg-[var(--color-success)] text-white shadow-sm' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]'
                     }`}
                   >
                     South Region
@@ -592,45 +592,45 @@ export const Holidays: React.FC = () => {
                 return (
                   <div
                     key={h.id}
-                    className="p-3 bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-2xl space-y-2 transition-all shadow-md group relative"
+                    className="p-3 bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] rounded-2xl space-y-2 transition-all shadow-sm group relative"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <div className={`p-2 rounded-xl border ${
-                          isNorth ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' :
-                          isSouth ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                          'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                          isNorth ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border-[var(--color-info)]/30' :
+                          isSouth ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border-[var(--color-success)]/30' :
+                          'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]'
                         }`}>
                           <CalendarIcon className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-100 text-xs">{h.title}</h4>
-                          <span className="font-mono text-[10px] text-slate-400">{h.date}</span>
+                          <h4 className="font-bold text-[var(--text-primary)] text-xs">{h.title}</h4>
+                          <span className="font-mono text-[10px] text-[var(--text-muted)]">{h.date}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1">
                         {isManagement ? (
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                            isNorth ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
-                            isSouth ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                            isAll ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' :
-                            'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                            isNorth ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border-[var(--color-info)]/30' :
+                            isSouth ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border-[var(--color-success)]/30' :
+                            isAll ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]' :
+                            'bg-[var(--color-warning-soft)] text-[var(--color-warning)] border-[var(--color-warning)]/30'
                           }`}>
                             {isNorth ? 'North Region' : isSouth ? 'South Region' : isAll ? 'All Employees' : `${h.assigned_employee_count || 0} Employees`}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-purple-500/10 text-purple-300 border-purple-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--border-subtle)]">
                             Company Holiday
                           </span>
                         )}
 
                         {isManagement && (
                           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenEditModal(h)} className="p-1 text-slate-400 hover:text-purple-400" title="Edit">
+                            <button onClick={() => handleOpenEditModal(h)} className="p-1 text-[var(--text-muted)] hover:text-[var(--color-primary)] cursor-pointer" title="Edit">
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={(e) => handleDelete(h.id, e)} className="p-1 text-slate-400 hover:text-rose-400" title="Delete">
+                            <button onClick={(e) => handleDelete(h.id, e)} className="p-1 text-[var(--text-muted)] hover:text-[var(--color-danger)] cursor-pointer" title="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -639,14 +639,14 @@ export const Holidays: React.FC = () => {
                     </div>
 
                     {isManagement && h.description && (
-                      <p className="text-[11px] text-slate-400 pl-9 line-clamp-2">{h.description}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] pl-9 line-clamp-2">{h.description}</p>
                     )}
                   </div>
                 );
               })}
 
               {filteredHolidaysList.length === 0 && (
-                <div className="p-8 text-center text-slate-500 italic text-xs border border-slate-800/80 rounded-2xl">
+                <div className="p-8 text-center text-[var(--text-muted)] italic text-xs border border-[var(--border-subtle)] rounded-2xl">
                   No holidays match the selected filter.
                 </div>
               )}
@@ -657,28 +657,28 @@ export const Holidays: React.FC = () => {
 
       {/* ADD / EDIT HOLIDAY MODAL WITH MULTI-SELECT EMPLOYEES */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/30">
+                <div className="p-2 bg-[var(--color-primary-soft)] text-[var(--color-primary)] rounded-xl border border-[var(--border-subtle)]">
                   <CalendarIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-white text-base leading-tight">
+                  <h3 className="font-extrabold text-[var(--text-primary)] text-base leading-tight">
                     {editingHoliday ? 'Edit Holiday' : 'Add New Holiday'}
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Create a holiday and assign it to specific employees or regions</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Create a holiday and assign it to specific employees or regions</p>
                 </div>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white p-1">
+              <button onClick={() => setShowAddModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/30 text-[var(--color-danger)] text-xs rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
@@ -686,36 +686,36 @@ export const Holidays: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Holiday Title *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-semibold">Holiday Title *</label>
                   <input
                     type="text"
                     required
                     value={formData.title}
                     onChange={e => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g. Diwali, Christmas, Local Holiday"
-                    className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Date *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-semibold">Date *</label>
                   <input
                     type="date"
                     required
                     value={formData.date}
                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-mono focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-mono focus:border-[var(--color-primary)] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Holiday Type *</label>
+                  <label className="block text-[var(--text-secondary)] mb-1 font-semibold">Holiday Type *</label>
                   <select
                     value={formData.holidayType}
                     onChange={e => setFormData({ ...formData, holidayType: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-medium focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-medium focus:border-[var(--color-primary)] focus:outline-none"
                   >
                     <option value="COMPANY">Company Holiday</option>
                     <option value="NATIONAL">National Holiday</option>
@@ -726,11 +726,11 @@ export const Holidays: React.FC = () => {
 
                 {formData.assignmentScope === 'REGION' && (
                   <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Region *</label>
+                    <label className="block text-[var(--text-secondary)] mb-1 font-semibold">Region *</label>
                     <select
                       value={formData.region}
                       onChange={e => setFormData({ ...formData, region: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 font-semibold focus:border-purple-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] font-semibold focus:border-[var(--color-primary)] focus:outline-none"
                     >
                       <option value="NORTH">North Region</option>
                       <option value="SOUTH">South Region</option>
@@ -740,78 +740,78 @@ export const Holidays: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Description (Optional)</label>
+                <label className="block text-[var(--text-secondary)] mb-1 font-semibold">Description (Optional)</label>
                 <textarea
                   rows={2}
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Add a short description..."
-                  className="w-full px-3 py-2 bg-[#060911] border border-slate-800 rounded-xl text-slate-200 focus:border-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none"
                 />
               </div>
 
               {/* Assignment Scope Selector */}
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <label className="block text-slate-300 font-semibold">Assign To *</label>
+              <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+                <label className="block text-[var(--text-secondary)] font-semibold">Assign To *</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div
                     onClick={() => setFormData({ ...formData, assignmentScope: 'ALL' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'ALL'
-                        ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/20 text-white font-bold'
-                        : 'bg-[#060911] border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     <div className="text-xs">All Employees</div>
-                    <div className="text-[10px] text-slate-500 font-normal">Company wide</div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-normal">Company wide</div>
                   </div>
 
                   <div
                     onClick={() => setFormData({ ...formData, assignmentScope: 'REGION' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'REGION'
-                        ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/20 text-white font-bold'
-                        : 'bg-[#060911] border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     <div className="text-xs">Entire Region</div>
-                    <div className="text-[10px] text-slate-500 font-normal">North or South region</div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-normal">North or South region</div>
                   </div>
 
                   <div
                     onClick={() => setFormData({ ...formData, assignmentScope: 'EMPLOYEES' })}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       formData.assignmentScope === 'EMPLOYEES'
-                        ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/20 text-white font-bold'
-                        : 'bg-[#060911] border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 text-[var(--text-primary)] font-bold'
+                        : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     <div className="text-xs">Specific Employees</div>
-                    <div className="text-[10px] text-slate-500 font-normal">Multi-select employees</div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-normal">Multi-select employees</div>
                   </div>
                 </div>
               </div>
 
               {/* Specific Employees Multi-Select Box */}
               {formData.assignmentScope === 'EMPLOYEES' && (
-                <div className="space-y-3 p-4 bg-[#060911] border border-slate-800 rounded-2xl">
+                <div className="space-y-3 p-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-200 text-xs">
+                    <span className="font-semibold text-[var(--text-primary)] text-xs">
                       Select Employees * ({formData.selectedEmployeeIds.length} selected)
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleSelectAllVisible}
-                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300"
+                        className="text-[10px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer"
                       >
                         Select All Visible
                       </button>
-                      <span className="text-slate-700">|</span>
+                      <span className="text-[var(--border-default)]">|</span>
                       <button
                         type="button"
                         onClick={handleClearSelection}
-                        className="text-[10px] font-bold text-slate-400 hover:text-white"
+                        className="text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                       >
                         Clear Selection
                       </button>
@@ -819,13 +819,13 @@ export const Holidays: React.FC = () => {
                   </div>
 
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                    <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-2.5" />
                     <input
                       type="text"
                       placeholder="Search employees by name or code..."
                       value={empSearch}
                       onChange={e => setEmpSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 outline-none focus:border-purple-500"
+                      className="w-full pl-8 pr-3 py-1.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
 
@@ -838,8 +838,8 @@ export const Holidays: React.FC = () => {
                           onClick={() => handleToggleEmployeeSelect(emp.id)}
                           className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all text-xs ${
                             isChecked
-                              ? 'bg-purple-950/30 border-purple-500 text-white font-semibold'
-                              : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-900'
+                              ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] text-[var(--text-primary)] font-semibold'
+                              : 'bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
@@ -847,18 +847,18 @@ export const Holidays: React.FC = () => {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => {}}
-                              className="rounded border-slate-700 text-purple-600 focus:ring-purple-500"
+                              className="rounded border-[var(--border-default)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                             />
                             <div>
                               <span>{emp.first_name} {emp.last_name}</span>
-                              <span className="text-[10px] font-mono text-slate-500 ml-1.5">({emp.employee_code})</span>
+                              <span className="text-[10px] font-mono text-[var(--text-muted)] ml-1.5">({emp.employee_code})</span>
                             </div>
                           </div>
 
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                            emp.region === 'SOUTH' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
-                            emp.region === 'NORTH' ? 'bg-indigo-950 text-indigo-400 border border-indigo-800' :
-                            'bg-slate-800 text-slate-400'
+                            emp.region === 'SOUTH' ? 'bg-[var(--color-success-soft)] text-[var(--color-success)] border border-[var(--color-success)]/20' :
+                            emp.region === 'NORTH' ? 'bg-[var(--color-info-soft)] text-[var(--color-info)] border border-[var(--color-info)]/20' :
+                            'bg-[var(--bg-surface-muted)] text-[var(--text-muted)]'
                           }`}>
                             {emp.region || 'Unassigned'}
                           </span>
@@ -866,23 +866,23 @@ export const Holidays: React.FC = () => {
                       );
                     })}
                     {filteredEmployeesForModal.length === 0 && (
-                      <div className="p-4 text-center text-slate-500 italic text-xs">No matching employees found.</div>
+                      <div className="p-4 text-center text-[var(--text-muted)] italic text-xs">No matching employees found.</div>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-xs"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] rounded-xl font-medium text-xs border border-[var(--border-default)] shadow-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-purple-600/25"
+                  className="px-5 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-xl font-semibold text-xs shadow-sm cursor-pointer"
                 >
                   Save Holiday
                 </button>

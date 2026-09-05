@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../services/api-client';
-import { History, ShieldCheck } from 'lucide-react';
+import { History } from 'lucide-react';
 
 export const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -14,17 +14,17 @@ export const AuditLogs: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-          <History className="w-6 h-6 text-rose-400" />
+        <h1 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
+          <History className="w-5 h-5 text-[var(--primary)]" />
           <span>System Audit Trail</span>
         </h1>
-        <p className="text-xs text-slate-400">Immutable audit log recording user actions, entity mutations, and IP addresses</p>
+        <p className="text-xs text-[var(--text-muted)]">Immutable audit log recording user actions, entity mutations, and IP addresses</p>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase border-b border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)]">
+            <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-muted)] font-semibold uppercase text-[10px] tracking-wider border-b border-[var(--border-subtle)]">
               <tr>
                 <th className="px-6 py-3">Timestamp</th>
                 <th className="px-6 py-3">Actor</th>
@@ -33,19 +33,19 @@ export const AuditLogs: React.FC = () => {
                 <th className="px-6 py-3">Entity</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {logs.length > 0 ? (
                 logs.map(l => (
-                  <tr key={l.id} className="hover:bg-slate-800/40">
-                    <td className="px-6 py-3.5 font-mono text-[11px] text-slate-400">{new Date(l.created_at).toLocaleString()}</td>
-                    <td className="px-6 py-3.5 font-semibold text-slate-200">{l.actor_email || 'System'}</td>
-                    <td className="px-6 py-3.5 font-mono text-cyan-400">{l.module}</td>
-                    <td className="px-6 py-3.5 font-bold text-amber-400">{l.action}</td>
-                    <td className="px-6 py-3.5 font-mono">{l.entity_name}</td>
+                  <tr key={l.id} className="hover:bg-[var(--bg-surface-hover)] transition-colors">
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--text-muted)]">{new Date(l.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-3.5 font-semibold text-[var(--text-primary)]">{l.actor_email || 'System'}</td>
+                    <td className="px-6 py-3.5 font-mono text-[var(--primary)]">{l.module}</td>
+                    <td className="px-6 py-3.5 font-bold text-amber-700">{l.action}</td>
+                    <td className="px-6 py-3.5 font-mono text-[var(--text-secondary)]">{l.entity_name}</td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No audit log records available.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">No audit log records available.</td></tr>
               )}
             </tbody>
           </table>
