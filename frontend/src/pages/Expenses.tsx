@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch, apiDownload, getApiUrl, getSecureFileUrl, buildAttachmentViewPath } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +10,7 @@ import {
   Building, Calendar, Upload, Trash2, Eye, AlertTriangle,
   ArrowRight, Edit, Hotel, Plane, Clock, ChevronRight, ShieldCheck, DollarSign,
   ChevronLeft, Download, Users, PieChart, TrendingUp, Search, Filter, RefreshCw,
-  ChevronDown, CheckCircle2, XCircle, AlertCircle
+  ChevronDown, CheckCircle2, XCircle, AlertCircle, Ban
 } from 'lucide-react';
 
 const BUCKET_OPTIONS = ['Exit', 'Internal', 'Onboarding', 'Other', 'Primary'];
@@ -1267,14 +1268,61 @@ export const Expenses: React.FC = () => {
     }
   };
 
+  const empSummaryMetrics = useMemo(() => {
+    const exList = myExpenses || [];
+    const tripList = myTrips || [];
+
+    const getStatusMatch = (status: string, targetBucket: string) => {
+      if (targetBucket === 'ALL') return true;
+      if (targetBucket === 'SUBMITTED') {
+        return status === 'SUBMITTED' || status === 'PENDING';
+      }
+      return status === targetBucket;
+    };
+
+    const computeBucket = (bucket: string) => {
+      const matchedExpenses = exList.filter((e: any) => getStatusMatch(e.status, bucket));
+      const matchedTrips = tripList.filter((t: any) => getStatusMatch(t.status, bucket));
+
+      const exSum = matchedExpenses.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+      const tripSum = matchedTrips.reduce((sum: number, t: any) => sum + Number(t.total_amount || 0), 0);
+
+      return {
+        count: matchedExpenses.length + matchedTrips.length,
+        amount: exSum + tripSum
+      };
+    };
+
+    return {
+      total: computeBucket('ALL'),
+      draft: computeBucket('DRAFT'),
+      submitted: computeBucket('SUBMITTED'),
+      approved: computeBucket('APPROVED'),
+      rejected: computeBucket('REJECTED'),
+      cancelled: computeBucket('CANCELLED')
+    };
+  }, [myExpenses, myTrips]);
+
   const displayedSingleExpenses = (activeRoleTab === 'WORKFORCE' ? allExpenses : myExpenses).filter(ex => {
     if (typeFilter && ex.expense_type !== typeFilter) return false;
-    if (statusFilter && ex.status !== statusFilter) return false;
+    if (statusFilter) {
+      if (statusFilter === 'PENDING' || statusFilter === 'SUBMITTED') {
+        if (ex.status !== 'PENDING' && ex.status !== 'SUBMITTED') return false;
+      } else if (ex.status !== statusFilter) {
+        return false;
+      }
+    }
     return true;
   });
 
   const displayedTrips = (activeRoleTab === 'WORKFORCE' ? allTrips : myTrips).filter(t => {
-    if (statusFilter && t.status !== statusFilter) return false;
+    if (statusFilter) {
+      if (statusFilter === 'PENDING' || statusFilter === 'SUBMITTED') {
+        if (t.status !== 'PENDING' && t.status !== 'SUBMITTED') return false;
+      } else if (t.status !== statusFilter) {
+        return false;
+      }
+    }
     return true;
   });
 
@@ -2425,6 +2473,239 @@ export const Expenses: React.FC = () => {
             </div>
           </div>
 
+          {/* NEW MY EXPENSES SUMMARY SECTION */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-cyan-400" />
+                  <span>My Expenses Summary</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Overview of all your expense claims and their current status
+                </p>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[...Array(6)].map((_, idx) => (
+                  <div key={idx} className="h-28 bg-slate-950/60 border border-slate-800/60 rounded-xl p-4 space-y-3 animate-pulse">
+                    <div className="h-4 w-20 bg-slate-800 rounded"></div>
+                    <div className="h-5 w-16 bg-slate-800 rounded"></div>
+                    <div className="h-4 w-24 bg-slate-800 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {/* 1. TOTAL EXPENSES */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Total Expenses"
+                  onClick={() => setStatusFilter('')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter(''); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    !statusFilter
+                      ? 'bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500/80 ring-1 ring-cyan-500/50 shadow-lg shadow-cyan-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-cyan-400">Total Expenses</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      !statusFilter ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-slate-950'
+                    }`}>
+                      <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.total.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.total.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-cyan-400 mt-1 truncate">
+                      ₹{empSummaryMetrics.total.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${!statusFilter ? 'text-cyan-400 translate-x-0.5' : 'text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+
+                {/* 2. DRAFTS */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Draft Expenses"
+                  onClick={() => setStatusFilter('DRAFT')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('DRAFT'); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    statusFilter === 'DRAFT'
+                      ? 'bg-gradient-to-br from-amber-950/60 to-slate-900 border-amber-500/80 ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-amber-400">Drafts</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      statusFilter === 'DRAFT' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-amber-500/10 text-amber-400 border-amber-500/20 group-hover:bg-amber-500 group-hover:text-slate-950'
+                    }`}>
+                      <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.draft.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.draft.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-amber-400 mt-1 truncate">
+                      ₹{empSummaryMetrics.draft.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'DRAFT' ? 'text-amber-400 translate-x-0.5' : 'text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+
+                {/* 3. SUBMITTED */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Submitted Expenses"
+                  onClick={() => setStatusFilter('PENDING')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('PENDING'); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    statusFilter === 'PENDING' || statusFilter === 'SUBMITTED'
+                      ? 'bg-gradient-to-br from-indigo-950/60 to-slate-900 border-indigo-500/80 ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-indigo-500/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-indigo-400">Submitted</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'bg-indigo-500 text-slate-950 border-indigo-400' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 group-hover:bg-indigo-500 group-hover:text-slate-950'
+                    }`}>
+                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.submitted.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.submitted.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-indigo-400 mt-1 truncate">
+                      ₹{empSummaryMetrics.submitted.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'text-indigo-400 translate-x-0.5' : 'text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+
+                {/* 4. APPROVED */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Approved Expenses"
+                  onClick={() => setStatusFilter('APPROVED')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('APPROVED'); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    statusFilter === 'APPROVED'
+                      ? 'bg-gradient-to-br from-emerald-950/60 to-slate-900 border-emerald-500/80 ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-emerald-500/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-emerald-400">Approved</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      statusFilter === 'APPROVED' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-slate-950'
+                    }`}>
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.approved.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.approved.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-emerald-400 mt-1 truncate">
+                      ₹{empSummaryMetrics.approved.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'APPROVED' ? 'text-emerald-400 translate-x-0.5' : 'text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+
+                {/* 5. REJECTED */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Rejected Expenses"
+                  onClick={() => setStatusFilter('REJECTED')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('REJECTED'); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    statusFilter === 'REJECTED'
+                      ? 'bg-gradient-to-br from-rose-950/60 to-slate-900 border-rose-500/80 ring-1 ring-rose-500/50 shadow-lg shadow-rose-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-rose-500/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-rose-400">Rejected</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      statusFilter === 'REJECTED' ? 'bg-rose-500 text-slate-950 border-rose-400' : 'bg-rose-500/10 text-rose-400 border-rose-500/20 group-hover:bg-rose-500 group-hover:text-slate-950'
+                    }`}>
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.rejected.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.rejected.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-rose-400 mt-1 truncate">
+                      ₹{empSummaryMetrics.rejected.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'REJECTED' ? 'text-rose-400 translate-x-0.5' : 'text-slate-600 group-hover:text-rose-400 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+
+                {/* 6. CANCELLED */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Filter by Cancelled Expenses"
+                  onClick={() => setStatusFilter('CANCELLED')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStatusFilter('CANCELLED'); }}
+                  className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none relative group flex flex-col justify-between ${
+                    statusFilter === 'CANCELLED'
+                      ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-500/80 ring-1 ring-slate-400/50 shadow-lg shadow-slate-500/10 scale-[1.01]'
+                      : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-600/40 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400">Cancelled</span>
+                    <div className={`p-1.5 rounded-lg border transition-colors ${
+                      statusFilter === 'CANCELLED' ? 'bg-slate-400 text-slate-950 border-slate-300' : 'bg-slate-800 text-slate-400 border-slate-700 group-hover:bg-slate-700 group-hover:text-white'
+                    }`}>
+                      <Ban className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-white leading-tight">
+                      {empSummaryMetrics.cancelled.count} <span className="text-xs font-normal text-slate-400">{empSummaryMetrics.cancelled.count === 1 ? 'Claim' : 'Claims'}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold font-mono text-slate-300 mt-1 truncate">
+                      ₹{empSummaryMetrics.cancelled.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-end">
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${statusFilter === 'CANCELLED' ? 'text-slate-300 translate-x-0.5' : 'text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5'}`} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Main Table Tabs */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -2451,13 +2732,14 @@ export const Expenses: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-300"
+                  className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 >
-                  <option value="">All Statuses</option>
+                  <option value="">All Expenses</option>
                   <option value="DRAFT">DRAFT</option>
-                  <option value="PENDING">PENDING</option>
+                  <option value="PENDING">SUBMITTED</option>
                   <option value="APPROVED">APPROVED</option>
                   <option value="REJECTED">REJECTED</option>
+                  <option value="CANCELLED">CANCELLED</option>
                 </select>
               </div>
             </div>
@@ -2514,10 +2796,11 @@ export const Expenses: React.FC = () => {
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             ex.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
                             ex.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                            ex.status === 'DRAFT' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                            'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            ex.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                            ex.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                            'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
                           }`}>
-                            {ex.status}
+                            {ex.status === 'PENDING' ? 'SUBMITTED' : ex.status}
                           </span>
                         </td>
                         <td className="p-3 text-right space-x-1">
@@ -2543,7 +2826,16 @@ export const Expenses: React.FC = () => {
                       </tr>
                     ))}
                     {displayedSingleExpenses.length === 0 && (
-                      <tr><td colSpan={9} className="p-8 text-center text-slate-500 italic">No single expense claims found.</td></tr>
+                      <tr>
+                        <td colSpan={9} className="p-8 text-center text-slate-400 italic font-medium">
+                          {statusFilter === 'APPROVED' ? 'No approved expenses yet. Submit an expense claim and it will appear here once approved.' :
+                           statusFilter === 'DRAFT' ? 'No draft expenses. Create a claim to save it as a draft.' :
+                           statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted expenses currently under review.' :
+                           statusFilter === 'REJECTED' ? 'No rejected expenses.' :
+                           statusFilter === 'CANCELLED' ? 'No cancelled expenses.' :
+                           'No single expense claims found.'}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -2589,10 +2881,11 @@ export const Expenses: React.FC = () => {
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             tr.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
                             tr.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                            tr.status === 'DRAFT' ? 'bg-slate-800 text-slate-400 border-slate-700' :
-                            'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            tr.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                            tr.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                            'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
                           }`}>
-                            {tr.status}
+                            {tr.status === 'PENDING' ? 'SUBMITTED' : tr.status}
                           </span>
                         </td>
                         <td className="p-3 text-right space-x-1">
@@ -2628,7 +2921,16 @@ export const Expenses: React.FC = () => {
                       </tr>
                     ))}
                     {displayedTrips.length === 0 && (
-                      <tr><td colSpan={8} className="p-8 text-center text-slate-500 italic">No trip expense claims found.</td></tr>
+                      <tr>
+                        <td colSpan={8} className="p-8 text-center text-slate-400 italic font-medium">
+                          {statusFilter === 'APPROVED' ? 'No approved trip expenses yet.' :
+                           statusFilter === 'DRAFT' ? 'No draft trip expenses. Create a trip to save it as a draft.' :
+                           statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted trip expenses under review.' :
+                           statusFilter === 'REJECTED' ? 'No rejected trip expenses.' :
+                           statusFilter === 'CANCELLED' ? 'No cancelled trip expenses.' :
+                           'No trip expense claims found.'}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
