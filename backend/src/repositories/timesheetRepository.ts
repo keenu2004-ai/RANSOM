@@ -244,6 +244,7 @@ export class TimesheetRepository {
         t.outcome_summary, t.next_action, TO_CHAR(t.follow_up_date, 'YYYY-MM-DD') AS follow_up_date, t.opportunity_stage,
         t.estimated_value, t.priority, t.cancelled_at, t.cancelled_by, t.cancellation_reason,
         t.rescheduled_from_task_id, t.rescheduled_to_task_id, t.reschedule_count, t.reschedule_reason,
+        t.created_at,
         t.employee_id as assigned_employee_id,
         CONCAT(e.first_name, ' ', e.last_name) as assigned_employee_name,
         e.employee_code as assigned_employee_code,
@@ -255,7 +256,7 @@ export class TimesheetRepository {
       LEFT JOIN users u ON t.created_by = u.id
       LEFT JOIN projects p ON t.project_id = p.id
       WHERE ${conditions.join(' AND ')}
-      ORDER BY t.date ASC, t.created_at ASC
+      ORDER BY t.created_at DESC, t.id DESC
     `;
 
     const res = await query(dataSql, params);

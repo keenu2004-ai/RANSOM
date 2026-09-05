@@ -394,18 +394,8 @@ export const Timesheets: React.FC = () => {
     }
   };
 
-  // Group tasks by date
-  const tasksByDate = useMemo(() => {
-    const map = new Map<string, any[]>();
-    tasks.forEach(t => {
-      const dKey = normalizeDateOnly(t.date);
-      if (dKey) {
-        if (!map.has(dKey)) map.set(dKey, []);
-        map.get(dKey)!.push(t);
-      }
-    });
-    return map;
-  }, [tasks]);
+  // Active KPI Card Filter ('TOTAL' | 'SCHEDULED' | 'PENDING_FOLLOWUP' | 'COMPLETED')
+  const [activeKpiFilter, setActiveKpiFilter] = useState<'TOTAL' | 'SCHEDULED' | 'PENDING_FOLLOWUP' | 'COMPLETED'>('TOTAL');
 
   // Dynamic Weekly Plan Specific KPIs
   const kpis = useMemo(() => {
@@ -419,6 +409,44 @@ export const Timesheets: React.FC = () => {
 
     return { totalPlans, scheduledVisits, pendingFollowUps, completed };
   }, [tasks]);
+
+  // Filtered tasks based on active KPI card
+  const filteredTasks = useMemo(() => {
+    let list = tasks;
+    if (activeKpiFilter === 'SCHEDULED') {
+      list = list.filter(t => t.visit_type || t.customer_name || t.time_slot);
+    } else if (activeKpiFilter === 'PENDING_FOLLOWUP') {
+      list = list.filter(t =>
+        (t.follow_up_date || t.next_action || ['PLANNED', 'IN_PROGRESS'].includes(t.status)) &&
+        t.status !== 'COMPLETED' && t.status !== 'CANCELLED'
+      );
+    } else if (activeKpiFilter === 'COMPLETED') {
+      list = list.filter(t => t.status === 'COMPLETED');
+    }
+
+    // Sort newest-first (created_at DESC, id DESC)
+    return [...list].sort((a, b) => {
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (bTime !== aTime) {
+        return bTime - aTime;
+      }
+      return String(b.id || '').localeCompare(String(a.id || ''));
+    });
+  }, [tasks, activeKpiFilter]);
+
+  // Group filtered tasks by date
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, any[]>();
+    filteredTasks.forEach(t => {
+      const dKey = normalizeDateOnly(t.date);
+      if (dKey) {
+        if (!map.has(dKey)) map.set(dKey, []);
+        map.get(dKey)!.push(t);
+      }
+    });
+    return map;
+  }, [filteredTasks]);
 
   // Formatted Date Header string: e.g. "31 Aug – 06 Sep 2026"
   const dateRangeDisplay = useMemo(() => {
@@ -539,52 +567,112 @@ export const Timesheets: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row (4 Cards Only - Weekly Plan Specific) */}
+      {/* KPI Cards Row (4 Cards Only - Weekly Plan Specific Filter Controls) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* TOTAL PLANS */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Filter by Total Plans"
+          onClick={() => setActiveKpiFilter('TOTAL')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('TOTAL'); }}
+          className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
+            activeKpiFilter === 'TOTAL'
+              ? 'bg-gradient-to-br from-cyan-950/70 to-slate-900 border-cyan-500/80 ring-2 ring-cyan-500/50 shadow-lg shadow-cyan-500/10 scale-[1.01]'
+              : 'bg-slate-900/90 border-slate-800 hover:border-cyan-500/40 hover:bg-slate-900/60'
+          }`}
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Total Plans</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-cyan-400">Total Plans</span>
             <div className="text-2xl font-extrabold text-white">{kpis.totalPlans}</div>
             <div className="text-[11px] text-slate-400">Selected period</div>
           </div>
-          <div className="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+          <div className={`p-3 rounded-xl border transition-colors ${
+            activeKpiFilter === 'TOTAL'
+              ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+              : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-slate-950'
+          }`}>
             <CalendarIcon className="w-6 h-6" />
           </div>
         </div>
 
         {/* SCHEDULED VISITS */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Filter by Scheduled Visits"
+          onClick={() => setActiveKpiFilter('SCHEDULED')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('SCHEDULED'); }}
+          className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
+            activeKpiFilter === 'SCHEDULED'
+              ? 'bg-gradient-to-br from-emerald-950/70 to-slate-900 border-emerald-500/80 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/10 scale-[1.01]'
+              : 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900/60'
+          }`}
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Scheduled Visits</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Scheduled Visits</span>
             <div className="text-2xl font-extrabold text-white">{kpis.scheduledVisits}</div>
             <div className="text-[11px] text-slate-400">Customer meetings</div>
           </div>
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+          <div className={`p-3 rounded-xl border transition-colors ${
+            activeKpiFilter === 'SCHEDULED'
+              ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-slate-950'
+          }`}>
             <Send className="w-6 h-6" />
           </div>
         </div>
 
         {/* PENDING FOLLOW-UPS */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Filter by Pending Follow-ups"
+          onClick={() => setActiveKpiFilter('PENDING_FOLLOWUP')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('PENDING_FOLLOWUP'); }}
+          className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
+            activeKpiFilter === 'PENDING_FOLLOWUP'
+              ? 'bg-gradient-to-br from-amber-950/70 to-slate-900 border-amber-500/80 ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/10 scale-[1.01]'
+              : 'bg-slate-900/90 border-slate-800 hover:border-amber-500/40 hover:bg-slate-900/60'
+          }`}
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Pending Follow-ups</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-amber-400">Pending Follow-ups</span>
             <div className="text-2xl font-extrabold text-white">{kpis.pendingFollowUps}</div>
             <div className="text-[11px] text-slate-400">Action required</div>
           </div>
-          <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+          <div className={`p-3 rounded-xl border transition-colors ${
+            activeKpiFilter === 'PENDING_FOLLOWUP'
+              ? 'bg-amber-500 text-slate-950 border-amber-400'
+              : 'bg-amber-500/10 text-amber-400 border-amber-500/20 group-hover:bg-amber-500 group-hover:text-slate-950'
+          }`}>
             <Hourglass className="w-6 h-6" />
           </div>
         </div>
 
         {/* COMPLETED */}
-        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex items-center justify-between">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Filter by Completed Plans"
+          onClick={() => setActiveKpiFilter('COMPLETED')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveKpiFilter('COMPLETED'); }}
+          className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between group ${
+            activeKpiFilter === 'COMPLETED'
+              ? 'bg-gradient-to-br from-purple-950/70 to-slate-900 border-purple-500/80 ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10 scale-[1.01]'
+              : 'bg-slate-900/90 border-slate-800 hover:border-purple-500/40 hover:bg-slate-900/60'
+          }`}
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Completed</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-purple-400">Completed</span>
             <div className="text-2xl font-extrabold text-white">{kpis.completed}</div>
             <div className="text-[11px] text-slate-400">Marked as completed</div>
           </div>
-          <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl">
+          <div className={`p-3 rounded-xl border transition-colors ${
+            activeKpiFilter === 'COMPLETED'
+              ? 'bg-purple-500 text-white border-purple-400'
+              : 'bg-purple-500/10 text-purple-400 border-purple-500/20 group-hover:bg-purple-500 group-hover:text-white'
+          }`}>
             <CheckCircle2 className="w-6 h-6" />
           </div>
         </div>
@@ -657,15 +745,26 @@ export const Timesheets: React.FC = () => {
                 }`}
               >
                 {/* Day Header */}
-                <div className={`p-3 border-b text-center space-y-0.5 ${
+                <div className={`p-2.5 sm:p-3 border-b flex items-center justify-between ${
                   isToday ? 'bg-purple-950/40 border-purple-500/40' : 'bg-slate-950/40 border-slate-800'
                 }`}>
-                  <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
-                    {day.shortName}
+                  <div className="space-y-0.5 text-left">
+                    <div className={`text-xs font-extrabold uppercase tracking-wide ${isToday ? 'text-purple-400' : 'text-slate-400'}`}>
+                      {day.shortName}
+                    </div>
+                    <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                      {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
+                    </div>
                   </div>
-                  <div className={`text-sm font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
-                    {day.dayNumStr} {day.date.toLocaleString('en-US', { month: 'short' })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); openCreateModalForDate(day.dateStr); }}
+                    className="p-1.5 bg-purple-500/10 hover:bg-purple-500/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg transition-all text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                    title={`Add new plan for ${day.displayLabel}`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Add</span>
+                  </button>
                 </div>
 
                 {/* Day Plans List */}
@@ -729,7 +828,7 @@ export const Timesheets: React.FC = () => {
                       <span className="text-xs text-slate-400 font-medium">No plans for this day</span>
                       <button
                         onClick={() => openCreateModalForDate(day.dateStr)}
-                        className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all"
+                        className="mt-1 flex items-center gap-1 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add Plan</span>
@@ -737,6 +836,21 @@ export const Timesheets: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Day Column Footer Add Action for Occupied Days */}
+                {dayTasks.length > 0 && (
+                  <div className="p-2 border-t border-slate-800/80 bg-slate-950/30">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openCreateModalForDate(day.dateStr); }}
+                      className="w-full py-1.5 bg-slate-900 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/40 text-slate-300 hover:text-purple-300 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                      title={`Add another plan for ${day.displayLabel}`}
+                    >
+                      <Plus className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Add Plan</span>
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -780,11 +894,21 @@ export const Timesheets: React.FC = () => {
                       {cell.dayNum}
                     </span>
 
-                    {dayPlans.length > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300">
-                        {dayPlans.length} {dayPlans.length === 1 ? 'plan' : 'plans'}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {dayPlans.length > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                          {dayPlans.length} {dayPlans.length === 1 ? 'plan' : 'plans'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openCreateModalForDate(cell.dateStr); }}
+                        className="p-1 bg-purple-500/10 hover:bg-purple-500/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[10px] transition-all cursor-pointer"
+                        title={`Add new plan for ${cell.dateStr}`}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Plan Snippets (Max 2 cards) */}
@@ -830,10 +954,27 @@ export const Timesheets: React.FC = () => {
       {activeView === 'list' && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Table className="w-4 h-4 text-purple-400" />
-              <span>Weekly Plan Records ({tasks.length})</span>
-            </h3>
+            <div className="flex items-center gap-3">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Table className="w-4 h-4 text-purple-400" />
+                <span>
+                  {activeKpiFilter === 'TOTAL' && `All Plans (${filteredTasks.length})`}
+                  {activeKpiFilter === 'SCHEDULED' && `Scheduled Visit Records (${filteredTasks.length})`}
+                  {activeKpiFilter === 'PENDING_FOLLOWUP' && `Pending Follow-up Records (${filteredTasks.length})`}
+                  {activeKpiFilter === 'COMPLETED' && `Completed Plans (${filteredTasks.length})`}
+                </span>
+              </h3>
+              {activeKpiFilter !== 'TOTAL' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveKpiFilter('TOTAL')}
+                  className="px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all border border-slate-700"
+                >
+                  Clear Filter (Show All)
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-slate-400 font-mono">Sorted Newest First</span>
           </div>
 
           <div className="overflow-x-auto border border-slate-800 rounded-2xl">
@@ -851,7 +992,7 @@ export const Timesheets: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {tasks.map((t, idx) => (
+                {filteredTasks.map((t, idx) => (
                   <tr key={t.id || idx} className="hover:bg-slate-800/40">
                     <td className="p-3 font-mono font-bold text-purple-400">{t.date}</td>
                     <td className="p-3 font-semibold text-slate-200">{t.assigned_employee_name || 'Self'}</td>
@@ -889,8 +1030,15 @@ export const Timesheets: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-                {tasks.length === 0 && (
-                  <tr><td colSpan={8} className="p-8 text-center text-slate-500 italic">No weekly plan records found for this period.</td></tr>
+                {filteredTasks.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-500 italic">
+                      {activeKpiFilter === 'SCHEDULED' && 'No scheduled visit records found.'}
+                      {activeKpiFilter === 'PENDING_FOLLOWUP' && 'No pending follow-ups found.'}
+                      {activeKpiFilter === 'COMPLETED' && 'No completed plans yet.'}
+                      {activeKpiFilter === 'TOTAL' && 'No weekly plan records found for this period.'}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -1041,7 +1189,7 @@ export const Timesheets: React.FC = () => {
               </div>
 
               <div className="hidden md:block text-[10px] text-slate-500 pt-4 border-t border-slate-800">
-                Theiakshi Enterprise Weekly Planner
+                Theiakshi Weekly Planner
               </div>
             </div>
 

@@ -381,6 +381,12 @@ export class ExpenseRepository {
           status,
           merchant,
           description,
+          attachment_name,
+          receipt_url,
+          bucket,
+          transport_mode,
+          start_location,
+          end_location,
           created_at,
           reviewed_at,
           reviewed_by,
@@ -402,6 +408,12 @@ export class ExpenseRepository {
           status,
           CONCAT(start_point, ' to ', end_point) as merchant,
           purpose as description,
+          NULL as attachment_name,
+          NULL as receipt_url,
+          'Primary' as bucket,
+          NULL as transport_mode,
+          start_point as start_location,
+          end_point as end_location,
           created_at,
           reviewed_at,
           reviewed_by,
@@ -430,6 +442,7 @@ export class ExpenseRepository {
       SELECT
         COUNT(DISTINCT employee_id)::int as employees_with_expenses,
         COALESCE(SUM(amount), 0)::numeric as total_requested_amount,
+        COALESCE(SUM(CASE WHEN status NOT IN ('REJECTED', 'CANCELLED') THEN amount ELSE 0 END), 0)::numeric as total_expense_amount,
         COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0)::numeric as approved_amount,
         COALESCE(SUM(CASE WHEN status IN ('SUBMITTED', 'PENDING') THEN amount ELSE 0 END), 0)::numeric as pending_amount,
         COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN amount ELSE 0 END), 0)::numeric as rejected_amount
@@ -440,12 +453,13 @@ export class ExpenseRepository {
     const cur = curSummaryRes.rows[0] || {};
     const employeesWithExpenses = parseInt(cur.employees_with_expenses || '0', 10);
     const totalRequestedAmount = parseFloat(cur.total_requested_amount || '0');
+    const totalExpenseAmount = parseFloat(cur.total_expense_amount || '0');
     const approvedAmount = parseFloat(cur.approved_amount || '0');
     const pendingAmount = parseFloat(cur.pending_amount || '0');
     const rejectedAmount = parseFloat(cur.rejected_amount || '0');
 
-    const approvedPct = totalRequestedAmount > 0 ? (approvedAmount / totalRequestedAmount) * 100 : 0;
-    const pendingPct = totalRequestedAmount > 0 ? (pendingAmount / totalRequestedAmount) * 100 : 0;
+    const approvedPct = totalExpenseAmount > 0 ? (approvedAmount / totalExpenseAmount) * 100 : (totalRequestedAmount > 0 ? (approvedAmount / totalRequestedAmount) * 100 : 0);
+    const pendingPct = totalExpenseAmount > 0 ? (pendingAmount / totalExpenseAmount) * 100 : (totalRequestedAmount > 0 ? (pendingAmount / totalRequestedAmount) * 100 : 0);
     const rejectedPct = totalRequestedAmount > 0 ? (rejectedAmount / totalRequestedAmount) * 100 : 0;
     const activeEmpPct = totalEmployees > 0 ? (employeesWithExpenses / totalEmployees) * 100 : 0;
 
@@ -457,6 +471,7 @@ export class ExpenseRepository {
         SELECT
           COUNT(DISTINCT employee_id)::int as employees_with_expenses,
           COALESCE(SUM(amount), 0)::numeric as total_requested_amount,
+          COALESCE(SUM(CASE WHEN status NOT IN ('REJECTED', 'CANCELLED') THEN amount ELSE 0 END), 0)::numeric as total_expense_amount,
           COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0)::numeric as approved_amount
         FROM unified_claims
         WHERE claim_date >= $2 AND claim_date <= $3
@@ -466,6 +481,7 @@ export class ExpenseRepository {
         prevData = {
           employeesWithExpenses: parseInt(p.employees_with_expenses || '0', 10),
           totalRequestedAmount: parseFloat(p.total_requested_amount || '0'),
+          totalExpenseAmount: parseFloat(p.total_expense_amount || '0'),
           approvedAmount: parseFloat(p.approved_amount || '0')
         };
       }
@@ -479,7 +495,9 @@ export class ExpenseRepository {
       if (prevData.employeesWithExpenses > 0) {
         yoyEmployeesPct = ((employeesWithExpenses - prevData.employeesWithExpenses) / prevData.employeesWithExpenses) * 100;
       }
-      if (prevData.totalRequestedAmount > 0) {
+      if (prevData.totalExpenseAmount > 0) {
+        yoyTotalAmountPct = ((totalExpenseAmount - prevData.totalExpenseAmount) / prevData.totalExpenseAmount) * 100;
+      } else if (prevData.totalRequestedAmount > 0) {
         yoyTotalAmountPct = ((totalRequestedAmount - prevData.totalRequestedAmount) / prevData.totalRequestedAmount) * 100;
       }
       if (prevData.approvedAmount > 0) {
@@ -492,6 +510,7 @@ export class ExpenseRepository {
       employeesWithExpenses,
       activeEmpPct,
       totalRequestedAmount,
+      totalExpenseAmount,
       approvedAmount,
       approvedPct,
       pendingAmount,
@@ -683,6 +702,12 @@ export class ExpenseRepository {
         uc.status,
         uc.merchant,
         uc.description,
+        uc.attachment_name,
+        uc.receipt_url,
+        uc.bucket,
+        uc.transport_mode,
+        uc.start_location,
+        uc.end_location,
         uc.claim_source,
         uc.created_at as submitted_date,
         uc.reviewed_at,
@@ -709,17 +734,32 @@ export class ExpenseRepository {
       records: dataRes.rows.map(r => ({
         id: r.id,
         expenseType: r.expense_type,
+        expense_type: r.expense_type,
         date: r.claim_date,
+        transaction_date: r.claim_date,
         category: r.category,
+        category_name: r.category,
         amount: parseFloat(r.amount || '0'),
         status: r.status,
         merchant: r.merchant || '',
         description: r.description || '',
+        attachmentName: r.attachment_name || '',
+        attachment_name: r.attachment_name || '',
+        receiptUrl: r.receipt_url || '',
+        receipt_url: r.receipt_url || '',
+        bucket: r.bucket || 'Primary',
+        transportMode: r.transport_mode || '',
+        transport_mode: r.transport_mode || '',
+        startLocation: r.start_location || '',
+        start_location: r.start_location || '',
+        endLocation: r.end_location || '',
+        end_location: r.end_location || '',
         claimSource: r.claim_source,
         submittedDate: r.submitted_date,
         reviewedDate: r.reviewed_at || '',
         approver: r.reviewer_name || '',
-        rejectionReason: r.rejection_reason || ''
+        rejectionReason: r.rejection_reason || '',
+        rejection_reason: r.rejection_reason || ''
       })),
       pagination: {
         total: totalRecords,
@@ -976,6 +1016,7 @@ export class ExpenseRepository {
       ${cte}
       SELECT
         uc.id,
+        uc.employee_id,
         uc.expense_type,
         uc.claim_date,
         uc.category,
@@ -983,6 +1024,15 @@ export class ExpenseRepository {
         uc.status,
         uc.merchant,
         uc.description,
+        uc.attachment_name,
+        uc.receipt_url,
+        uc.bucket,
+        uc.transport_mode,
+        uc.start_location,
+        uc.end_location,
+        uc.rejection_reason,
+        uc.created_at,
+        uc.reviewed_at,
         uc.claim_source,
         CONCAT(emp.first_name, ' ', emp.last_name) as employee_name,
         emp.employee_code
@@ -995,15 +1045,36 @@ export class ExpenseRepository {
 
     return res.rows.map(r => ({
       id: r.id,
+      employeeId: r.employee_id,
+      employee_id: r.employee_id,
       employeeName: r.employee_name,
+      employee_name: r.employee_name,
       employeeCode: r.employee_code,
+      employee_code: r.employee_code,
       expenseType: r.expense_type,
+      expense_type: r.expense_type,
+      claimType: r.expense_type,
       date: r.claim_date,
+      transaction_date: r.claim_date,
       category: r.category,
+      category_name: r.category,
       amount: parseFloat(r.amount || '0'),
       status: r.status,
-      merchant: r.merchant,
-      description: r.description,
+      merchant: r.merchant || '',
+      description: r.description || '',
+      attachmentName: r.attachment_name || '',
+      attachment_name: r.attachment_name || '',
+      receiptUrl: r.receipt_url || '',
+      receipt_url: r.receipt_url || '',
+      bucket: r.bucket || 'Primary',
+      transportMode: r.transport_mode || '',
+      transport_mode: r.transport_mode || '',
+      startLocation: r.start_location || '',
+      start_location: r.start_location || '',
+      endLocation: r.end_location || '',
+      end_location: r.end_location || '',
+      rejectionReason: r.rejection_reason || '',
+      rejection_reason: r.rejection_reason || '',
       claimSource: r.claim_source
     }));
   }
@@ -1095,6 +1166,8 @@ export class ExpenseRepository {
     if (filters.status) {
       if (filters.status === 'PENDING' || filters.status === 'SUBMITTED') {
         whereSql += ` AND uc.status IN ('SUBMITTED', 'PENDING')`;
+      } else if (filters.status === 'ALL' || filters.status === 'TOTAL') {
+        whereSql += ` AND uc.status NOT IN ('REJECTED', 'CANCELLED')`;
       } else {
         whereSql += ` AND uc.status = $${pIdx}`;
         params.push(filters.status);
@@ -1141,6 +1214,12 @@ export class ExpenseRepository {
         uc.status,
         uc.merchant,
         uc.description,
+        uc.attachment_name,
+        uc.receipt_url,
+        uc.bucket,
+        uc.transport_mode,
+        uc.start_location,
+        uc.end_location,
         uc.claim_source,
         uc.created_at as submitted_date,
         uc.reviewed_at,
@@ -1164,21 +1243,39 @@ export class ExpenseRepository {
       records: dataRes.rows.map(r => ({
         id: r.id,
         employeeId: r.employee_id,
+        employee_id: r.employee_id,
         employeeName: r.employee_name,
+        employee_name: r.employee_name,
         employeeCode: r.employee_code,
+        employee_code: r.employee_code,
         department: r.department,
         expenseType: r.expense_type,
+        expense_type: r.expense_type,
         date: r.claim_date,
+        transaction_date: r.claim_date,
         category: r.category,
+        category_name: r.category,
         amount: parseFloat(r.amount || '0'),
         status: r.status,
         merchant: r.merchant || '',
         description: r.description || '',
+        attachmentName: r.attachment_name || '',
+        attachment_name: r.attachment_name || '',
+        receiptUrl: r.receipt_url || '',
+        receipt_url: r.receipt_url || '',
+        bucket: r.bucket || 'Primary',
+        transportMode: r.transport_mode || '',
+        transport_mode: r.transport_mode || '',
+        startLocation: r.start_location || '',
+        start_location: r.start_location || '',
+        endLocation: r.end_location || '',
+        end_location: r.end_location || '',
         claimSource: r.claim_source,
         submittedDate: r.submitted_date,
         reviewedDate: r.reviewed_at || '',
         approver: r.reviewer_name || '',
-        rejectionReason: r.rejection_reason || ''
+        rejectionReason: r.rejection_reason || '',
+        rejection_reason: r.rejection_reason || ''
       })),
       pagination: {
         total: totalRecords,

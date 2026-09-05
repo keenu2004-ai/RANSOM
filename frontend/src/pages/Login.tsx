@@ -184,7 +184,7 @@ export const Login: React.FC = () => {
 
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
-              THEIAKSHI ENTERPRISES
+              THEIAKSHI
             </h1>
             <p className="text-xs font-semibold text-cyan-400 uppercase tracking-[0.2em]">
               ENTERPRISE HUMAN RESOURCE SYSTEM
@@ -210,7 +210,7 @@ export const Login: React.FC = () => {
                   Microsoft Identity Not Linked
                 </h3>
                 <p className="text-xs text-rose-300/90 leading-relaxed">
-                  Your Microsoft account was authenticated successfully, but it is not currently linked to an authorized THEIAKSHI HRMS account.
+                  Your Microsoft account was authenticated successfully, but it is not currently linked to an authorized Theiakshi account.
                 </p>
               </div>
             </div>
@@ -363,14 +363,14 @@ export const Login: React.FC = () => {
             </button>
 
             <p className="text-center text-[11px] text-slate-400 font-medium pt-1">
-              Legacy password login for existing THEIAKSHI HRMS accounts.
+              Legacy password login for existing Theiakshi accounts.
             </p>
           </form>
         )}
 
         {/* Footer info */}
         <div className="text-center pt-2 border-t border-white/5 text-[11px] text-slate-500">
-          © {new Date().getFullYear()} Theiakshi Enterprises. All rights reserved.
+          © {new Date().getFullYear()} Theiakshi. All rights reserved.
         </div>
       </div>
     </div>

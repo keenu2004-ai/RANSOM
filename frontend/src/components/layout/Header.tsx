@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         <div className="hidden lg:flex items-center gap-3">
           <TheiakshiLogo variant="emblem" size="md" />
           <span className="font-extrabold text-base text-white tracking-tight">
-            Theiakshi Enterprises
+            Theiakshi
           </span>
         </div>
       </div>

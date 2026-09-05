@@ -1371,7 +1371,12 @@ export const Expenses: React.FC = () => {
                 <span>Analytics Dashboard</span>
               </button>
               <button
-                onClick={() => setMainViewMode('PERSONAL')}
+                onClick={() => {
+                  setMainViewMode('PERSONAL');
+                  if (isManagerOrAdmin) {
+                    setActiveRoleTab('WORKFORCE');
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                   mainViewMode === 'PERSONAL'
                     ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
@@ -1528,7 +1533,7 @@ export const Expenses: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.totalRequestedAmount || 0).toLocaleString('en-IN')}</div>
+                    <div className="text-xl font-black text-white pt-1">₹{Number(mgmtSummary?.totalExpenseAmount !== undefined ? mgmtSummary.totalExpenseAmount : (mgmtSummary?.totalRequestedAmount || 0)).toLocaleString('en-IN')}</div>
                     <div className="text-[10px] text-purple-400 font-medium flex items-center justify-between">
                       <span>Click to view ALL Ledger</span>
                       <ArrowRight className="w-3 h-3" />
@@ -1956,7 +1961,13 @@ export const Expenses: React.FC = () => {
                               </td>
                               <td className="py-2 px-3 text-center">
                                 <button
-                                  onClick={() => setSelectedEmpId(req.employeeId)}
+                                  onClick={() => {
+                                    if (req.claimSource === 'TRIP' || req.claimType === 'TRIP' || req.expense_type === 'TRIP') {
+                                      loadTripDetails(req.id);
+                                    } else {
+                                      setSelectedSingleExpense(req);
+                                    }
+                                  }}
                                   className="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-900 border border-blue-800/60 text-blue-300 rounded text-[10px] font-bold flex items-center gap-1 mx-auto cursor-pointer"
                                 >
                                   <Eye className="w-3 h-3" />
@@ -2709,23 +2720,46 @@ export const Expenses: React.FC = () => {
           {/* Main Table Tabs */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setClaimCategoryTab('SINGLE_EXPENSES')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    claimCategoryTab === 'SINGLE_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Single Claims (Business & Local Travel)
-                </button>
-                <button
-                  onClick={() => setClaimCategoryTab('TRIP_EXPENSES')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    claimCategoryTab === 'TRIP_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Trip Expenses ({displayedTrips.length})
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setClaimCategoryTab('SINGLE_EXPENSES')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      claimCategoryTab === 'SINGLE_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Single Claims (Business & Local Travel)
+                  </button>
+                  <button
+                    onClick={() => setClaimCategoryTab('TRIP_EXPENSES')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      claimCategoryTab === 'TRIP_EXPENSES' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Trip Expenses ({displayedTrips.length})
+                  </button>
+                </div>
+
+                {isManagerOrAdmin && (
+                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button
+                      onClick={() => setActiveRoleTab('WORKFORCE')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeRoleTab === 'WORKFORCE' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Workforce Claims ({allExpenses.length + allTrips.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveRoleTab('MY_CLAIMS')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeRoleTab === 'MY_CLAIMS' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      My Claims ({myExpenses.length + myTrips.length})
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 text-xs">
@@ -2825,9 +2859,16 @@ export const Expenses: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                    {displayedSingleExpenses.length === 0 && (
+                    {loading ? (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-slate-400 italic font-medium">
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-slate-400 font-medium">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-400" />
+                          <span>Loading claims...</span>
+                        </td>
+                      </tr>
+                    ) : displayedSingleExpenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 9 : 8} className="p-8 text-center text-slate-400 italic font-medium">
                           {statusFilter === 'APPROVED' ? 'No approved expenses yet. Submit an expense claim and it will appear here once approved.' :
                            statusFilter === 'DRAFT' ? 'No draft expenses. Create a claim to save it as a draft.' :
                            statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted expenses currently under review.' :
@@ -2836,7 +2877,7 @@ export const Expenses: React.FC = () => {
                            'No single expense claims found.'}
                         </td>
                       </tr>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>
@@ -2920,9 +2961,16 @@ export const Expenses: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                    {displayedTrips.length === 0 && (
+                    {loading ? (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-400 italic font-medium">
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-slate-400 font-medium">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-400" />
+                          <span>Loading trip claims...</span>
+                        </td>
+                      </tr>
+                    ) : displayedTrips.length === 0 ? (
+                      <tr>
+                        <td colSpan={activeRoleTab === 'WORKFORCE' ? 8 : 7} className="p-8 text-center text-slate-400 italic font-medium">
                           {statusFilter === 'APPROVED' ? 'No approved trip expenses yet.' :
                            statusFilter === 'DRAFT' ? 'No draft trip expenses. Create a trip to save it as a draft.' :
                            statusFilter === 'PENDING' || statusFilter === 'SUBMITTED' ? 'No submitted trip expenses under review.' :
@@ -2931,7 +2979,7 @@ export const Expenses: React.FC = () => {
                            'No trip expense claims found.'}
                         </td>
                       </tr>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>
@@ -3556,39 +3604,96 @@ export const Expenses: React.FC = () => {
       {/* SINGLE EXPENSE DETAIL VIEW MODAL */}
       {selectedSingleExpense && createPortal(
         <div className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl w-[min(calc(100vw-24px),500px)] space-y-4 shadow-2xl z-[5001] max-h-[calc(100vh-24px)] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl w-[min(calc(100vw-24px),540px)] space-y-4 shadow-2xl z-[5001] max-h-[calc(100vh-24px)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-cyan-400 shrink-0" />
                 <span>Expense Claim Details</span>
               </h3>
-              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setSelectedSingleExpense(null)} className="p-1 text-slate-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950 rounded-xl">
+              {/* Employee Banner (if employee info is present) */}
+              {(selectedSingleExpense.employeeName || selectedSingleExpense.employee_name || selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code) && (
+                <div className="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    {(selectedSingleExpense.employeeName || selectedSingleExpense.employee_name || 'EM').substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-white truncate">
+                      {selectedSingleExpense.employeeName || selectedSingleExpense.employee_name}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      {(selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code) && (
+                        <span className="font-mono">{selectedSingleExpense.employeeCode || selectedSingleExpense.employee_code}</span>
+                      )}
+                      {(selectedSingleExpense.departmentName || selectedSingleExpense.department_name || selectedSingleExpense.department) && (
+                        <span>• {selectedSingleExpense.departmentName || selectedSingleExpense.department_name || selectedSingleExpense.department}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                    selectedSingleExpense.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                    selectedSingleExpense.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                    selectedSingleExpense.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                    selectedSingleExpense.status === 'DRAFT' ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                    'bg-amber-950 text-amber-400 border-amber-800'
+                  }`}>
+                    {selectedSingleExpense.status === 'PENDING' ? 'SUBMITTED' : selectedSingleExpense.status}
+                  </span>
+                </div>
+              )}
+
+              {/* Core Financial Details */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800/60">
                 <div>
                   <span className="text-slate-400 block text-[10px]">EXPENSE TYPE</span>
-                  <span className="font-bold text-cyan-400">{selectedSingleExpense.expense_type}</span>
+                  <span className="font-bold text-cyan-400">{selectedSingleExpense.expense_type || selectedSingleExpense.claimType || selectedSingleExpense.expenseType || 'BUSINESS'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">TRANSACTION DATE</span>
-                  <span className="font-mono text-slate-200">{new Date(selectedSingleExpense.transaction_date).toLocaleDateString()}</span>
+                  <span className="font-mono text-slate-200">
+                    {selectedSingleExpense.transaction_date || selectedSingleExpense.date
+                      ? new Date(selectedSingleExpense.transaction_date || selectedSingleExpense.date).toLocaleDateString()
+                      : '-'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">CATEGORY</span>
-                  <span className="font-semibold text-slate-200">{selectedSingleExpense.category || selectedSingleExpense.category_name}</span>
+                  <span className="font-semibold text-slate-200">{selectedSingleExpense.category || selectedSingleExpense.category_name || selectedSingleExpense.categoryName || '-'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">AMOUNT</span>
-                  <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(selectedSingleExpense.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(selectedSingleExpense.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
+                {selectedSingleExpense.bucket && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">BUCKET</span>
+                    <span className="text-slate-300 font-semibold">{selectedSingleExpense.bucket}</span>
+                  </div>
+                )}
+                {!selectedSingleExpense.employeeName && !selectedSingleExpense.employee_name && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">STATUS</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${
+                      selectedSingleExpense.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                      selectedSingleExpense.status === 'REJECTED' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                      selectedSingleExpense.status === 'CANCELLED' ? 'bg-slate-800 text-slate-400 border-slate-700' :
+                      selectedSingleExpense.status === 'DRAFT' ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                      'bg-amber-950 text-amber-400 border-amber-800'
+                    }`}>
+                      {selectedSingleExpense.status === 'PENDING' ? 'SUBMITTED' : selectedSingleExpense.status}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2 p-3 bg-slate-950 rounded-xl">
+              {/* Purpose & Merchant */}
+              <div className="space-y-2 p-3 bg-slate-950 rounded-xl border border-slate-800/60">
                 <div>
                   <span className="text-slate-400 block text-[10px]">PURPOSE / NOTE</span>
-                  <p className="text-slate-200 font-medium">{selectedSingleExpense.description}</p>
+                  <p className="text-slate-200 font-medium whitespace-pre-wrap">{selectedSingleExpense.description || selectedSingleExpense.purpose || '-'}</p>
                 </div>
                 {selectedSingleExpense.merchant && (
                   <div>
@@ -3596,40 +3701,83 @@ export const Expenses: React.FC = () => {
                     <span className="text-slate-200 font-semibold">{selectedSingleExpense.merchant}</span>
                   </div>
                 )}
-                {selectedSingleExpense.expense_type === 'LOCAL_TRAVEL' && (
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">MODE OF TRANSPORT</span>
-                      <span className="text-indigo-300 font-semibold">{selectedSingleExpense.transport_mode}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">START → END LOCATION</span>
-                      <span className="text-slate-200">{selectedSingleExpense.start_location} → {selectedSingleExpense.end_location}</span>
-                    </div>
+                {(selectedSingleExpense.expense_type === 'LOCAL_TRAVEL' || selectedSingleExpense.transport_mode || selectedSingleExpense.start_location) && (
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                    {selectedSingleExpense.transport_mode && (
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">MODE OF TRANSPORT</span>
+                        <span className="text-indigo-300 font-semibold">{selectedSingleExpense.transport_mode}</span>
+                      </div>
+                    )}
+                    {(selectedSingleExpense.start_location || selectedSingleExpense.end_location) && (
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">ROUTE</span>
+                        <span className="text-slate-200">{selectedSingleExpense.start_location || '-'} → {selectedSingleExpense.end_location || '-'}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {selectedSingleExpense.rejection_reason && (
-                <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-xl space-y-1">
-                  <span className="font-bold text-[10px] text-rose-400 block uppercase">REJECTION REASON</span>
-                  <p>{selectedSingleExpense.rejection_reason}</p>
+              {/* Approval Info */}
+              {selectedSingleExpense.status === 'APPROVED' && (selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver || selectedSingleExpense.reviewed_at) && (
+                <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-xl space-y-1 text-[11px]">
+                  <span className="font-bold text-[10px] text-emerald-400 block uppercase">APPROVAL DETAILS</span>
+                  <div className="flex flex-wrap items-center justify-between text-slate-300">
+                    <span>Approved by: <strong>{selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver || 'Manager'}</strong></span>
+                    {selectedSingleExpense.reviewed_at && (
+                      <span className="text-slate-400 font-mono">{new Date(selectedSingleExpense.reviewed_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {selectedSingleExpense.receipt_url && (
-                <div className="p-3 bg-slate-950 rounded-xl flex items-center justify-between gap-2">
+              {/* Rejection Details */}
+              {(selectedSingleExpense.rejection_reason || selectedSingleExpense.rejectionReason) && (
+                <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-xl space-y-1">
+                  <span className="font-bold text-[10px] text-rose-400 block uppercase">REJECTION REASON</span>
+                  <p className="leading-relaxed">{selectedSingleExpense.rejection_reason || selectedSingleExpense.rejectionReason}</p>
+                  {(selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver) && (
+                    <div className="text-[10px] text-slate-400 pt-1">
+                      Reviewed by: {selectedSingleExpense.reviewed_by_name || selectedSingleExpense.approver}
+                      {selectedSingleExpense.reviewed_at && ` on ${new Date(selectedSingleExpense.reviewed_at).toLocaleDateString()}`}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cancellation Reason */}
+              {(selectedSingleExpense.cancellation_reason || selectedSingleExpense.cancellationReason) && (
+                <div className="p-3 bg-slate-800/60 border border-slate-700 text-slate-300 rounded-xl space-y-1">
+                  <span className="font-bold text-[10px] text-slate-400 block uppercase">CANCELLATION REASON</span>
+                  <p>{selectedSingleExpense.cancellation_reason || selectedSingleExpense.cancellationReason}</p>
+                </div>
+              )}
+
+              {/* Attachment / Receipt View (Works for all statuses) */}
+              {(selectedSingleExpense.receipt_url || selectedSingleExpense.receiptUrl || selectedSingleExpense.attachment_url || selectedSingleExpense.attachmentUrl) && (
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span className="font-semibold text-slate-200 truncate">{selectedSingleExpense.attachment_name || 'Receipt Document'}</span>
+                    <span className="font-semibold text-slate-200 truncate">
+                      {selectedSingleExpense.attachment_name || selectedSingleExpense.attachmentName || selectedSingleExpense.receipt_name || selectedSingleExpense.receiptName || 'Receipt / Document'}
+                    </span>
                   </div>
-                  <a href={getSecureFileUrl(selectedSingleExpense.receipt_url)} target="_blank" rel="noreferrer" className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded text-[10px] font-bold shrink-0">View File</a>
+                  <a
+                    href={getSecureFileUrl(selectedSingleExpense.receipt_url || selectedSingleExpense.receiptUrl || selectedSingleExpense.attachment_url || selectedSingleExpense.attachmentUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View File</span>
+                  </a>
                 </div>
               )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-800">
-              {isManagerOrAdmin && user?.employeeId !== selectedSingleExpense.employee_id && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
+              {isManagerOrAdmin && user?.employeeId !== (selectedSingleExpense.employee_id || selectedSingleExpense.employeeId) && (selectedSingleExpense.status === 'SUBMITTED' || selectedSingleExpense.status === 'PENDING') && (
                 <>
                   <button
                     type="button"
@@ -3647,7 +3795,7 @@ export const Expenses: React.FC = () => {
                   </button>
                 </>
               )}
-              {user?.employeeId === selectedSingleExpense.employee_id && ['DRAFT', 'SUBMITTED', 'PENDING'].includes(selectedSingleExpense.status) && (
+              {user?.employeeId === (selectedSingleExpense.employee_id || selectedSingleExpense.employeeId) && ['DRAFT', 'SUBMITTED', 'PENDING'].includes(selectedSingleExpense.status) && (
                 <>
                   <button
                     type="button"

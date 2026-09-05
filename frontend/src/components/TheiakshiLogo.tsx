@@ -24,7 +24,7 @@ export const TheiakshiLogo: React.FC<TheiakshiLogoProps> = ({
     return (
       <img
         src={emblemImg}
-        alt="THEIAKSHI Emblem"
+        alt="Theiakshi Emblem"
         className={`${heights[size]} shrink-0 object-contain select-none ${className}`}
       />
     );
@@ -33,7 +33,7 @@ export const TheiakshiLogo: React.FC<TheiakshiLogoProps> = ({
   return (
     <img
       src={fullLogoImg}
-      alt="THEIAKSHI ENTERPRISES"
+      alt="Theiakshi"
       className={`${heights[size]} shrink-0 object-contain select-none ${className}`}
     />
   );
