@@ -13,6 +13,7 @@ DB_NAME="theiakshi_hrms"
 DB_USER="theiakshi_hrms"
 PASSWORD_FILE="/srv/theiakshi-data/secrets/postgres_password"
 SOURCE_UPLOADS="/srv/app-data/hrms/uploads"
+RETENTION=14
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 
 DB_BACKUP_FILE="${POSTGRES_DIR}/hrms-postgres-${TIMESTAMP}.dump"
@@ -20,10 +21,12 @@ UPLOADS_BACKUP_FILE="${UPLOADS_DIR}/hrms-uploads-${TIMESTAMP}.tar.gz"
 MANIFEST_FILE="${MANIFESTS_DIR}/hrms-backup-${TIMESTAMP}.manifest"
 
 cleanup() {
-    rm -f "${DB_BACKUP_FILE}.tmp" 2>/dev/null || true
-    rm -f "${UPLOADS_BACKUP_FILE}.tmp" 2>/dev/null || true
+    rm -f \
+        "${DB_BACKUP_FILE}.tmp" \
+        "${UPLOADS_BACKUP_FILE}.tmp" \
+        "${MANIFEST_FILE}.tmp"
 }
-trap cleanup EXIT ERR INT TERM
+trap cleanup EXIT
 
 if [ ! -r "${PASSWORD_FILE}" ]; then
     echo "ERROR: Password secret unreadable or missing at ${PASSWORD_FILE}"
@@ -95,9 +98,18 @@ else
     exit 1
 fi
 
-echo "[$(date)] Local backup retention cleanup (14 sets)..."
-find "${POSTGRES_DIR}" -type f -name "hrms-postgres-*.dump" | sort -r | tail -n +15 | xargs -r rm -f
-find "${UPLOADS_DIR}" -type f -name "hrms-uploads-*.tar.gz" | sort -r | tail -n +15 | xargs -r rm -f
-find "${MANIFESTS_DIR}" -type f -name "hrms-backup-*.manifest" | sort -r | tail -n +15 | xargs -r rm -f
+echo "[$(date)] Local backup retention cleanup (${RETENTION} sets)..."
+
+find "${POSTGRES_DIR}" -type f -name "hrms-postgres-*.dump" -printf '%T@ %p\n' \
+    | sort -nr | tail -n +$((RETENTION + 1)) | cut -d' ' -f2- \
+    | while IFS= read -r f; do rm -f "$f"; done
+
+find "${UPLOADS_DIR}" -type f -name "hrms-uploads-*.tar.gz" -printf '%T@ %p\n' \
+    | sort -nr | tail -n +$((RETENTION + 1)) | cut -d' ' -f2- \
+    | while IFS= read -r f; do rm -f "$f"; done
+
+find "${MANIFESTS_DIR}" -type f -name "hrms-backup-*.manifest" -printf '%T@ %p\n' \
+    | sort -nr | tail -n +$((RETENTION + 1)) | cut -d' ' -f2- \
+    | while IFS= read -r f; do rm -f "$f"; done
 
 echo "[$(date)] Backup completed successfully."
