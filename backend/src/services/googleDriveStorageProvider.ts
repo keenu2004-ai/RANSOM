@@ -106,7 +106,59 @@ export class GoogleDriveStorageProvider {
   }
 
   /**
+   * ACTUAL Google Drive Resumable-Session Upload Implementation
+   * Uses the official 2-step resumable upload protocol to stream large files without loading into memory.
+   * Google Drive resumable-session upload; an interrupted invocation fails safely and the next scheduled/manual backup starts a fresh upload.
+   * 1. Initiates session with ?uploadType=resumable
+   * 2. Uploads physical stream to the session URI
+   */
+  static async uploadFileResumable(filename: string, mimeType: string, filePath: string, parentId: string, fileSize: number): Promise<string> {
+    if (!googleDriveAuth) throw new Error('GOOGLE DRIVE AUTH NOT CONFIGURED');
+    
+    try {
+      const authRes = await googleDriveAuth.getAccessToken();
+      const token = authRes.token;
+      if (!token) throw new Error('Failed to get access token for resumable upload');
+
+      const axios = require('axios');
+      const fs = require('fs');
+
+      // 1. Initiate Resumable Session
+      const initRes = await axios.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+        name: filename,
+        parents: [parentId]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+          'X-Upload-Content-Type': mimeType,
+          'X-Upload-Content-Length': fileSize.toString()
+        }
+      });
+
+      const location = initRes.headers['location'];
+      if (!location) throw new Error('No resumable session URI (Location header) returned');
+
+      // 2. Upload File Data
+      const fileStream = fs.createReadStream(filePath);
+      const uploadRes = await axios.put(location, fileStream, {
+        headers: {
+          'Content-Length': fileSize.toString()
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
+
+      return uploadRes.data.id;
+    } catch (err: any) {
+      console.error(`[STORAGE] Google Drive uploadFileResumable failed for ${filename}:`, err.message);
+      throw err;
+    }
+  }
+
+  /**
    * Upload buffer directly to Google Drive
+
    */
   static async uploadBuffer(
     objectPath: string,
@@ -170,13 +222,27 @@ export class GoogleDriveStorageProvider {
   /**
    * Verify if a Google Drive file exists and is not trashed
    */
-  static async verifyFileExists(storageFileId: string): Promise<boolean> {
+  static async verifyFileExists(fileId: string): Promise<boolean> {
     try {
       if (!googleDriveClient) return false;
-      const meta = await this.getFileMetadata(storageFileId);
-      return Boolean(meta && meta.id && !meta.trashed);
+      const res = await googleDriveClient.files.get({ fileId, fields: 'id, trashed' });
+      return !!res.data.id && !res.data.trashed;
     } catch (err) {
       return false;
+    }
+  }
+
+  /**
+   * Get the size of a file in Google Drive in bytes
+   */
+  static async getFileSize(fileId: string): Promise<number> {
+    try {
+      if (!googleDriveClient) throw new Error('GOOGLE DRIVE STORAGE NOT CONFIGURED');
+      const res = await googleDriveClient.files.get({ fileId, fields: 'size' });
+      return res.data.size ? parseInt(res.data.size, 10) : 0;
+    } catch (err: any) {
+      console.error(`[STORAGE] Google Drive getFileSize failed for ${fileId}:`, err.message);
+      throw err;
     }
   }
 
