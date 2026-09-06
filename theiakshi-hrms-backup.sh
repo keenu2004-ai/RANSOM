@@ -7,7 +7,11 @@ set -Eeuo pipefail
 POSTGRES_DIR="/srv/theiakshi-data/backups/postgres"
 UPLOADS_DIR="/srv/theiakshi-data/backups/uploads"
 MANIFESTS_DIR="/srv/theiakshi-data/backups/manifests"
-DB_CONTAINER="theiakshi-postgres"
+CONTAINER="theiakshi-postgres"
+DB_NAME="theiakshi_hrms"
+DB_USER="theiakshi_hrms"
+PASSWORD_FILE="/srv/theiakshi-data/secrets/postgres_password"
+SOURCE_UPLOADS="/srv/app-data/hrms/uploads"
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 
 DB_BACKUP_FILE="${POSTGRES_DIR}/hrms-postgres-${TIMESTAMP}.dump"
@@ -15,14 +19,18 @@ UPLOADS_BACKUP_FILE="${UPLOADS_DIR}/hrms-uploads-${TIMESTAMP}.tar.gz"
 MANIFEST_FILE="${MANIFESTS_DIR}/hrms-backup-${TIMESTAMP}.manifest"
 
 mkdir -p "${POSTGRES_DIR}" "${UPLOADS_DIR}" "${MANIFESTS_DIR}"
-  
+
 echo "[$(date)] Starting database backup..."
-docker exec ${DB_CONTAINER} pg_dump -U theiakshi_hrms -Fc theiakshi_hrms > "${DB_BACKUP_FILE}.tmp"
+docker exec \
+    "$CONTAINER" \
+    sh -c 'PGPASSWORD="$(cat /run/secrets/postgres_password)" exec pg_dump -U "$1" -d "$2" -Fc' \
+    sh "$DB_USER" "$DB_NAME" \
+    > "${DB_BACKUP_FILE}.tmp"
 mv "${DB_BACKUP_FILE}.tmp" "${DB_BACKUP_FILE}"
 echo "[$(date)] Database backup saved to ${DB_BACKUP_FILE}"
 
 echo "[$(date)] Starting uploads backup..."
-tar -czf "${UPLOADS_BACKUP_FILE}.tmp" -C /srv/app-data/hrms uploads
+tar -czf "${UPLOADS_BACKUP_FILE}.tmp" -C "${SOURCE_UPLOADS}" .
 mv "${UPLOADS_BACKUP_FILE}.tmp" "${UPLOADS_BACKUP_FILE}"
 echo "[$(date)] Uploads backup saved to ${UPLOADS_BACKUP_FILE}"
 
