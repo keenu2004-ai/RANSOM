@@ -5,9 +5,7 @@ const connectionString = config.databaseUrl;
 
 export const pool = new Pool({
   connectionString,
-  ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
-    ? false
-    : { rejectUnauthorized: false }
+  ssl: config.databaseSsl ? { rejectUnauthorized: false } : false
 });
 
 pool.on('error', (err) => {

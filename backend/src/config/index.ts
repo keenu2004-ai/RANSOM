@@ -4,6 +4,10 @@ import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), 'backend/.env') });
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
+let databaseSsl = true;
+if (process.env.DATABASE_SSL !== undefined) {
+  databaseSsl = process.env.DATABASE_SSL.toLowerCase() === 'true' || process.env.DATABASE_SSL === '1';
+}
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),
@@ -12,5 +16,6 @@ export const config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback-dev-refresh-secret-theiakshi-2026',
   corsAllowedOrigins: (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,https://ransom-1-npfy.onrender.com,https://theiakshi-hrms-frontend.onrender.com')
     .split(',')
-    .map(origin => origin.trim())
+    .map(origin => origin.trim()),
+  databaseSsl
 };

@@ -25,11 +25,14 @@ if (!connectionString) {
   process.exit(1);
 }
 
+let databaseSsl = true;
+if (process.env.DATABASE_SSL !== undefined) {
+  databaseSsl = process.env.DATABASE_SSL.toLowerCase() === 'true' || process.env.DATABASE_SSL === '1';
+}
+
 const pool = new Pool({
   connectionString,
-  ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
-    ? false
-    : { rejectUnauthorized: false }
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false
 });
 
 function logSync(msg) {
