@@ -1,0 +1,23 @@
+{
+    # Admin email for Let's Encrypt TLS notifications
+    email admin@{$DOMAIN_NAME}
+    
+    # Sensible request limits could be configured here
+}
+
+www.{$DOMAIN_NAME}, {$DOMAIN_NAME} {
+    # Automatic HTTP to HTTPS redirection is built-in to Caddy
+    # Route to the Vite marketing website
+    reverse_proxy website:80
+}
+
+app.{$DOMAIN_NAME} {
+    # Route to the HRMS Frontend
+    reverse_proxy hrms-frontend:80
+}
+
+api.{$DOMAIN_NAME} {
+    # Route to the Backend API
+    # Preserves client IP, handles websockets automatically
+    reverse_proxy backend:5000
+}

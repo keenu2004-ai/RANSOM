@@ -149,7 +149,7 @@ router.post('/:id/reschedule', async (req: AuthenticatedRequest, res: Response, 
       data: result
     });
   } catch (error: any) {
-    return res.status(400).json({ success: false, error: error.message || 'Rescheduling task failed.' });
+    return res.status(400).json({ success: false, error: 'Rescheduling task failed.' });
   }
 });
 
@@ -164,7 +164,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response, next: NextFunc
     );
     return res.status(201).json({ success: true, data: { task, timesheet: task, message: 'Daily task created successfully.' } });
   } catch (error: any) {
-    return res.status(400).json({ success: false, error: error.message || 'Creating task failed.' });
+    return res.status(400).json({ success: false, error: 'Creating task failed.' });
   }
 });
 
@@ -180,7 +180,7 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response, next: NextFu
     );
     return res.status(200).json({ success: true, data: { task, message: 'Daily task updated.' } });
   } catch (error: any) {
-    return res.status(400).json({ success: false, error: error.message || 'Updating task failed.' });
+    return res.status(400).json({ success: false, error: 'Updating task failed.' });
   }
 });
 
@@ -195,7 +195,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response, next: Nex
     );
     return res.status(200).json({ success: true, message: 'Daily task deleted.' });
   } catch (error: any) {
-    return res.status(400).json({ success: false, error: error.message || 'Deleting task failed.' });
+    return res.status(400).json({ success: false, error: 'Deleting task failed.' });
   }
 });
 

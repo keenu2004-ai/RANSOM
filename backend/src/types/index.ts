@@ -5,6 +5,7 @@ export interface AuthUser {
   organizationId: string;
   email: string;
   role: string;
+  auth_version: number;
   employeeId: string | null;
   name?: string;
   displayName?: string;

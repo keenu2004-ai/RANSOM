@@ -94,26 +94,37 @@ export class AttendanceReconciliationService {
    * Initializes background periodic reconciliation job (runs every 15 minutes)
    */
   static startReconciliationCron() {
+    if ((global as any)._isReconciliationSchedulerInitialized) {
+      console.warn('[Attendance Reconciliation Job] Scheduler already initialized. Skipping duplicate initialization.');
+      return;
+    }
+    (global as any)._isReconciliationSchedulerInitialized = true;
+
+    // This is process-local protection and is not a distributed lock.
+    let isReconciliationRunning = false;
+
+    const runReconciliationSafe = async () => {
+      if (isReconciliationRunning) {
+        console.log('[Attendance Reconciliation Job] Previous run still executing. Skipping this interval.');
+        return;
+      }
+      isReconciliationRunning = true;
+      try {
+        const r = await AttendanceReconciliationService.reconcileUnclosedSessions();
+        if (r.reconciledCount > 0) {
+          console.log(`[Attendance Reconciliation Job] Reconciled ${r.reconciledCount} unclosed session(s) to REGULARIZATION_REQUIRED.`);
+        }
+      } catch (err) {
+        console.warn('[Attendance Reconciliation Job Error]:', err);
+      } finally {
+        isReconciliationRunning = false;
+      }
+    };
+
     // Run initial check 10s after startup
-    setTimeout(() => {
-      AttendanceReconciliationService.reconcileUnclosedSessions()
-        .then(r => {
-          if (r.reconciledCount > 0) {
-            console.log(`[Attendance Reconciliation Job] Reconciled ${r.reconciledCount} unclosed session(s) to REGULARIZATION_REQUIRED.`);
-          }
-        })
-        .catch(err => console.warn('[Attendance Reconciliation Job Error]:', err));
-    }, 10000);
+    setTimeout(runReconciliationSafe, 10000);
 
     // Schedule periodic execution every 15 minutes
-    setInterval(() => {
-      AttendanceReconciliationService.reconcileUnclosedSessions()
-        .then(r => {
-          if (r.reconciledCount > 0) {
-            console.log(`[Attendance Reconciliation Job] Reconciled ${r.reconciledCount} unclosed session(s) to REGULARIZATION_REQUIRED.`);
-          }
-        })
-        .catch(err => console.warn('[Attendance Reconciliation Job Error]:', err));
-    }, 15 * 60 * 1000);
+    setInterval(runReconciliationSafe, 15 * 60 * 1000);
   }
 }

@@ -99,24 +99,8 @@ export class AttendanceLeaveDeductionService {
 
       const plLeaveTypeId = ltRes.rows[0].id;
 
-      // 3. Lock or fetch existing automatic deduction tracking record
-      const trackRes = await dbClient.query(`
-        SELECT * FROM attendance_automatic_leave_deductions
-        WHERE organization_id = $1 AND employee_id = $2 AND leave_type_id = $3 AND period_year = $4
-        FOR UPDATE
-      `, [organizationId, employeeId, plLeaveTypeId, startYear]);
-
-      const currentTrack = trackRes.rows[0] || null;
-      const currentPLDeducted = currentTrack ? parseFloat(currentTrack.total_pl_deducted || '0') : 0.0;
-
-      const delta = desiredTotalPLDeduction - currentPLDeducted;
-
-      if (Math.abs(delta) < 0.01) {
-        // Entitlement is up to date. No adjustment required.
-        return { slCount, hdCount, desiredTotalPLDeduction, currentPLDeducted, appliedDelta: 0 };
-      }
-
-      // 4. Lock employee leave_balances record for PL
+      // 3. Lock employee leave_balances record for PL first (Deterministic Concurrency Lock)
+      // This enforces serialization for the same employee+org+leavetype so attendance_automatic_leave_deductions INSERT never races.
       const balRes = await dbClient.query(`
         SELECT lb.id, lb.used, lb.pending, lt.annual_quota as org_quota
         FROM leave_balances lb
@@ -133,6 +117,23 @@ export class AttendanceLeaveDeductionService {
       const orgQuota = parseFloat(plBal.org_quota || '0');
       const used = parseFloat(plBal.used || '0');
       const pending = parseFloat(plBal.pending || '0');
+
+      // 4. Lock or fetch existing automatic deduction tracking record
+      const trackRes = await dbClient.query(`
+        SELECT * FROM attendance_automatic_leave_deductions
+        WHERE organization_id = $1 AND employee_id = $2 AND leave_type_id = $3 AND period_year = $4
+        FOR UPDATE
+      `, [organizationId, employeeId, plLeaveTypeId, startYear]);
+
+      const currentTrack = trackRes.rows[0] || null;
+      const currentPLDeducted = currentTrack ? parseFloat(currentTrack.total_pl_deducted || '0') : 0.0;
+
+      const delta = desiredTotalPLDeduction - currentPLDeducted;
+
+      if (Math.abs(delta) < 0.01) {
+        // Entitlement is up to date. No adjustment required.
+        return { slCount, hdCount, desiredTotalPLDeduction, currentPLDeducted, appliedDelta: 0 };
+      }
 
       // Fetch existing employee leave adjustments sum to compute current available balance
       const adjRes = await dbClient.query(`

@@ -553,7 +553,11 @@ export class TripExpenseRepository {
 
   // SUPER_ADMIN Permanent Delete for Trip Claim & All Child Records
   static async deleteSuperAdmin(id: string, organizationId: string, userId: string) {
-    return withTransaction(async (client) => {
+    // Collect storage paths for post-commit cleanup
+    let attachmentPaths: { fileId: string; objectPath: string }[] = [];
+    let inlineReceiptPaths: string[] = [];
+
+    const result = await withTransaction(async (client) => {
       // 1. Fetch parent trip row with lock
       const tripRes = await client.query(`
         SELECT 
@@ -582,7 +586,7 @@ export class TripExpenseRepository {
       const otherChildIds = otherRes.rows.map(r => r.id);
       const allChildIds = [...travelChildIds, ...accomChildIds, ...otherChildIds].map(String);
 
-      // 3. Find attachments in attachments table
+      // 3. Collect attachment storage paths for post-commit cleanup
       const attQuery = `
         SELECT * FROM attachments 
         WHERE organization_id = $1 
@@ -592,29 +596,14 @@ export class TripExpenseRepository {
         )
       `;
       const attRes = await client.query(attQuery, [organizationId, String(id), allChildIds.length > 0 ? allChildIds : ['0']]);
+      attachmentPaths = attRes.rows.map((att: any) => ({ fileId: att.storage_file_id, objectPath: att.object_path }));
 
-      for (const att of attRes.rows) {
-        try {
-          await StorageService.deleteObject(att.storage_file_id, att.object_path);
-        } catch (stgErr) {
-          console.warn('StorageService deleteObject failed for attachment:', att.object_path, stgErr);
-        }
-      }
-
-      // Also clean up inline receipt_url files if stored on child expense rows
-      const inlineReceipts = [
+      // Collect inline receipt_url paths for post-commit cleanup
+      inlineReceiptPaths = [
         ...travelRes.rows.map(r => r.receipt_url),
         ...accomRes.rows.map(r => r.receipt_url),
         ...otherRes.rows.map(r => r.receipt_url)
-      ].filter(Boolean);
-
-      for (const receiptPath of inlineReceipts) {
-        if (typeof receiptPath === 'string' && (receiptPath.startsWith('organizations/') || receiptPath.includes('/trips/'))) {
-          try {
-            await StorageService.deleteObject(receiptPath);
-          } catch (_) {}
-        }
-      }
+      ].filter((p): p is string => typeof p === 'string' && (p.startsWith('organizations/') || p.includes('/trips/')));
 
       // 4. Delete attachment metadata rows
       await client.query(`
@@ -667,5 +656,23 @@ export class TripExpenseRepository {
         oldValuesSnapshot
       };
     });
+
+    // Post-commit: purge storage files (non-fatal; orphaned files are acceptable, orphaned data is not)
+    if (result) {
+      for (const sp of attachmentPaths) {
+        try {
+          await StorageService.deleteObject(sp.fileId, sp.objectPath);
+        } catch (stgErr) {
+          console.warn('Post-commit StorageService deleteObject failed for trip attachment (orphaned file may remain):', sp.objectPath, stgErr);
+        }
+      }
+      for (const receiptPath of inlineReceiptPaths) {
+        try {
+          await StorageService.deleteObject(receiptPath);
+        } catch (_) {}
+      }
+    }
+
+    return result;
   }
 }

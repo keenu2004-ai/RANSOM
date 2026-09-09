@@ -152,6 +152,14 @@ export class MicrosoftAuthService {
 
     // 5. Tenant ID Validation & Personal Account Locking
     const tid = payload.tid;
+    
+    if (!tid) {
+      const err: any = new Error('Microsoft token is missing mandatory tenant identifier (tid).');
+      err.statusCode = 403;
+      err.code = 'MISSING_TID';
+      throw err;
+    }
+
     if (tid === '9188040d-6c67-4c5b-b112-36a304b66dad' || tid === 'consumers') {
       const err: any = new Error('Personal Microsoft accounts are not authorized. Please sign in with your company Microsoft 365 work account.');
       err.statusCode = 403;
@@ -159,7 +167,7 @@ export class MicrosoftAuthService {
       throw err;
     }
 
-    if (configuredTenantId && configuredTenantId !== 'common' && tid && tid !== configuredTenantId) {
+    if (configuredTenantId && configuredTenantId !== 'common' && tid !== configuredTenantId) {
       const err: any = new Error(`Unauthorized Microsoft tenant directory. Account belongs to tenant '${tid}', expected '${configuredTenantId}'.`);
       err.statusCode = 403;
       err.code = 'UNAUTHORIZED_TENANT';
@@ -167,15 +175,28 @@ export class MicrosoftAuthService {
     }
 
     // 6. Issuer Validation
-    if (configuredTenantId && configuredTenantId !== 'common' && payload.iss) {
-      const validIssuer1 = `https://login.microsoftonline.com/${configuredTenantId}/v2.0`;
-      const validIssuer2 = `https://sts.windows.net/${configuredTenantId}/`;
-      if (!payload.iss.startsWith(validIssuer1) && !payload.iss.startsWith(validIssuer2)) {
-        const err: any = new Error(`Invalid Microsoft token issuer '${payload.iss}'. Expected tenant issuer for '${configuredTenantId}'.`);
-        err.statusCode = 403;
-        err.code = 'INVALID_ISSUER';
-        throw err;
-      }
+    if (!configuredTenantId || configuredTenantId === 'common') {
+      const err: any = new Error('Server configuration error: Production requires a specific Microsoft Tenant ID.');
+      err.statusCode = 500;
+      err.code = 'CONFIG_ERROR';
+      throw err;
+    }
+
+    if (!payload.iss) {
+      const err: any = new Error('Microsoft token is missing mandatory issuer (iss) claim.');
+      err.statusCode = 403;
+      err.code = 'MISSING_ISSUER';
+      throw err;
+    }
+
+    const validIssuer1 = `https://login.microsoftonline.com/${configuredTenantId}/v2.0`;
+    const validIssuer2 = `https://sts.windows.net/${configuredTenantId}/`;
+    
+    if (payload.iss !== validIssuer1 && payload.iss !== validIssuer2) {
+      const err: any = new Error(`Invalid Microsoft token issuer. Expected tenant issuer for '${configuredTenantId}'.`);
+      err.statusCode = 403;
+      err.code = 'INVALID_ISSUER';
+      throw err;
     }
 
     // 7. Identity Claims Validation

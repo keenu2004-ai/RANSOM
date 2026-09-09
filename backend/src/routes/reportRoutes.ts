@@ -234,7 +234,7 @@ router.get('/archives/:id/download', async (req: AuthenticatedRequest, res: Resp
 
     const exists = await StorageService.verifyObjectExists(archive.storage_file_id, archive.object_path);
     if (!exists) {
-      await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1", [archive.id]).catch(() => null);
+      await query("UPDATE report_archives SET storage_status = 'BROKEN' WHERE id = $1 AND organization_id = $2", [archive.id, organizationId]).catch(() => null);
       return res.status(404).json({
         success: false,
         error: 'Archived file is unavailable in storage. Please regenerate this report.',
@@ -383,12 +383,8 @@ router.delete('/archives/:id', requireRole('SUPER_ADMIN'), async (req: Authentic
       storageDeleted: true
     });
   } catch (error: any) {
-    if (error && error.status) {
-      return res.status(error.status).json({
-        success: false,
-        error: error.message,
-        code: error.code || 'DELETE_FAILED'
-      });
+    if (error && error.status && !error.statusCode) {
+      error.statusCode = error.status;
     }
     return next(error);
   }

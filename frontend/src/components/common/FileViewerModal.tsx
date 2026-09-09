@@ -99,11 +99,10 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
 
     try {
       const secureUrl = getSecureFileUrl(fileUrl);
-      const token = localStorage.getItem('theiakshi_auth_token');
 
       const response = await fetch(secureUrl, {
         method: 'GET',
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        credentials: 'include'
       });
 
       if (!response.ok) {

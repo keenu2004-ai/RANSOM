@@ -353,7 +353,7 @@ router.post('/trips/:id/submit', requireEmployee, async (req: AuthenticatedReque
     const submittedTrip = await TripExpenseRepository.submitTrip(req.params.id, organizationId, employeeId);
     return res.status(200).json({ success: true, data: { trip: submittedTrip, message: 'Trip Expense submitted successfully for approval.' } });
   } catch (error: any) {
-    return res.status(400).json({ success: false, error: error.message || 'Failed to submit Trip Expense.', code: 'TRIP_SUBMIT_ERROR' });
+    return res.status(400).json({ success: false, error: 'Failed to submit Trip Expense.', code: 'TRIP_SUBMIT_ERROR' });
   }
 });
 

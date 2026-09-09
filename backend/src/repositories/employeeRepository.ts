@@ -195,8 +195,11 @@ export class EmployeeRepository {
       `, [userId, roleRes.rows[0].id]);
 
       // 2. Generate employee code if not provided
+      // Lock the organizations row to serialize concurrent employee code generation.
+      // This is process-local protection only; distributed locking is not required for the current deployment.
       let empCode = data.employee_code;
       if (!empCode) {
+        await client.query('SELECT id FROM organizations WHERE id = $1 FOR UPDATE', [data.organization_id]);
         const countRes = await client.query('SELECT COUNT(*)::int as count FROM employees WHERE organization_id = $1', [data.organization_id]);
         const num = (countRes.rows[0].count + 1).toString().padStart(3, '0');
         empCode = `EMP-${num}`;
@@ -368,11 +371,11 @@ export class EmployeeRepository {
 
       const updatedEmp = updateEmpRes.rows[0];
 
-      // Synchronize linked user account status in the SAME transaction
+      // Synchronize linked user account status in the SAME transaction and increment auth_version
       if (emp.user_id) {
         await client.query(`
           UPDATE users
-          SET status = $2, updated_at = CURRENT_TIMESTAMP
+          SET status = $2, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
           WHERE id = $1 AND organization_id = $3
         `, [emp.user_id, status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE', organizationId]);
       }
@@ -409,26 +412,25 @@ export class EmployeeRepository {
     const emp = empRes.rows[0];
     const fullName = `${emp.first_name} ${emp.last_name}`;
 
-    // 3. Purge GCS files and attachment metadata for employee
+    // 3. Collect storage paths for post-commit cleanup (do NOT delete before DB commit)
+    let storagePaths: { fileId: string; objectPath: string }[] = [];
+    let empPrefix = '';
     try {
       const orgRes = await query('SELECT code FROM organizations WHERE id = $1', [organizationId]);
       const orgCode = orgRes.rows[0]?.code || 'default';
 
       const attRes = await query('SELECT * FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
-      for (const att of attRes.rows) {
-        await StorageService.deleteObject(att.storage_file_id, att.object_path);
-      }
-      await query('DELETE FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
-
-      // Purge GCS employee prefix
-      const empPrefix = `organizations/${orgCode}/employees/${emp.employee_code}/`;
-      await StorageService.purgePrefix(empPrefix);
-    } catch (gcsErr) {
-      console.warn('GCS employee file purge warning:', gcsErr);
+      storagePaths = attRes.rows.map((att: any) => ({ fileId: att.storage_file_id, objectPath: att.object_path }));
+      empPrefix = `organizations/${orgCode}/employees/${emp.employee_code}/`;
+    } catch (collectErr) {
+      console.warn('Failed to collect storage paths for employee delete:', collectErr);
     }
 
     // 4. Execute atomic database deletion in transaction
-    return withTransaction(async (client) => {
+    const result = await withTransaction(async (client) => {
+      // Delete attachment metadata within the transaction
+      await client.query('DELETE FROM attachments WHERE organization_id = $1 AND employee_id = $2', [organizationId, id]);
+
       // Populate snapshots on historical tables before removing employee row
       await client.query(`UPDATE attendance SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
       await client.query(`UPDATE leave_requests SET employee_name_snapshot = $1, employee_code_snapshot = $2 WHERE employee_id = $3 AND employee_name_snapshot IS NULL`, [fullName, emp.employee_code, id]);
@@ -462,6 +464,20 @@ export class EmployeeRepository {
 
       return true;
     });
+
+    // 5. Post-commit: purge GCS files (non-fatal; orphaned files are acceptable, orphaned data is not)
+    try {
+      for (const sp of storagePaths) {
+        await StorageService.deleteObject(sp.fileId, sp.objectPath);
+      }
+      if (empPrefix) {
+        await StorageService.purgePrefix(empPrefix);
+      }
+    } catch (gcsErr) {
+      console.warn('Post-commit GCS employee file purge warning (orphaned files may remain):', gcsErr);
+    }
+
+    return result;
   }
 
   static async getOrgChart(organizationId: string) {

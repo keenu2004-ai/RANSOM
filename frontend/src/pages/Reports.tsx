@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import {
   BarChart3, Download, Calendar, Filter, FileSpreadsheet,
   CheckCircle2, Clock, PlayCircle, XCircle, ArrowRightLeft, DollarSign, Users, Archive, FileCheck, Loader2, Trash2, AlertTriangle
@@ -8,7 +9,7 @@ import {
 
 export const Reports: React.FC = () => {
   const { user } = useAuth();
-  const isEmployee = user?.role === 'EMPLOYEE';
+  const isEmployee = !hasPermission(user?.role, 'REPORTS_WORKFORCE_VIEW');
 
   // State for Departmental Headcount Report
   const [report, setReport] = useState<any[]>([]);

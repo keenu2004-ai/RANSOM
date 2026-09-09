@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { config } from './config';
 import { query } from './db';
 import { errorHandler } from './middleware/errorHandler';
@@ -13,6 +14,7 @@ app.set('trust proxy', 1);
 
 // Security Headers
 app.use(helmet());
+app.use(cookieParser());
 
 // Explicit CORS setup
 const allowedOrigins = config.corsAllowedOrigins.map(o => o.trim().replace(/\/$/, ''));
@@ -125,7 +127,7 @@ app.get('/api/health', async (req, res, next) => {
       status: 'error',
       service: 'theiakshi-enterprise-hrms',
       database: 'disconnected',
-      error: error.message,
+      error: 'Database connection unavailable',
       code: 'DATABASE_CONNECTION_ERROR'
     });
   }

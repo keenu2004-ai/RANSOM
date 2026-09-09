@@ -22,11 +22,18 @@ export function errorHandler(
     message = err.errors.map(e => e.message).join('. ');
   }
 
+  // Internal log keeps full diagnostic message
   console.error(`[ERROR ${code} ${statusCode}] ${req.method} ${req.url}:`, message);
+
+  // Harden: Do not expose raw error messages for 5xx exceptions
+  let clientMessage = message;
+  if (statusCode >= 500) {
+    clientMessage = 'An unexpected error occurred on the server.';
+  }
 
   return res.status(statusCode).json({
     success: false,
-    error: message,
+    error: clientMessage,
     code
   });
 }

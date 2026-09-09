@@ -65,7 +65,7 @@ router.put('/:id/role', requirePermission('USER_ROLE_ASSIGN'), async (req: Authe
     if (error.statusCode === 403 || error.code === 'PERMISSION_DENIED') {
       return res.status(403).json({
         success: false,
-        error: error.message || 'Permission denied for user role assignment.',
+        error: 'Permission denied for user role assignment.',
         code: 'PERMISSION_DENIED'
       });
     }
@@ -99,7 +99,7 @@ router.put('/:id/status', requirePermission('USER_UPDATE'), async (req: Authenti
     });
   } catch (error: any) {
     if (error.statusCode === 403) {
-      return res.status(403).json({ success: false, error: error.message });
+      return res.status(403).json({ success: false, error: 'Permission denied for updating account status.' });
     }
     return next(error);
   }
@@ -130,10 +130,10 @@ const handleAdminResetPassword = async (req: AuthenticatedRequest, res: Response
     });
   } catch (error: any) {
     if (error.statusCode === 403 || error.code === 'PERMISSION_DENIED') {
-      return res.status(403).json({ success: false, error: error.message || 'Permission denied for user password reset.' });
+      return res.status(403).json({ success: false, error: 'Permission denied for user password reset.' });
     }
     if (error.statusCode === 404) {
-      return res.status(404).json({ success: false, error: error.message || 'User account not found.' });
+      return res.status(404).json({ success: false, error: 'User account not found.' });
     }
     return next(error);
   }

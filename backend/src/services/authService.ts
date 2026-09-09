@@ -12,25 +12,18 @@ export class AuthService {
     const claims = await MicrosoftAuthService.verifyMicrosoftToken(microsoftToken);
 
     // STEP 1 — Microsoft OID Primary Lookup
-    let userWithRole = await UserRepository.findByMicrosoftOid(claims.oid);
+    let userWithRole = await UserRepository.findByMicrosoftOid(claims.oid, claims.tid);
 
     const localParts = claims.candidateEmails.map(e => e.split('@')[0].toLowerCase().trim()).filter(Boolean);
 
     console.log('AUTH_DIAGNOSTIC', {
-      oid: claims.oid,
-      tid: claims.tid,
-      aud: claims.aud || process.env.MICROSOFT_CLIENT_ID,
-      preferred_username: claims.preferred_username,
-      email: claims.email,
-      upn: claims.upn,
-      mail: claims.mail,
-      candidateEmails: claims.candidateEmails
+      status: 'OAUTH_VERIFIED',
+      hasCandidateEmails: claims.candidateEmails && claims.candidateEmails.length > 0
     });
 
     console.log('OID_LOOKUP', {
-      oid: claims.oid,
-      matchedUserId: userWithRole ? userWithRole.id : null,
-      matchedUserEmail: userWithRole ? userWithRole.email : null
+      matched: !!userWithRole,
+      matchedUserId: userWithRole ? userWithRole.id : null
     });
 
     // STEP 2 — Explicit Microsoft Login Email / UPN mapping lookup
@@ -44,11 +37,8 @@ export class AuthService {
     }
 
     console.log('MICROSOFT_LOGIN_EMAIL_LOOKUP', {
-      candidateEmails: claims.candidateEmails,
-      matchedUserId: userWithRole ? userWithRole.id : null,
-      matchedUserEmail: userWithRole ? userWithRole.email : null,
-      matchedEmployeeId: userWithRole ? userWithRole.employee_id : null,
-      matchedEmployeeName: userWithRole ? (userWithRole.employee_name || `${userWithRole.first_name || ''} ${userWithRole.last_name || ''}`.trim()) : null
+      matched: loginEmailMatched,
+      matchedUserId: userWithRole ? userWithRole.id : null
     });
 
 
@@ -96,6 +86,7 @@ export class AuthService {
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
       role: canonicalRole,
+      auth_version: userWithRole.auth_version || 1,
       employeeId: employeeId,
       name: resolvedName,
       displayName: resolvedName,
@@ -190,6 +181,7 @@ export class AuthService {
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
       role: canonicalRole,
+      auth_version: userWithRole.auth_version || 1,
       employeeId: employeeId,
       name: resolvedName,
       displayName: resolvedName,
@@ -224,6 +216,7 @@ export class AuthService {
       organizationId: userWithRole.organization_id,
       email: userWithRole.email,
       role: (userWithRole.role || userWithRole.role_name || 'EMPLOYEE') as any,
+      auth_version: userWithRole.auth_version || 1,
       employeeId: employeeId,
       name: resolvedName,
       displayName: resolvedName,

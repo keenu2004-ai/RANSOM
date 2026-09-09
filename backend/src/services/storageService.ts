@@ -102,6 +102,57 @@ export class StorageService {
     };
   }
 
+  static async uploadStream(
+    objectPath: string,
+    stream: NodeJS.ReadableStream,
+    mimeType: string
+  ): Promise<{
+    objectPath: string;
+    storageFileId?: string;
+    storageFolderId?: string;
+  }> {
+    if (STORAGE_PROVIDER === 'google_drive') {
+      if (!this.isDriveConfigured()) {
+        throw new Error('GOOGLE DRIVE STORAGE NOT CONFIGURED');
+      }
+
+      return GoogleDriveStorageProvider.uploadStream(
+        objectPath,
+        stream,
+        mimeType
+      );
+    }
+
+    const localFilePath = safeObjectPath(objectPath);
+    const dir = path.dirname(localFilePath);
+    fs.mkdirSync(dir, { recursive: true });
+
+    return new Promise((resolve, reject) => {
+      const writeStream = fs.createWriteStream(localFilePath);
+      stream.pipe(writeStream);
+      
+      writeStream.on('finish', () => {
+        resolve({
+          objectPath,
+          storageFileId: undefined,
+          storageFolderId: undefined
+        });
+      });
+      
+      writeStream.on('error', (err) => {
+        reject(err);
+      });
+
+      stream.on('error', (err) => {
+        writeStream.destroy(err);
+        if (fs.existsSync(localFilePath)) {
+          try { fs.unlinkSync(localFilePath); } catch (e) {}
+        }
+        reject(err);
+      });
+    });
+  }
+
   static async downloadStream(
     storageFileId?: string | null,
     objectPath?: string | null

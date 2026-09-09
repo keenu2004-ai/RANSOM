@@ -333,19 +333,16 @@ export class ExpenseRepository {
   }
 
   static async deleteSuperAdmin(id: string, organizationId: string, userId: string) {
-    return withTransaction(async (client) => {
+    // Collect storage paths for post-commit cleanup
+    let storagePaths: { fileId: string; objectPath: string }[] = [];
+
+    const result = await withTransaction(async (client) => {
       const expRes = await client.query('SELECT * FROM expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
       if (expRes.rows.length === 0) return null;
       const expense = expRes.rows[0];
 
       const attRes = await client.query("SELECT * FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2", [organizationId, id]);
-      for (const att of attRes.rows) {
-        try {
-          await StorageService.deleteObject(att.storage_file_id, att.object_path);
-        } catch (stgErr) {
-          console.warn('StorageService deleteObject failed for expense attachment:', att.object_path, stgErr);
-        }
-      }
+      storagePaths = attRes.rows.map((att: any) => ({ fileId: att.storage_file_id, objectPath: att.object_path }));
 
       await client.query("DELETE FROM attachments WHERE organization_id = $1 AND entity_type = 'EXPENSE' AND entity_id = $2::text", [organizationId, id]);
       await client.query('DELETE FROM expenses WHERE id = $1 AND organization_id = $2', [id, organizationId]);
@@ -357,6 +354,19 @@ export class ExpenseRepository {
 
       return expense;
     });
+
+    // Post-commit: purge storage files (non-fatal; orphaned files are acceptable, orphaned data is not)
+    if (result) {
+      for (const sp of storagePaths) {
+        try {
+          await StorageService.deleteObject(sp.fileId, sp.objectPath);
+        } catch (stgErr) {
+          console.warn('Post-commit StorageService deleteObject failed for expense attachment (orphaned file may remain):', sp.objectPath, stgErr);
+        }
+      }
+    }
+
+    return result;
   }
 
   // ============================================================

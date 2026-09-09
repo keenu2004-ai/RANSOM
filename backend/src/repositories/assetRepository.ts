@@ -124,8 +124,11 @@ export class AssetRepository {
   static async create(organizationId: string, userId: string, data: any) {
     return withTransaction(async (client) => {
       // Auto-generate Asset Code if not provided
+      // Lock the organizations row to serialize concurrent asset code generation.
+      // This is process-local protection only; distributed locking is not required for the current deployment.
       let assetCode = data.assetCode ? data.assetCode.trim() : '';
       if (!assetCode) {
+        await client.query('SELECT id FROM organizations WHERE id = $1 FOR UPDATE', [organizationId]);
         const countRes = await client.query(`SELECT COUNT(*)::int as count FROM assets WHERE organization_id = $1`, [organizationId]);
         const seq = (countRes.rows[0]?.count || 0) + 1;
         assetCode = `TE-AST-${String(seq).padStart(4, '0')}`;

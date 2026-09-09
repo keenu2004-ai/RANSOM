@@ -565,19 +565,31 @@ export const Expenses: React.FC = () => {
   // Helper to upload rawFile to Google Drive or resolve clean receipt URL
   const resolveAttachmentUrl = async (folder: string): Promise<{ receiptUrl: string | null; attachmentName: string | null }> => {
     if (rawFile) {
-      const safeFilename = rawFile.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const uniqueId = Math.random().toString(36).substring(2, 10);
-      const objectPath = `organizations/expenses/${folder.toLowerCase()}/${uniqueId}_${safeFilename}`;
+      // Step 1: Initialize Upload securely to get the JWT uploadToken
+      const initRes = await apiFetch<{ uploadUrl: string; token: string }>('/files/upload-init', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'EXPENSE',
+          entityId: null,
+          filename: rawFile.name,
+          mimeType: rawFile.type,
+          fileSize: rawFile.size
+        })
+      });
 
-      const token = localStorage.getItem('theiakshi_auth_token') || '';
-      const uploadUrl = getApiUrl(`/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`);
+      if (!initRes || !initRes.token || !initRes.uploadUrl) {
+        throw new Error('Failed to initialize secure upload.');
+      }
+
+      // Step 2: Stream the file direct to storage
+      const uploadUrl = getApiUrl(initRes.uploadUrl);
 
       const uploadRes = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': rawFile.type,
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          'Content-Type': rawFile.type
         },
+        credentials: 'include',
         body: rawFile
       });
 
@@ -587,21 +599,18 @@ export const Expenses: React.FC = () => {
       }
 
       const uploadData = await uploadRes.json();
-      if (!uploadData.success || !uploadData.objectPath) {
-        throw new Error(uploadData.error || 'Failed to upload attachment file to Google Drive.');
+      if (!uploadData.success) {
+        throw new Error(uploadData.error || 'Failed to upload attachment file to storage.');
       }
 
+      // Step 3: Finalize the upload
       const completeRes = await apiFetch<{ attachment: { id: string } }>('/files/upload-complete', {
         method: 'POST',
         body: JSON.stringify({
-          entityType: 'EXPENSE',
-          entityId: null,
-          originalFilename: rawFile.name,
-          objectPath: uploadData.objectPath,
-          mimeType: rawFile.type,
-          fileSize: rawFile.size,
+          token: initRes.token,
           storageFileId: uploadData.storageFileId || null,
-          storageFolderId: uploadData.storageFolderId || null
+          storageFolderId: uploadData.storageFolderId || null,
+          actualSize: uploadData.actualSize || rawFile.size
         })
       });
 

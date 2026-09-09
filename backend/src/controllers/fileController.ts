@@ -6,6 +6,9 @@ import { AuthenticatedRequest } from '../types';
 import { StorageService } from '../services/storageService';
 import { AttachmentRepository } from '../repositories/attachmentRepository';
 import { query } from '../db';
+import jwt from 'jsonwebtoken';
+import { config } from '../config';
+import { StreamingFileValidator } from '../utils/streamingFileValidator';
 
 const ALLOWED_MIME_TYPES: Record<string, number> = {
   'application/pdf': 25 * 1024 * 1024, // 25 MB
@@ -22,10 +25,10 @@ export class FileController {
       const organizationId = req.user!.organizationId;
       const { entityType, entityId, filename, mimeType, fileSize } = req.body;
 
-      if (!filename || !mimeType || !fileSize) {
+      if (!filename || !mimeType || !fileSize || !entityType) {
         return res.status(400).json({
           success: false,
-          error: 'filename, mimeType, and fileSize are required.',
+          error: 'filename, mimeType, fileSize, and entityType are required.',
           code: 'VALIDATION_ERROR'
         });
       }
@@ -67,13 +70,31 @@ export class FileController {
       const folder = (entityType || 'expenses').toLowerCase();
       const objectPath = `organizations/${orgCode}/${folder}/${entityId || 'general'}/${uniqueId}_${safeFilename}`;
 
-      const uploadUrl = `/api/files/upload-direct?objectPath=${encodeURIComponent(objectPath)}`;
+      const uploadId = crypto.randomUUID();
+
+      const uploadTokenPayload = {
+        typ: 'upload',
+        uploadId,
+        userId: req.user!.userId,
+        organizationId,
+        entityType,
+        entityId: entityId || null,
+        objectPath,
+        mimeType,
+        maxSize: maxAllowedSize,
+        originalFilename: filename
+      };
+
+      const token = jwt.sign(uploadTokenPayload, config.jwtSecret, { expiresIn: '15m' });
+      const uploadUrl = `/api/files/upload-direct?token=${encodeURIComponent(token)}`;
 
       return res.status(200).json({
         success: true,
         data: {
           uploadUrl,
+          token,
           objectPath,
+          uploadId,
           isDrive: StorageService.isDriveConfigured()
         }
       });
@@ -85,14 +106,35 @@ export class FileController {
   static async uploadComplete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.user!.organizationId;
-      const { entityType, entityId, originalFilename, objectPath, mimeType, fileSize, storageFileId, storageFolderId } = req.body;
+      const { token, storageFileId, storageFolderId, actualSize } = req.body;
 
-      if (!entityType || !objectPath || !originalFilename || !mimeType || !fileSize) {
-        return res.status(400).json({
-          success: false,
-          error: 'entityType, objectPath, originalFilename, mimeType, and fileSize are required.',
-          code: 'VALIDATION_ERROR'
-        });
+      if (!token) {
+        return res.status(400).json({ success: false, error: 'upload token required.', code: 'MISSING_TOKEN' });
+      }
+
+      let payload: any;
+      try {
+        payload = jwt.verify(token, config.jwtSecret);
+      } catch (err) {
+        return res.status(401).json({ success: false, error: 'Invalid or expired upload token.', code: 'INVALID_TOKEN' });
+      }
+
+      if (payload.typ !== 'upload') {
+        return res.status(403).json({ success: false, error: 'Invalid token type.', code: 'INVALID_TOKEN_TYPE' });
+      }
+
+      if (payload.userId !== req.user!.userId || payload.organizationId !== organizationId) {
+        return res.status(403).json({ success: false, error: 'Upload context mismatch. Not authorized.', code: 'CONTEXT_MISMATCH' });
+      }
+
+      const { objectPath, entityType, entityId, mimeType, originalFilename } = payload;
+
+      // Idempotency: Check if already finalized
+      const existingRes = await query('SELECT id FROM attachments WHERE object_path = $1 AND organization_id = $2', [objectPath, organizationId]);
+      if (existingRes.rows.length > 0) {
+        // Return existing attachment silently for safe retry
+        const attachment = await AttachmentRepository.findById(existingRes.rows[0].id, organizationId);
+        return res.status(200).json({ success: true, data: { attachment, message: 'Attachment already finalized.' } });
       }
 
       // Verify binary object exists in storage before saving metadata
@@ -105,6 +147,7 @@ export class FileController {
         });
       }
 
+      // Create the Attachment DB Record
       const attachment = await AttachmentRepository.create({
         organizationId,
         entityType,
@@ -113,9 +156,9 @@ export class FileController {
         originalFilename,
         objectPath,
         mimeType,
-        fileSize: Number(fileSize),
+        fileSize: Number(actualSize) || 0,
         uploadedBy: req.user!.userId,
-        storageProvider: 'LOCAL',
+        storageProvider: StorageService.isDriveConfigured() ? 'GOOGLE_DRIVE' : 'LOCAL',
         storageFileId: storageFileId || null,
         storageFolderId: storageFolderId || null,
         storageStatus: 'AVAILABLE'
@@ -232,33 +275,56 @@ export class FileController {
     }
   }
 
-  // Direct upload handler: Uploads buffer to configured storage
+  // Secure Direct Upload Handler: Streams upload through a magic-number validator directly into storage
   static async uploadDirect(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const objectPath = req.query.objectPath as string;
-      if (!objectPath) {
-        return res.status(400).json({ success: false, error: 'objectPath query parameter required.' });
+      const token = (req.query.token as string) || (req.body && req.body.token);
+      if (!token) {
+        return res.status(400).json({ success: false, error: 'upload token required.', code: 'MISSING_TOKEN' });
       }
 
-      const chunks: Buffer[] = [];
-      req.on('data', (chunk) => chunks.push(chunk));
-      req.on('end', async () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          const mimeType = (req.headers['content-type'] as string) || 'application/octet-stream';
-          const uploadRes = await StorageService.uploadBuffer(objectPath, buffer, mimeType);
+      let payload: any;
+      try {
+        payload = jwt.verify(token, config.jwtSecret);
+      } catch (err) {
+        return res.status(401).json({ success: false, error: 'Invalid or expired upload token.', code: 'INVALID_TOKEN' });
+      }
 
-          return res.status(200).json({
-            success: true,
-            message: 'File saved to local storage.',
-            objectPath: uploadRes.objectPath,
-            storageFileId: uploadRes.storageFileId,
-            storageFolderId: uploadRes.storageFolderId
-          });
-        } catch (err: any) {
-          return next(err);
+      if (payload.typ !== 'upload') {
+        return res.status(403).json({ success: false, error: 'Invalid token type.', code: 'INVALID_TOKEN_TYPE' });
+      }
+
+      // Authorization verification
+      if (payload.userId !== req.user!.userId || payload.organizationId !== req.user!.organizationId) {
+        return res.status(403).json({ success: false, error: 'Upload context mismatch. Not authorized.', code: 'CONTEXT_MISMATCH' });
+      }
+
+      const { objectPath, mimeType, maxSize } = payload;
+      
+      const validator = new StreamingFileValidator(mimeType, maxSize);
+      
+      req.pipe(validator);
+
+      try {
+        const uploadRes = await StorageService.uploadStream(objectPath, validator, mimeType);
+
+        return res.status(200).json({
+          success: true,
+          message: 'File streamed to storage.',
+          objectPath: uploadRes.objectPath,
+          storageFileId: uploadRes.storageFileId,
+          storageFolderId: uploadRes.storageFolderId,
+          actualSize: validator.totalBytesProcessed
+        });
+      } catch (err: any) {
+        if (err.code === 'FILE_TOO_LARGE') {
+          return res.status(413).json({ success: false, error: err.message, code: 'FILE_TOO_LARGE' });
         }
-      });
+        if (err.code === 'INVALID_FILE_CONTENT' || err.code === 'EMPTY_FILE') {
+          return res.status(400).json({ success: false, error: err.message, code: err.code });
+        }
+        throw err;
+      }
     } catch (error) {
       return next(error);
     }

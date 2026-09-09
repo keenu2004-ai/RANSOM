@@ -4,7 +4,11 @@
  */
 
 export function getApiUrl(endpoint: string): string {
-  let baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').trim();
+  let baseUrl = import.meta.env.VITE_API_URL;
+  if (!baseUrl) {
+    baseUrl = '';
+  }
+  baseUrl = baseUrl.trim();
   // Strip trailing slashes
   baseUrl = baseUrl.replace(/\/+$/, '');
   
@@ -59,15 +63,13 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
     }
   }
 
-  const token = localStorage.getItem('theiakshi_auth_token');
-
   const config: RequestInit = {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers
     },
+    credentials: 'include',
     ...customConfig
   };
 
@@ -75,9 +77,6 @@ export async function apiFetch<T = any>(endpoint: string, options: ApiOptions = 
     const response = await fetch(url, config);
 
     if (response.status === 401 && !endpoint.includes('/auth/login')) {
-      // Clear expired auth session for protected endpoints
-      localStorage.removeItem('theiakshi_auth_token');
-      localStorage.removeItem('theiakshi_auth_user');
       throw new ApiError('Your session has expired or is unauthorized. Please sign in again.', 401, 'UNAUTHENTICATED');
     }
 
@@ -134,14 +133,12 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
     }
   }
 
-  const token = localStorage.getItem('theiakshi_auth_token');
-
   const config: RequestInit = {
     method: 'GET',
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers
     },
+    credentials: 'include',
     ...customConfig
   };
 
@@ -149,8 +146,12 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
     const response = await fetch(url, config);
 
     if (response.status === 401) {
-      localStorage.removeItem('theiakshi_auth_token');
-      localStorage.removeItem('theiakshi_auth_user');
+      if (typeof window !== 'undefined') {
+        const isLogin = endpoint.includes('/auth/login') || endpoint.includes('/auth/microsoft');
+        if (!isLogin) {
+          window.dispatchEvent(new CustomEvent('theiakshi:auth:logout'));
+        }
+      }
       throw new ApiError('Your session has expired. Please sign in again.', 401, 'UNAUTHENTICATED');
     }
 
@@ -215,8 +216,6 @@ export function getSecureFileUrl(url: string | null | undefined): string {
     return '#';
   }
 
-  const token = localStorage.getItem('theiakshi_auth_token') || '';
-
   const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed);
   let targetPath = trimmed;
   if (isUuid) {
@@ -231,7 +230,6 @@ export function getSecureFileUrl(url: string | null | undefined): string {
   // Ensure no duplicate /api/api in fullUrl under any circumstance
   fullUrl = fullUrl.replace(/\/api\/api\//g, '/api/');
 
-  const separator = fullUrl.includes('?') ? '&' : '?';
-  return `${fullUrl}${separator}token=${encodeURIComponent(token)}`;
+  return fullUrl;
 }
 

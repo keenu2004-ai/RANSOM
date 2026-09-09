@@ -10,10 +10,12 @@ services:
       - .env
     volumes:
       - /srv/app-data/hrms/uploads:/app/uploads
+      - /srv/theiakshi-data/backups:/app/backups:ro
+      - /srv/theiakshi-data/secrets/google_drive_backup.env:/app/secrets/google_drive_backup.env:ro
     expose:
       - "5000"
     networks:
-      - hrms
+      - theiakshi-internal
 
   hrms-frontend:
     build:
@@ -27,8 +29,9 @@ services:
     ports:
       - "127.0.0.1:8085:80"
     networks:
-      - hrms
+      - theiakshi-internal
 
 networks:
-  hrms:
-    driver: bridge
+  theiakshi-internal:
+    external: true
+    name: theiakshi-internal

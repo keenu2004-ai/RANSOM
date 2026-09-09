@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../services/authService';
 import { AuthenticatedRequest } from '../types';
+import { config } from '../config';
 
 const loginSchema = z.object({
   email: z.string().email('Valid email address is required'),
@@ -24,9 +25,17 @@ export class AuthController {
 
       const result = await AuthService.loginWithMicrosoftToken(microsoftToken);
 
+      res.cookie('theiakshi_session', result.token, {
+        httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
       return res.status(200).json({
         success: true,
-        data: result
+        data: { user: result.user }
       });
     } catch (error) {
       return next(error);
@@ -46,9 +55,17 @@ export class AuthController {
       const { email, password } = parseResult.data;
       const result = await AuthService.login(email, password);
 
+      res.cookie('theiakshi_session', result.token, {
+        httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
       return res.status(200).json({
         success: true,
-        data: result
+        data: { user: result.user }
       });
     } catch (error) {
       return next(error);
@@ -76,6 +93,12 @@ export class AuthController {
   }
 
   static async logout(req: AuthenticatedRequest, res: Response) {
+    res.clearCookie('theiakshi_session', {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
     return res.status(200).json({
       success: true,
       data: { message: 'Logged out successfully.' }

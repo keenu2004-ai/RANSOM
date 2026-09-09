@@ -128,10 +128,10 @@ export class LeaveController {
       });
     } catch (error: any) {
       if (error.message?.includes('not found')) {
-        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: error.message });
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request not found.' });
       }
       if (error.message?.includes('not authorized') || error.message?.includes('Only pending')) {
-        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: 'Access denied or request is not pending.' });
       }
       return next(error);
     }
@@ -159,10 +159,10 @@ export class LeaveController {
       });
     } catch (error: any) {
       if (error.message?.includes('not found')) {
-        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: error.message });
+        return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request not found.' });
       }
       if (error.message?.includes('not authorized') || error.message?.includes('already')) {
-        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: error.message });
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', error: 'Access denied or already processed.' });
       }
       return next(error);
     }
@@ -243,7 +243,7 @@ export class LeaveController {
         return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request no longer exists.' });
       }
       if (error.message?.includes('already')) {
-        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: error.message });
+        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: 'Request is already processed.' });
       }
       return next(error);
     }
@@ -267,7 +267,7 @@ export class LeaveController {
         return res.status(404).json({ success: false, code: 'LEAVE_NOT_FOUND', error: 'Leave request no longer exists.' });
       }
       if (error.message?.includes('already')) {
-        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: error.message });
+        return res.status(409).json({ success: false, code: 'REQUEST_NOT_PENDING', error: 'Request is already processed.' });
       }
       return next(error);
     }

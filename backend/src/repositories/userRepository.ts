@@ -8,6 +8,7 @@ export interface UserRecord {
   organization_id: string;
   email: string;
   password_hash: string;
+  auth_version: number;
   status: string;
   created_at: Date;
   updated_at: Date;
@@ -18,6 +19,7 @@ export interface UserWithRole {
   organization_id: string;
   email: string;
   password_hash?: string;
+  auth_version?: number;
   status: string;
   role: string;
   role_name?: string;
@@ -31,13 +33,16 @@ export interface UserWithRole {
 }
 
 export class UserRepository {
-  static async findByMicrosoftOid(oid: string): Promise<UserWithRole | null> {
+  static async findByMicrosoftOid(oid: string, tid: string): Promise<UserWithRole | null> {
+    if (!oid || !tid) return null; // Fail closed if either is missing
+
     const text = `
       SELECT 
         u.id, 
         u.organization_id, 
         u.email, 
         u.password_hash, 
+        u.auth_version,
         u.status as user_status,
         e.status as employee_status,
         CASE 
@@ -57,10 +62,10 @@ export class UserRepository {
       LEFT JOIN user_roles ur ON ur.user_id = u.id
       LEFT JOIN roles r ON r.id = ur.role_id
       LEFT JOIN employees e ON e.user_id = u.id AND e.organization_id = u.organization_id
-      WHERE u.microsoft_oid = $1
+      WHERE u.microsoft_oid = $1 AND u.microsoft_tid = $2
       LIMIT 1
     `;
-    const res = await query<UserWithRole>(text, [oid]);
+    const res = await query<UserWithRole>(text, [oid, tid]);
     return res.rows[0] || null;
   }
 
@@ -82,6 +87,7 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
+        u.auth_version,
         u.status as user_status,
         e.status as employee_status,
         CASE 
@@ -121,6 +127,7 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
+        u.auth_version,
         u.status as user_status,
         e.status as employee_status,
         CASE 
@@ -162,6 +169,7 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
+        u.auth_version,
         u.status as user_status,
         e.status as employee_status,
         CASE 
@@ -195,6 +203,7 @@ export class UserRepository {
         u.organization_id, 
         u.email, 
         u.password_hash, 
+        u.auth_version,
         u.status as user_status,
         e.status as employee_status,
         CASE 
@@ -376,8 +385,8 @@ export class UserRepository {
       await client.query('DELETE FROM user_roles WHERE user_id = $1', [targetUserId]);
       await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [targetUserId, newRoleId]);
 
-      // 6. Keep users table updated_at synchronized
-      await client.query('UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [targetUserId]);
+      // 6. Keep users table updated_at synchronized and increment auth_version
+      await client.query('UPDATE users SET auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [targetUserId]);
 
       // 7. Audit Logging for Role Change
       await client.query(`
@@ -424,13 +433,13 @@ export class UserRepository {
       throw err;
     }
 
-    await query('UPDATE users SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newStatus, targetUserId]);
+    await query('UPDATE users SET status = $1, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newStatus, targetUserId]);
   }
 
   static async updatePassword(userId: string, passwordHash: string): Promise<void> {
     const text = `
       UPDATE users
-      SET password_hash = $2, updated_at = CURRENT_TIMESTAMP
+      SET password_hash = $2, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
     await query(text, [userId, passwordHash]);
@@ -477,7 +486,7 @@ export class UserRepository {
       // 4. Update users table password_hash
       await client.query(`
         UPDATE users
-        SET password_hash = $2, updated_at = CURRENT_TIMESTAMP
+        SET password_hash = $2, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
       `, [targetUserId, passwordHash]);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import {
   Package, Plus, Search, Filter, Wrench, RefreshCw, UserCheck,
   RotateCcw, History, FileSpreadsheet, ShieldAlert, CheckCircle2,
@@ -108,9 +109,9 @@ export const Assets: React.FC = () => {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
-  const canManageCategories = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '');
-  const canDeleteAssets = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+  const isManagerOrAdmin = hasPermission(user?.role, 'ASSET_WORKFORCE_VIEW');
+  const canManageCategories = hasPermission(user?.role, 'ASSET_CATEGORY_MANAGE');
+  const canDeleteAssets = hasPermission(user?.role, 'ASSET_UPDATE'); // Deletion falls under update/manage capabilities
 
   const fetchData = useCallback(async () => {
     setLoading(true);

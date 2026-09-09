@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import { useAttendance } from '../context/AttendanceContext';
 import {
   Clock, CheckCircle, MapPin, Calendar as CalendarIcon, Play, Square, Layers, Eye, X,
@@ -91,7 +92,7 @@ interface EmployeeDetailState {
 
 export const Attendance: React.FC = () => {
   const { user } = useAuth();
-  const isManagerOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
+  const isManagerOrAdmin = hasPermission(user?.role, 'ATTENDANCE_WORKFORCE_VIEW');
 
   const {
     todaySummary,

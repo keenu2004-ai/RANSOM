@@ -194,6 +194,38 @@ export class GoogleDriveStorageProvider {
   }
 
   /**
+   * Upload stream directly to Google Drive
+   */
+  static async uploadStream(
+    objectPath: string,
+    stream: NodeJS.ReadableStream,
+    mimeType: string
+  ): Promise<{ storageFileId: string; storageFolderId: string; objectPath: string }> {
+    if (!googleDriveClient) throw new Error('GOOGLE DRIVE STORAGE NOT CONFIGURED');
+
+    const { parentFolderId, filename } = await this.resolveFolderPath(objectPath);
+
+    const res = await googleDriveClient.files.create({
+      requestBody: {
+        name: filename,
+        parents: [parentFolderId]
+      },
+      media: {
+        mimeType,
+        body: stream
+      },
+      fields: 'id, name, mimeType, size'
+    });
+
+    const storageFileId = res.data.id;
+    return {
+      storageFileId,
+      storageFolderId: parentFolderId,
+      objectPath
+    };
+  }
+
+  /**
    * Download stream for file viewing and streaming
    */
   static async downloadStream(storageFileId: string): Promise<any> {
