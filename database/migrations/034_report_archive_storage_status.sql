@@ -1,0 +1,2 @@
+ALTER TABLE report_archives
+ADD COLUMN IF NOT EXISTS storage_status VARCHAR(50) DEFAULT 'AVAILABLE';

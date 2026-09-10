@@ -346,7 +346,7 @@ export const Expenses: React.FC = () => {
 
   // Fetch Departments
   useEffect(() => {
-    apiFetch('/employees/departments')
+    apiFetch('/settings/departments')
       .then(res => setDepartmentsList(res.departments || res || []))
       .catch(() => {});
   }, []);
@@ -619,7 +619,7 @@ export const Expenses: React.FC = () => {
           URL.revokeObjectURL(attachment.url);
         }
         return {
-          receiptUrl: `/api/files/${completeRes.attachment.id}/view`,
+          receiptUrl: `/api/v1/files/${completeRes.attachment.id}/view`,
           attachmentName: rawFile.name
         };
       }

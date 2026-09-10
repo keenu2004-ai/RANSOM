@@ -109,7 +109,7 @@ export class AuthService {
     try {
       await query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-        VALUES ($1, $2, 'LOGIN_SUCCESS', 'security', 'User', $2, $3)
+        VALUES ($1, $2, 'LOGIN_SUCCESS', 'security', 'User', $4, $3)
       `, [
         userWithRole.organization_id,
         userWithRole.id,
@@ -118,7 +118,8 @@ export class AuthService {
           microsoft_oid: claims.oid,
           microsoft_tid: claims.tid,
           email: userWithRole.email
-        })
+        }),
+        userWithRole.id
       ]);
     } catch (auditErr) {
       console.error('Failed to log audit event for Microsoft login:', auditErr);
@@ -249,8 +250,8 @@ export class AuthService {
     try {
       await query(`
         INSERT INTO audit_logs (organization_id, user_id, action, module, entity_name, entity_id, new_values)
-        VALUES ($1, $2, 'USER_PASSWORD_CHANGED', 'security', 'User', $2, $3)
-      `, [userWithRole.organization_id, userId, JSON.stringify({ message: 'User updated password successfully' })]);
+        VALUES ($1, $2, 'USER_PASSWORD_CHANGED', 'security', 'User', $4, $3)
+      `, [userWithRole.organization_id, userId, JSON.stringify({ message: 'User updated password successfully' }), userId]);
     } catch (auditErr) {
       console.warn('Audit log write failed for password change:', auditErr);
     }
