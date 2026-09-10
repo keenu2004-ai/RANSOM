@@ -8,13 +8,18 @@ Enterprise HRMS application for managing attendance, assets, reports, and workfo
 - Backend RBAC must be fully enforced on all API endpoints.
 
 ## Scope
-- Authentication via HTTP-Only cookies with MSAL SSO integration.
-- Strict auth_version validation.
+- Full enterprise lifecycle spanning 20 engineering review phases.
+- Comprehensive review of Architecture, Code Quality, Security, Database, UX, Performance, QA, and DevOps.
+- Future phases will dictate specific functional scopes.
 
 ## Constraints
 - Do not store application JWTs in localStorage.
-- JWT auth_version === DB auth_version.
+- The authoritative roadmap dictates the sequence of engineering validations.
+
+## Getting Started
+Please refer to the [Documentation Index](INDEX.md) for a complete mapping of the project's architecture, security, database, and infrastructure.
 
 ## Locked Decisions
-- RBAC mapped to SUPER_ADMIN, HR_MANAGER, OPERATIONAL_MANAGER, EMPLOYEE.
+- RBAC mapped to SUPER_ADMIN, ADMIN, HR_MANAGER, OPERATIONAL_MANAGER, EMPLOYEE.
 - Nginx reverse proxy routes /api/ traffic.
+- JWTs must NOT be stored in localStorage.
