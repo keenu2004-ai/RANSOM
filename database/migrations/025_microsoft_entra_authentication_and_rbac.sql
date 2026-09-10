@@ -16,6 +16,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_microsoft_oid ON users (microsoft_oi
 CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
 
 -- 2. Consolidate System Roles in roles table
+-- Ensure default organization exists before inserting roles
+INSERT INTO organizations (id, name, code, currency, default_hq)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Theiakshi Enterprise', 'THEIAKSHI', 'INR', 'THEIAKSHI-HQ')
+ON CONFLICT (code) DO NOTHING;
+
 INSERT INTO roles (id, organization_id, name, description, is_system_role)
 VALUES 
 ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'SUPER_ADMIN', 'Super Administrator with full system authority', TRUE),

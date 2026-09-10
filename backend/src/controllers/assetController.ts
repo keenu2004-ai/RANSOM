@@ -150,7 +150,7 @@ export class AssetController {
       const { id } = req.params;
 
       const validated = assignAssetSchema.parse(req.body);
-      const asset = await AssetRepository.assignAsset(id, organizationId, userId, validated);
+      const asset = await AssetRepository.assignAsset(id, organizationId, userId, validated as { employeeId: string; assignedDate: string; expectedReturnDate?: string; condition?: string; notes?: string; });
 
       return res.status(200).json({ success: true, data: asset, message: 'Asset assigned successfully.' });
     } catch (error) {
@@ -165,7 +165,7 @@ export class AssetController {
       const { id } = req.params;
 
       const validated = returnAssetSchema.parse(req.body);
-      const asset = await AssetRepository.returnAsset(id, organizationId, userId, validated);
+      const asset = await AssetRepository.returnAsset(id, organizationId, userId, validated as { returnedDate: string; condition?: string; notes?: string; });
 
       return res.status(200).json({ success: true, data: asset, message: 'Asset returned successfully.' });
     } catch (error) {

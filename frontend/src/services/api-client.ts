@@ -12,21 +12,27 @@ export function getApiUrl(endpoint: string): string {
   // Strip trailing slashes
   baseUrl = baseUrl.replace(/\/+$/, '');
   
-  // If baseUrl already ends with /api, remove it so we can append cleanly
-  if (baseUrl.endsWith('/api')) {
+  // If baseUrl already ends with /api or /api/v1, remove it so we can append cleanly
+  if (baseUrl.endsWith('/api/v1')) {
+    baseUrl = baseUrl.substring(0, baseUrl.length - 7);
+  } else if (baseUrl.endsWith('/api')) {
     baseUrl = baseUrl.substring(0, baseUrl.length - 4);
   }
   
   let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  // Strip duplicate leading /api/ or /api so we NEVER construct /api/api
-  if (cleanEndpoint.startsWith('/api/')) {
+  // Strip duplicate leading /api/v1/ or /api/
+  if (cleanEndpoint.startsWith('/api/v1/')) {
+    cleanEndpoint = cleanEndpoint.substring(7);
+  } else if (cleanEndpoint === '/api/v1') {
+    cleanEndpoint = '';
+  } else if (cleanEndpoint.startsWith('/api/')) {
     cleanEndpoint = cleanEndpoint.substring(4);
   } else if (cleanEndpoint === '/api') {
     cleanEndpoint = '';
   }
   
-  return `${baseUrl}/api${cleanEndpoint}`;
+  return `${baseUrl}/api/v1${cleanEndpoint}`;
 }
 
 export interface ApiOptions extends RequestInit {
@@ -197,14 +203,14 @@ export async function apiDownload(endpoint: string, options: ApiOptions = {}, de
 
 export function buildAttachmentViewPath(attachmentId: string): string {
   if (!attachmentId) return '#';
-  const cleanId = attachmentId.trim().replace(/^\/api\/files\//, '').replace(/\/view$/, '').replace(/^\/files\//, '');
-  return `/api/files/${cleanId}/view`;
+  const cleanId = attachmentId.trim().replace(/^\/api\/v1\/files\//, '').replace(/^\/api\/files\//, '').replace(/\/view$/, '').replace(/^\/files\//, '');
+  return `/api/v1/files/${cleanId}/view`;
 }
 
 export function buildAttachmentDownloadPath(attachmentId: string): string {
   if (!attachmentId) return '#';
-  const cleanId = attachmentId.trim().replace(/^\/api\/files\//, '').replace(/\/download$/, '').replace(/^\/files\//, '');
-  return `/api/files/${cleanId}/download`;
+  const cleanId = attachmentId.trim().replace(/^\/api\/v1\/files\//, '').replace(/^\/api\/files\//, '').replace(/\/download$/, '').replace(/^\/files\//, '');
+  return `/api/v1/files/${cleanId}/download`;
 }
 
 export function getSecureFileUrl(url: string | null | undefined): string {
@@ -227,8 +233,8 @@ export function getSecureFileUrl(url: string | null | undefined): string {
     fullUrl = getApiUrl(targetPath);
   }
 
-  // Ensure no duplicate /api/api in fullUrl under any circumstance
-  fullUrl = fullUrl.replace(/\/api\/api\//g, '/api/');
+  // Ensure no duplicate /api/v1/api/v1 in fullUrl under any circumstance
+  fullUrl = fullUrl.replace(/\/api\/v1\/api\/v1\//g, '/api/v1/').replace(/\/api\/api\//g, '/api/v1/');
 
   return fullUrl;
 }

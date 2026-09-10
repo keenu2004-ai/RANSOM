@@ -155,7 +155,7 @@ export class AttendanceRepository {
         await this.performRolloverCheck(client, organizationId, employeeId, todayStr);
       }
 
-      const sessionsRes = await client.query(
+      const sessionsPromise = client.query(
         `SELECT
           a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
           a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
@@ -166,10 +166,9 @@ export class AttendanceRepository {
         ORDER BY a.check_in ASC`,
         [employeeId, organizationId, targetDateStr]
       );
-      const sessions = sessionsRes.rows;
 
       // Authoritative global active session for employee (check_out IS NULL AND ACTIVE)
-      const globalActiveRes = await client.query(
+      const globalActivePromise = client.query(
         `SELECT
           a.id, a.organization_id, a.employee_id, a.date, a.check_in, a.check_out,
           a.punch_in_lat, a.punch_in_lng, a.punch_in_accuracy, a.punch_in_location_name,
@@ -182,7 +181,41 @@ export class AttendanceRepository {
         ORDER BY a.check_in DESC LIMIT 1`,
         [employeeId, organizationId]
       );
+
+      // Check Leave status for date
+      const leavePromise = client.query(
+        `SELECT lr.id, lr.status, lt.name as leave_type_name, lt.code as leave_type_code
+         FROM leave_requests lr
+         JOIN leave_types lt ON lr.leave_type_id::text = lt.id::text
+         WHERE lr.employee_id::text = $1::text AND lr.organization_id::text = $2::text
+           AND lr.status = 'APPROVED'
+           AND $3 BETWEEN lr.start_date AND lr.end_date
+         LIMIT 1`,
+        [String(employeeId), String(organizationId), targetDateStr]
+      );
+
+      // Check Holiday status for date
+      const holidayPromise = client.query(
+        `SELECT title, holiday_type FROM holidays WHERE organization_id::text = $1::text AND date = $2 LIMIT 1`,
+        [String(organizationId), targetDateStr]
+      );
+
+      // Check Pending Regularization
+      const regPromise = client.query(
+        `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations
+         WHERE employee_id::text = $1::text AND organization_id::text = $2::text AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
+        [String(employeeId), String(organizationId), targetDateStr]
+      );
+
+      const [sessionsRes, globalActiveRes, leaveRes, holidayRes, regRes] = await Promise.all([
+        sessionsPromise, globalActivePromise, leavePromise, holidayPromise, regPromise
+      ]);
+
+      const sessions = sessionsRes.rows;
       const activeSession = globalActiveRes.rows[0] || null;
+      const approvedLeave = leaveRes.rows[0] || null;
+      const holiday = holidayRes.rows[0] || null;
+      const pendingReg = regRes.rows[0] || null;
 
       const completedSessions = sessions.filter((s: any) => s.check_out !== null && s.session_state !== 'ROLLOVER_TERMINATED');
 
@@ -201,34 +234,6 @@ export class AttendanceRepository {
           lastCheckOut = s.check_out;
         }
       });
-
-      // Check Leave status for date
-      const leaveRes = await client.query(
-        `SELECT lr.id, lr.status, lt.name as leave_type_name, lt.code as leave_type_code
-         FROM leave_requests lr
-         JOIN leave_types lt ON lr.leave_type_id::text = lt.id::text
-         WHERE lr.employee_id::text = $1::text AND lr.organization_id::text = $2::text
-           AND lr.status = 'APPROVED'
-           AND $3 BETWEEN lr.start_date AND lr.end_date
-         LIMIT 1`,
-        [String(employeeId), String(organizationId), targetDateStr]
-      );
-      const approvedLeave = leaveRes.rows[0] || null;
-
-      // Check Holiday status for date
-      const holidayRes = await client.query(
-        `SELECT title, holiday_type FROM holidays WHERE organization_id::text = $1::text AND date = $2 LIMIT 1`,
-        [String(organizationId), targetDateStr]
-      );
-      const holiday = holidayRes.rows[0] || null;
-
-      // Check Pending Regularization
-      const regRes = await client.query(
-        `SELECT id, status, attendance_type, reason, requested_punch_in, requested_punch_out FROM attendance_regularizations
-         WHERE employee_id::text = $1::text AND organization_id::text = $2::text AND attendance_date = $3 AND status = 'PENDING' LIMIT 1`,
-        [String(employeeId), String(organizationId), targetDateStr]
-      );
-      const pendingReg = regRes.rows[0] || null;
 
       let dayStatus = 'NOT_CHECKED_IN';
       if (approvedLeave) {

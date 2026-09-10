@@ -131,6 +131,7 @@ export class UserRepository {
         u.status as user_status,
         e.status as employee_status,
         CASE 
+          WHEN u.status = 'DEACTIVATED' THEN 'DEACTIVATED'
           WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
           WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
           ELSE 'ACTIVE'
@@ -173,6 +174,7 @@ export class UserRepository {
         u.status as user_status,
         e.status as employee_status,
         CASE 
+          WHEN u.status = 'DEACTIVATED' THEN 'DEACTIVATED'
           WHEN e.id IS NOT NULL AND (e.status = 'INACTIVE' OR u.status = 'INACTIVE') THEN 'INACTIVE'
           WHEN u.status = 'INACTIVE' THEN 'INACTIVE'
           ELSE 'ACTIVE'

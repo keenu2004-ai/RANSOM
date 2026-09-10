@@ -11,6 +11,14 @@ const applyLeaveSchema = z.object({
   reason: z.string().min(1, 'Reason is required')
 });
 
+type ApplyLeaveInput = {
+  leaveTypeId: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+};
+
 export class LeaveController {
   // Organization-wide Employee Leave Balances for Super Admin / HR / HR Manager
   static async allBalances(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -87,7 +95,7 @@ export class LeaveController {
         });
       }
 
-      const leaveRequest = await LeaveRepository.applyLeave(organizationId, employeeId!, parseResult.data);
+      const leaveRequest = await LeaveRepository.applyLeave(organizationId, employeeId!, parseResult.data as ApplyLeaveInput);
 
       return res.status(201).json({
         success: true,
@@ -118,7 +126,7 @@ export class LeaveController {
         organizationId,
         employeeId,
         id,
-        parseResult.data,
+        parseResult.data as ApplyLeaveInput,
         req.user!.userId
       );
 

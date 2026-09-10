@@ -190,7 +190,7 @@ VALUES
 ('90000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Internal Operations', 'PRJ-INT-OPS', 'Core Company Operations & Logistics', 'ACTIVE'),
 ('90000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'HRMS Development', 'PRJ-HRMS', 'Enterprise Human Resource Platform Rebuild', 'ACTIVE'),
 ('90000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Website Development', 'PRJ-WEB', 'Corporate Portal & Brand Website Modernization', 'ACTIVE'),
-('90000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Sales Operations', 'PRJ-SALES', 'Client Pipeline & CRM System Support', 'ACTIVE')
+('90000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Sales Operations', 'PRJ-SALES', 'Client Pipeline & CRM System Support', 'ACTIVE')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO holidays (id, organization_id, branch_id, title, date, holiday_type, description)
@@ -274,7 +274,10 @@ VALUES
 ('f0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Parts', 'CAT-PARTS', 'Component parts, spare parts & replacement modules'),
 ('f0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Machine', 'CAT-MACHINE', 'Industrial machines, lab tools & heavy equipment'),
 ('f0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Laptop', 'CAT-LAPTOP', 'Portable laptops and notebooks'),
-('f0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Furniture', 'CAT-FURNITURE', 'Office desks, ergonomic chairs, cabinets')
+('f0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Furniture', 'CAT-FURNITURE', 'Office desks, ergonomic chairs, cabinets'),
+('f0000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Monitor', 'CAT-MONITOR', 'Computer monitors and display screens'),
+('f0000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Mobile', 'CAT-MOBILE', 'Mobile phones and tablets'),
+('f0000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Peripheral', 'CAT-PERIPHERAL', 'Keyboards, mice and other PC peripherals')
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 -- 10. DEMO ASSETS & ASSIGNMENT HISTORY

@@ -208,7 +208,7 @@ router.post('/trips', requireEmployee, async (req: AuthenticatedRequest, res: Re
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
     const validated = createTripSchema.parse(req.body);
-    const trip = await TripExpenseRepository.createTrip(organizationId, employeeId, validated);
+    const trip = await TripExpenseRepository.createTrip(organizationId, employeeId, validated as import('../repositories/tripExpenseRepository').CreateTripDTO);
     return res.status(201).json({ success: true, data: { trip, message: 'Trip Expense draft created successfully.' } });
   } catch (error) {
     return next(error);
@@ -421,7 +421,7 @@ router.post('/trips/:tripId/travel', requireEmployee, async (req: AuthenticatedR
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
     const validated = createTravelSchema.parse(req.body);
-    const item = await TripExpenseRepository.addTravelExpense(organizationId, employeeId, req.params.tripId, validated);
+    const item = await TripExpenseRepository.addTravelExpense(organizationId, employeeId, req.params.tripId, validated as import('../repositories/tripExpenseRepository').CreateTravelExpenseDTO);
     return res.status(201).json({ success: true, data: { item, message: 'Travel Expense added to Trip.' } });
   } catch (error) {
     return next(error);
@@ -456,7 +456,7 @@ router.post('/trips/:tripId/accommodation', requireEmployee, async (req: Authent
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
     const validated = createAccommodationSchema.parse(req.body);
-    const item = await TripExpenseRepository.addAccommodationExpense(organizationId, employeeId, req.params.tripId, validated);
+    const item = await TripExpenseRepository.addAccommodationExpense(organizationId, employeeId, req.params.tripId, validated as import('../repositories/tripExpenseRepository').CreateAccommodationExpenseDTO);
     return res.status(201).json({ success: true, data: { item, message: 'Accommodation Expense added to Trip.' } });
   } catch (error) {
     return next(error);
@@ -491,7 +491,7 @@ router.post('/trips/:tripId/other', requireEmployee, async (req: AuthenticatedRe
     const organizationId = req.user!.organizationId;
     const employeeId = req.user!.employeeId!;
     const validated = createOtherSchema.parse(req.body);
-    const item = await TripExpenseRepository.addOtherExpense(organizationId, employeeId, req.params.tripId, validated);
+    const item = await TripExpenseRepository.addOtherExpense(organizationId, employeeId, req.params.tripId, validated as import('../repositories/tripExpenseRepository').CreateOtherExpenseDTO);
     return res.status(201).json({ success: true, data: { item, message: 'Other Expense added to Trip.' } });
   } catch (error) {
     return next(error);

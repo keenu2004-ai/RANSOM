@@ -5,7 +5,7 @@
 -- 1. Create attendance_policy_settings table for configurable master office timings
 CREATE TABLE IF NOT EXISTS attendance_policy_settings (
     id SERIAL PRIMARY KEY,
-    organization_id INTEGER NOT NULL UNIQUE REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL UNIQUE REFERENCES organizations(id) ON DELETE CASCADE,
     office_start_time TIME NOT NULL DEFAULT '09:00:00',
     office_end_time TIME NOT NULL DEFAULT '17:00:00',
     normal_grace_end_time TIME NOT NULL DEFAULT '09:15:00',
@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS attendance_policy_settings (
 -- 2. Create attendance_automatic_leave_deductions table to track cumulative automatic attendance deductions
 CREATE TABLE IF NOT EXISTS attendance_automatic_leave_deductions (
     id SERIAL PRIMARY KEY,
-    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    leave_type_id UUID NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
     period_year INT NOT NULL,
     short_leave_count INT NOT NULL DEFAULT 0,
     half_day_count INT NOT NULL DEFAULT 0,
