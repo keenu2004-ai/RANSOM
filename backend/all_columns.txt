@@ -1,0 +1,159 @@
+assets | id | integer
+assets | asset_name | character varying
+assets | asset_code | character varying
+assets | category | character varying
+assets | serial_number | character varying
+assets | assigned_to_employee_id | integer
+assets | purchase_date | date
+assets | value | numeric
+assets | status | character varying
+assets | created_at | timestamp without time zone
+attendance | id | integer
+attendance | employee_id | integer
+attendance | date | date
+attendance | punch_in | timestamp without time zone
+attendance | punch_out | timestamp without time zone
+attendance | punch_in_lat | numeric
+attendance | punch_in_lng | numeric
+attendance | punch_out_lat | numeric
+attendance | punch_out_lng | numeric
+attendance | work_hours | numeric
+attendance | break_duration_mins | integer
+attendance | shift_name | character varying
+attendance | is_late | boolean
+attendance | is_overtime | boolean
+attendance | status | character varying
+attendance | created_at | timestamp without time zone
+attendance | punch_in_location_name | character varying
+attendance | punch_out_location_name | character varying
+attendance | organization_id | integer
+attendance | check_in | timestamp with time zone
+attendance | check_out | timestamp with time zone
+attendance | working_hours | numeric
+attendance | session_state | character varying
+attendance | location_id | uuid
+attendance | ip_address | character varying
+attendance | system_terminated_at | timestamp with time zone
+attendance | termination_reason | text
+attendance | updated_at | timestamp with time zone
+attendance | punch_in_accuracy | numeric
+attendance | punch_out_accuracy | numeric
+employees | id | integer
+employees | organization_id | integer
+employees | employee_code | character varying
+employees | first_name | character varying
+employees | last_name | character varying
+employees | email | character varying
+employees | phone | character varying
+employees | password_hash | character varying
+employees | role | character varying
+employees | department_id | integer
+employees | branch_id | integer
+employees | designation | character varying
+employees | joining_date | date
+employees | salary | numeric
+employees | bank_account | character varying
+employees | ifsc_code | character varying
+employees | pan_number | character varying
+employees | aadhaar_number | character varying
+employees | emergency_contact_name | character varying
+employees | emergency_contact_phone | character varying
+employees | reporting_manager_id | integer
+employees | avatar_url | text
+employees | status | character varying
+employees | is_deleted | boolean
+employees | created_at | timestamp without time zone
+employees | user_id | uuid
+employees | manager_id | integer
+expenses | id | integer
+expenses | expense_number | character varying
+expenses | employee_id | integer
+expenses | title | character varying
+expenses | category | character varying
+expenses | amount | numeric
+expenses | currency | character varying
+expenses | merchant_name | character varying
+expenses | date | date
+expenses | description | text
+expenses | receipt_url | text
+expenses | project_id | integer
+expenses | status | character varying
+expenses | approved_by | integer
+expenses | reimbursed_amount | numeric
+expenses | payment_status | character varying
+expenses | payment_reference | character varying
+expenses | created_at | timestamp without time zone
+expenses | updated_at | timestamp without time zone
+expenses | organization_id | integer
+expenses | expense_type | character varying
+expenses | transaction_date | date
+expenses | merchant | character varying
+expenses | bucket | character varying
+expenses | transport_mode | character varying
+expenses | start_location | character varying
+expenses | end_location | character varying
+expenses | attachment_name | character varying
+expenses | rejection_reason | text
+expenses | reviewed_at | timestamp with time zone
+expenses | reviewed_by | integer
+expenses | trip_expense_id | character varying
+leave_balances | id | integer
+leave_balances | employee_id | integer
+leave_balances | leave_type_id | integer
+leave_balances | total_allocated | numeric
+leave_balances | used_days | numeric
+leave_balances | remaining_days | numeric
+leave_balances | updated_at | timestamp without time zone
+leave_balances | year | integer
+leave_balances | quota | numeric
+leave_balances | pending | numeric
+leave_balances | available | numeric
+leave_balances | organization_id | character varying
+leave_balances | used | numeric
+leaves | id | integer
+leaves | employee_id | integer
+leaves | leave_type_id | integer
+leaves | start_date | date
+leaves | end_date | date
+leaves | total_days | numeric
+leaves | is_half_day | boolean
+leaves | half_day_session | character varying
+leaves | is_hourly | boolean
+leaves | hours_requested | numeric
+leaves | reason | text
+leaves | emergency_contact | character varying
+leaves | contact_during_leave | character varying
+leaves | work_handover | text
+leaves | replacement_employee_id | integer
+leaves | attachment_url | text
+leaves | status | character varying
+leaves | manager_id | integer
+leaves | manager_action | character varying
+leaves | manager_comment | text
+leaves | manager_actioned_at | timestamp without time zone
+leaves | hr_id | integer
+leaves | hr_action | character varying
+leaves | hr_comment | text
+leaves | hr_actioned_at | timestamp without time zone
+leaves | approver_id | integer
+leaves | rejection_reason | text
+leaves | attendance_synced | boolean
+leaves | payroll_synced | boolean
+leaves | deleted_at | timestamp without time zone
+leaves | created_by | integer
+leaves | updated_by | integer
+leaves | created_at | timestamp without time zone
+leaves | updated_at | timestamp without time zone
+users | id | uuid
+users | organization_id | integer
+users | email | character varying
+users | password_hash | character varying
+users | role | character varying
+users | microsoft_login_email | character varying
+users | microsoft_oid | character varying
+users | microsoft_tid | character varying
+users | display_name | character varying
+users | status | character varying
+users | created_at | timestamp with time zone
+users | updated_at | timestamp with time zone
+users | auth_version | integer
