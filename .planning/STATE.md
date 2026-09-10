@@ -1,7 +1,9 @@
 # Project State
 
 ## Current Phase
-Current position: Phase 15 (DevOps & Deployment Review) shipped.
+Current position: Phase 15 (DevOps & Deployment Review)
+Source hardening/remediation: COMPLETE
+Runtime acceptance: PENDING production deployment and verification
 Next phase: Phase 16 (Enterprise Security Audit)
 Status: Ready to plan Phase 16.
 
@@ -9,8 +11,9 @@ Status: Ready to plan Phase 16.
 - None at this time.
 
 ## Recent Changes
-- Completed Phase 15 DevOps & Deployment Review.
-- Fixed `theiakshi-hrms-backup.sh` missing Docker secrets mount by adding `/run/secrets/postgres_password` volume to PostgreSQL.
-- Updated `backend/src/server.ts` database migration runner to fatally crash (`process.exit(1)`) on startup if schema migration fails, protecting data integrity.
-- Fixed DNS resolution inside frontend proxy by adding `hrms-backend` network aliases, resolving Nginx `502 Bad Gateway` issues.
+- Completed Phase 15 DevOps & Deployment Review source hardening.
+- Phase 15.2 performed local development-source reconciliation against production evidence. It did NOT modify the production server.
+- Fixed theiakshi-hrms-backup.sh missing Docker secrets mount by adding /run/secrets/postgres_password volume to PostgreSQL.
+- Updated backend/src/server.ts database migration runner to fatally crash (process.exit(1)) on startup if schema migration fails, protecting data integrity.
+- Fixed DNS resolution inside frontend proxy by adding hrms-backend network aliases, resolving Nginx 502 Bad Gateway issues.
 - Validated TypeScript builds, Jest test suites, and Docker Compose configurations.

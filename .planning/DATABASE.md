@@ -11,7 +11,7 @@ THEIAKSHI ONE uses PostgreSQL (version 18-alpine in Docker) for relational data 
 
 ## Migrations
 - Schema and data migrations are executed automatically on application startup if changes are detected.
-- **Current State**: 40 applied migrations.
+- **Current State**: 40 applied migrations in production (042 and 043 are present in canonical source but NOT YET EXECUTED in production).
 - **Key Migrations**: Include schema definitions for roles, users, employees, attendance, leaves, and `auth_version` tracking.
 
 ## Core Schema
