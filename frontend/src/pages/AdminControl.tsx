@@ -209,20 +209,25 @@ export const AdminControl: React.FC = () => {
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-sm">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-[var(--text-muted)]" />
+              <label htmlFor="admin-user-search" className="sr-only">Search users by email, name, code or role</label>
+              <Search className="w-4 h-4 absolute left-3 top-3 text-[var(--text-muted)]" aria-hidden="true" />
               <input
+                id="admin-user-search"
                 type="text"
                 placeholder="Search login email, employee name, code, role..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] text-xs pl-9 pr-4 py-2.5 rounded-xl focus:border-[var(--primary)] outline-none shadow-sm"
+                aria-label="Search users by email, name, code or role"
               />
             </div>
             <button
+              type="button"
               onClick={fetchAdminData}
               className="flex items-center gap-1.5 px-3 py-2 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
+              aria-label="Refresh user list"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Refresh</span>
             </button>
           </div>

@@ -361,3 +361,40 @@
 .btn-theme-soft-danger:hover {
   background-color: var(--action-danger-soft-hover);
 }
+
+/* ============================================================
+   FOCUS VISIBILITY — Keyboard Navigation Accessibility
+   ============================================================ */
+
+/* Remove default outline on mouse-focus, keep for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Show clear focus ring on keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Input/select focus — handled by box-shadow, no duplicate outline */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-soft);
+  border-color: var(--input-focus) !important;
+}
+
+/* Sidebar nav links — pill shape */
+nav a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* Dialogs backdrop — no focus ring */
+[aria-hidden="true"]:focus-visible {
+  outline: none;
+}

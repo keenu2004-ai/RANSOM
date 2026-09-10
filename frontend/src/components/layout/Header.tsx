@@ -272,13 +272,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   </div>
                 ) : (
                   notifications.map((n) => (
-                    <div
+                    <button
                       key={n.id}
+                      type="button"
                       onClick={() => {
                         setIsNotificationsOpen(false);
                         if (n.link) navigate(n.link);
                       }}
-                      className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                      aria-label={`${n.is_read ? 'Read' : 'Unread'} notification: ${n.title}`}
+                      className={`w-full p-3 rounded-xl border text-xs cursor-pointer transition-all text-left ${
                         !n.is_read
                           ? 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--primary)] shadow-sm'
                           : 'bg-[var(--bg-surface-muted)]/50 border-[var(--border-subtle)] text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)]'
@@ -286,10 +288,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-semibold text-[var(--text-primary)]">{n.title}</p>
-                        {!n.is_read && <span className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0 mt-1" />}
+                        {!n.is_read && <span className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0 mt-1" aria-label="Unread" />}
                       </div>
                       <p className="text-[var(--text-secondary)] text-[11px] mt-0.5 leading-snug">{n.message}</p>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

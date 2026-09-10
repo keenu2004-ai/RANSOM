@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import {
   CalendarCheck, Plus, Trash2, Edit3, Search, ChevronLeft, ChevronRight,
   MapPin, Users, Globe, Clock, X, AlertTriangle, Calendar as CalendarIcon, Check
@@ -36,7 +37,8 @@ export const Holidays: React.FC = () => {
     selectedEmployeeIds: [] as string[]
   });
 
-  const isManagement = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user?.role || '');
+  const isManagement = hasPermission(user?.role, 'LEAVE_POLICY_MANAGE');
+
 
   const fetchHolidays = useCallback(async () => {
     setLoading(true);

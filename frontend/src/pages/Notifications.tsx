@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
-import { Bell, CheckCheck, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useToast } from '../components/common/Toast';
+import { Bell, CheckCheck, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const Notifications: React.FC = () => {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingRead, setMarkingRead] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -31,10 +32,9 @@ export const Notifications: React.FC = () => {
       setMarkingRead(true);
       await apiFetch('/notifications/mark-all-read', { method: 'POST' });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setFeedback('All notifications marked as read.');
-      setTimeout(() => setFeedback(null), 4000);
+      toastSuccess('All notifications marked as read.');
     } catch (err: any) {
-      alert(err.message || 'Failed to mark notifications as read.');
+      toastError(err.message || 'Failed to mark notifications as read.');
     } finally {
       setMarkingRead(false);
     }
@@ -47,15 +47,15 @@ export const Notifications: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[var(--primary)]" />
+            <Bell className="w-5 h-5 text-[var(--primary)]" aria-hidden="true" />
             <span>Notification Center</span>
             {unreadCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border border-[var(--accent-attention-border)]">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--action-danger-soft)] text-[var(--action-danger-bg)] border border-[var(--accent-attention-border)]" aria-label={`${unreadCount} unread notifications`}>
                 {unreadCount} new
               </span>
             )}
           </h1>
-          <p className="text-xs text-[var(--text-muted)]">System alerts, leave & expense status updates, and task assignments</p>
+          <p className="text-xs text-[var(--text-muted)]">System alerts, leave &amp; expense status updates, and task assignments</p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -65,8 +65,9 @@ export const Notifications: React.FC = () => {
             disabled={loading}
             className="p-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 min-h-[38px] min-w-[38px] flex items-center justify-center"
             title="Refresh notifications"
+            aria-label="Refresh notifications"
           >
-            <RefreshCw className={`w-4 h-4 text-[var(--primary)] ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-[var(--primary)] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
 
           {notifications.length > 0 && unreadCount > 0 && (
@@ -75,25 +76,21 @@ export const Notifications: React.FC = () => {
               disabled={markingRead}
               onClick={handleMarkAllRead}
               className="flex items-center gap-2 px-3.5 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 min-h-[38px]"
+              aria-label={markingRead ? 'Marking all notifications as read' : 'Mark all notifications as read'}
             >
-              <CheckCheck className="w-4 h-4 text-[var(--badge-success-text)]" />
+              <CheckCheck className="w-4 h-4 text-[var(--badge-success-text)]" aria-hidden="true" />
               <span>{markingRead ? 'Updating...' : 'Mark All as Read'}</span>
             </button>
           )}
         </div>
       </div>
 
-      {feedback && (
-        <div className="p-3.5 bg-[var(--badge-success-bg)] border border-[var(--badge-success-border)] text-[var(--badge-success-text)] rounded-xl flex items-center gap-2 text-xs font-medium animate-in fade-in duration-200">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{feedback}</span>
-        </div>
-      )}
+
 
       {error && (
-        <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-2xl text-[var(--action-danger-bg)] flex items-center justify-between gap-3 text-xs">
+        <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-2xl text-[var(--action-danger-bg)] flex items-center justify-between gap-3 text-xs" role="alert">
           <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
           <button
@@ -106,16 +103,17 @@ export const Notifications: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3" aria-live="polite" aria-busy={loading}>
         {loading ? (
           <div className="p-12 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2">
-            <RefreshCw className="w-5 h-5 animate-spin text-[var(--primary)]" />
+            <RefreshCw className="w-5 h-5 animate-spin text-[var(--primary)]" aria-hidden="true" />
             <span>Loading notifications...</span>
           </div>
         ) : notifications.length > 0 ? (
           notifications.map(n => (
-            <div
+            <article
               key={n.id}
+              aria-label={`${n.is_read ? 'Read' : 'Unread'}: ${n.title}`}
               className={`p-4 rounded-2xl border transition-all ${
                 n.is_read
                   ? 'bg-[var(--bg-surface)] border-[var(--border-subtle)] opacity-85'
@@ -126,23 +124,30 @@ export const Notifications: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     {!n.is_read && (
-                      <span className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0" aria-label="Unread" />
                     )}
                     <h4 className="font-bold text-sm text-[var(--text-primary)]">{n.title}</h4>
                   </div>
                   <p className="text-xs text-[var(--text-secondary)]">{n.message}</p>
                 </div>
-                <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0 whitespace-nowrap">
+                <time
+                  dateTime={n.created_at}
+                  className="text-[10px] text-[var(--text-muted)] font-mono shrink-0 whitespace-nowrap"
+                >
                   {new Date(n.created_at).toLocaleString()}
-                </span>
+                </time>
               </div>
-            </div>
+            </article>
           ))
         ) : (
-          <div className="p-12 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-sm space-y-2">
-            <Bell className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-40" />
-            <div className="font-medium text-[var(--text-primary)]">No notifications yet</div>
-            <p className="text-[11px] text-[var(--text-muted)]">You're all caught up! New alerts and approval updates will appear here.</p>
+          <div className="p-12 text-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-sm space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-[var(--bg-surface-muted)] flex items-center justify-center">
+              <Bell className="w-6 h-6 text-[var(--text-muted)] opacity-40" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-[var(--text-primary)]">No notifications yet</p>
+              <p className="text-[11px] text-[var(--text-muted)]">You're all caught up! New alerts and approval updates will appear here.</p>
+            </div>
           </div>
         )}
       </div>

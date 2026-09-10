@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
-import { History, RefreshCw, AlertCircle } from 'lucide-react';
+import { History, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react';
 
 export const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -29,7 +29,7 @@ export const AuditLogs: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-            <History className="w-5 h-5 text-[var(--primary)]" />
+            <History className="w-5 h-5 text-[var(--primary)]" aria-hidden="true" />
             <span>System Audit Trail</span>
           </h1>
           <p className="text-xs text-[var(--text-muted)]">Immutable audit log recording user actions, entity mutations, and IP addresses</p>
@@ -40,16 +40,17 @@ export const AuditLogs: React.FC = () => {
           onClick={fetchLogs}
           disabled={loading}
           className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-muted)] text-xs font-semibold text-[var(--text-primary)] rounded-xl border border-[var(--border-default)] shadow-sm transition-all cursor-pointer self-start sm:self-auto disabled:opacity-50 min-h-[38px]"
+          aria-label="Refresh audit logs"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-[var(--primary)] ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-[var(--primary)] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           <span>Refresh Logs</span>
         </button>
       </div>
 
       {error && (
-        <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-2xl text-[var(--action-danger-bg)] flex items-center justify-between gap-3 text-xs">
+        <div className="p-4 bg-[var(--action-danger-soft)] border border-[var(--accent-attention-border)] rounded-2xl text-[var(--action-danger-bg)] flex items-center justify-between gap-3 text-xs" role="alert">
           <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
           <button
@@ -63,15 +64,16 @@ export const AuditLogs: React.FC = () => {
       )}
 
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[var(--text-secondary)]">
+        <div className="overflow-x-auto" aria-live="polite" aria-busy={loading}>
+          <table className="w-full text-left text-xs text-[var(--text-secondary)]" aria-label="System audit trail">
+            <caption className="sr-only">System audit log — showing recent user actions and entity mutations</caption>
             <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-muted)] font-semibold uppercase text-[10px] tracking-wider border-b border-[var(--border-subtle)]">
               <tr>
-                <th className="px-6 py-3">Timestamp</th>
-                <th className="px-6 py-3">Actor</th>
-                <th className="px-6 py-3">Module</th>
-                <th className="px-6 py-3">Action</th>
-                <th className="px-6 py-3">Entity</th>
+                <th scope="col" className="px-6 py-3">Timestamp</th>
+                <th scope="col" className="px-6 py-3">Actor</th>
+                <th scope="col" className="px-6 py-3">Module</th>
+                <th scope="col" className="px-6 py-3">Action</th>
+                <th scope="col" className="px-6 py-3">Entity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -79,7 +81,7 @@ export const AuditLogs: React.FC = () => {
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)]">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="w-5 h-5 animate-spin text-[var(--primary)]" />
+                      <RefreshCw className="w-5 h-5 animate-spin text-[var(--primary)]" aria-hidden="true" />
                       <span>Loading audit records...</span>
                     </div>
                   </td>
@@ -88,7 +90,7 @@ export const AuditLogs: React.FC = () => {
                 logs.map(l => (
                   <tr key={l.id} className="hover:bg-[var(--bg-surface-hover)] transition-colors">
                     <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--text-muted)] whitespace-nowrap">
-                      {new Date(l.created_at).toLocaleString()}
+                      <time dateTime={l.created_at}>{new Date(l.created_at).toLocaleString()}</time>
                     </td>
                     <td className="px-6 py-3.5 font-semibold text-[var(--text-primary)]">
                       {l.actor_email && l.actor_email.includes('@') ? (
@@ -110,8 +112,16 @@ export const AuditLogs: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)] italic">
-                    No audit log records found.
+                  <td colSpan={5} className="px-6 py-14 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[var(--bg-surface-muted)] flex items-center justify-center">
+                        <ShieldAlert className="w-6 h-6 text-[var(--text-muted)] opacity-40" aria-hidden="true" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">No audit records found</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">System actions will appear here as users interact with the platform.</p>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               )}

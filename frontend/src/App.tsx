@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AttendanceProvider } from './context/AttendanceContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './components/common/Toast';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import { PageSkeleton } from './components/common/PageSkeleton';
@@ -48,9 +49,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   if (requiredPermission && !hasPermission(user.role, requiredPermission)) {
     return (
       <Layout>
-        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-2">
-          <h2 className="text-lg font-bold">403 Forbidden</h2>
-          <p className="text-xs">You do not have permission to access this module ({requiredPermission}).</p>
+        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white/60 border border-[var(--action-danger-bg)]/20 rounded-xl shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold">Access Restricted</h2>
+              <p className="text-xs mt-0.5 opacity-80">You do not have permission to access this area. Contact your system administrator if you believe this is an error.</p>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -59,9 +67,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   if (allowedRoles && !allowedRoles.map(r => normalizeRole(r)).includes(normalizeRole(user.role))) {
     return (
       <Layout>
-        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-2">
-          <h2 className="text-lg font-bold">403 Forbidden</h2>
-          <p className="text-xs">You do not have permission to access this module. Required role: {allowedRoles.join(' or ')}.</p>
+        <div className="p-8 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 rounded-2xl text-[var(--action-danger-bg)] space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white/60 border border-[var(--action-danger-bg)]/20 rounded-xl shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold">Access Restricted</h2>
+              <p className="text-xs mt-0.5 opacity-80">You do not have permission to access this area. Contact your system administrator if you believe this is an error.</p>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -80,30 +95,32 @@ export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AttendanceProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
+        <ToastProvider>
+          <AttendanceProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
 
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/employees" element={<ProtectedRoute requiredPermission="EMPLOYEE_VIEW_WORKFORCE"><Employees /></ProtectedRoute>} />
-              <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-              <Route path="/leave" element={<ProtectedRoute><Leave /></ProtectedRoute>} />
-              <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
-              <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-              <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
-              <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
-              <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute requiredPermission="REPORTS_WORKFORCE_VIEW"><Reports /></ProtectedRoute>} />
-              <Route path="/audit-logs" element={<ProtectedRoute requiredPermission="AUDIT_LOG_VIEW"><AuditLogs /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/employees" element={<ProtectedRoute requiredPermission="EMPLOYEE_VIEW_WORKFORCE"><Employees /></ProtectedRoute>} />
+                <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+                <Route path="/leave" element={<ProtectedRoute><Leave /></ProtectedRoute>} />
+                <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
+                <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+                <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+                <Route path="/weekly-plan" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+                <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute requiredPermission="REPORTS_WORKFORCE_VIEW"><Reports /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute requiredPermission="AUDIT_LOG_VIEW"><AuditLogs /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
 
-              <Route path="*" element={<Suspense fallback={<PageSkeleton />}><NotFound /></Suspense>} />
-            </Routes>
-          </BrowserRouter>
-        </AttendanceProvider>
+                <Route path="*" element={<Suspense fallback={<PageSkeleton />}><NotFound /></Suspense>} />
+              </Routes>
+            </BrowserRouter>
+          </AttendanceProvider>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

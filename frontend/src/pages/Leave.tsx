@@ -1,14 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common/Toast';
+import { ConfirmDialog, RejectReasonDialog } from '../components/common/ConfirmDialog';
+import { hasPermission } from '../utils/permissions';
 import { 
   CalendarDays, Plus, Settings, AlertCircle, ShieldCheck, Sliders, 
   Users, Clock, CheckCircle2, Search, Filter, Download, Eye, X, Info
 } from 'lucide-react';
 
+
 export const Leave: React.FC = () => {
   const { user } = useAuth();
-  const isManagement = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'HR'].includes(user?.role || '');
+  const { success: toastSuccess, error: toastError } = useToast();
+  const isManagement = hasPermission(user?.role, 'LEAVE_APPROVE');
+
+  // Confirm / Reject dialog state
+  const [confirmCancel, setConfirmCancel] = useState<{ id: string } | null>(null);
+  const [rejectDialogId, setRejectDialogId] = useState<string | null>(null);
 
   // Data states
   const [summaryData, setSummaryData] = useState<{
@@ -183,11 +192,10 @@ export const Leave: React.FC = () => {
         body: JSON.stringify(policyData)
       });
       setShowPolicyModal(false);
-      setPolicySuccess('Leave entitlement policy updated successfully.');
-      setTimeout(() => setPolicySuccess(null), 4000);
+      toastSuccess('Leave entitlement policy updated successfully.');
       fetchLeaveData();
     } catch (err: any) {
-      alert(err.message);
+      toastError(err.message || 'Failed to update leave policy.');
     }
   };
 
@@ -199,46 +207,59 @@ export const Leave: React.FC = () => {
         body: JSON.stringify(adjustmentData)
       });
       setShowAdjustmentModal(false);
-      setPolicySuccess('Employee leave entitlement adjusted successfully.');
-      setTimeout(() => setPolicySuccess(null), 4000);
+      toastSuccess('Employee leave entitlement adjusted successfully.');
       fetchLeaveData();
     } catch (err: any) {
-      alert(err.message || 'Failed to adjust leave entitlement.');
+      toastError(err.message || 'Failed to adjust leave entitlement.');
     }
   };
 
   const handleApprove = async (id: string) => {
     try {
       await apiFetch(`/leaves/${id}/approve`, { method: 'PUT' });
+      toastSuccess('Leave request approved.');
       await fetchLeaveData();
     } catch (err: any) {
-      alert(err.message || 'Unable to approve leave request.');
+      toastError(err.message || 'Unable to approve leave request.');
       await fetchLeaveData();
     }
   };
 
-  const handleReject = async (id: string) => {
-    const reason = prompt('Please enter rejection reason:');
-    if (reason === null) return;
+  const handleRejectConfirm = async (reason: string) => {
+    if (!rejectDialogId) return;
+    const id = rejectDialogId;
+    setRejectDialogId(null);
     try {
       await apiFetch(`/leaves/${id}/reject`, {
         method: 'PUT',
         body: JSON.stringify({ rejectionReason: reason })
       });
+      toastSuccess('Leave request rejected.');
       await fetchLeaveData();
     } catch (err: any) {
-      alert(err.message || 'Unable to reject leave request.');
+      toastError(err.message || 'Unable to reject leave request.');
       await fetchLeaveData();
     }
   };
 
-  const handleCancelLeave = async (id: string) => {
-    if (!confirm('Are you sure you want to cancel this leave request?')) return;
+  const handleReject = (id: string) => {
+    setRejectDialogId(id);
+  };
+
+  const handleCancelLeave = (id: string) => {
+    setConfirmCancel({ id });
+  };
+
+  const handleCancelLeaveConfirm = async () => {
+    if (!confirmCancel) return;
+    const id = confirmCancel.id;
+    setConfirmCancel(null);
     try {
       await apiFetch(`/leaves/${id}/cancel`, { method: 'PUT' });
+      toastSuccess('Leave request cancelled.');
       fetchLeaveData();
     } catch (err: any) {
-      alert(err.message || 'Unable to cancel leave request.');
+      toastError(err.message || 'Unable to cancel leave request.');
     }
   };
 
@@ -1193,7 +1214,29 @@ export const Leave: React.FC = () => {
             </form>
           </div>
         </div>
-      )}
+      )}\n
+      {/* Cancel Leave Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!confirmCancel}
+        title="Cancel Leave Request"
+        message="Are you sure you want to cancel this leave request? This action cannot be undone."
+        confirmLabel="Yes, Cancel Request"
+        cancelLabel="Keep Request"
+        danger
+        onConfirm={handleCancelLeaveConfirm}
+        onCancel={() => setConfirmCancel(null)}
+      />
+
+      {/* Reject Leave Reason Dialog */}
+      <RejectReasonDialog
+        isOpen={!!rejectDialogId}
+        title="Reject Leave Request"
+        label="Please provide a reason for rejection:"
+        placeholder="Enter rejection reason..."
+        onConfirm={handleRejectConfirm}
+        onCancel={() => setRejectDialogId(null)}
+      />
     </div>
   );
 };
+

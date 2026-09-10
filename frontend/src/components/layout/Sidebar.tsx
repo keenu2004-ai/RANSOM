@@ -107,6 +107,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => setCollapsed && setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-[var(--sidebar-text)] hover:text-[var(--text-primary)] hover:bg-[var(--sidebar-hover)] transition-colors cursor-pointer"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
         >
           {collapsed ? (
             <PanelLeftOpen className="w-5 h-5" />

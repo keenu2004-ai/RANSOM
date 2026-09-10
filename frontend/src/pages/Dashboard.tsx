@@ -43,9 +43,11 @@ const KpiCard: React.FC<KpiCardProps> = ({
   };
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleCardClick}
-      className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] rounded-2xl p-5 shadow-[var(--card-shadow)] hover:shadow-[var(--card-shadow-hover)] transition-all hover:translate-y-[-2px] cursor-pointer relative overflow-hidden group flex flex-col justify-between"
+      aria-label={`${title}: ${loading ? 'Loading' : value}${subtitle ? '. ' + subtitle : ''}`}
+      className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] rounded-2xl p-5 shadow-[var(--card-shadow)] hover:shadow-[var(--card-shadow-hover)] transition-all hover:translate-y-[-2px] cursor-pointer relative overflow-hidden group flex flex-col justify-between text-left w-full"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
@@ -64,6 +66,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
         <div
           className="p-3 rounded-2xl border border-[var(--border-subtle)] group-hover:scale-105 transition-transform shrink-0"
           style={{ backgroundColor: `var(${iconBgVar})`, color: `var(${iconColorVar})` }}
+          aria-hidden="true"
         >
           <Icon className="w-5 h-5" />
         </div>
@@ -81,7 +84,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
           </p>
         )}
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -297,6 +300,7 @@ export const Dashboard: React.FC = () => {
               value={attendanceChartRange}
               onChange={(e) => setAttendanceChartRange(e.target.value)}
               className="bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text-primary)] font-semibold px-3 py-1.5 focus:outline-none focus:border-[var(--primary)] cursor-pointer shadow-sm"
+              aria-label="Select attendance chart date range"
             >
               <option value="This Week">This Week</option>
               <option value="Last Week">Last Week</option>
@@ -350,7 +354,7 @@ export const Dashboard: React.FC = () => {
                   fill="var(--bg-surface)"
                   stroke={chartLineColor}
                   strokeWidth="2.5"
-                  className="hover:r-6 transition-all cursor-pointer"
+                  className="cursor-pointer transition-all"
                 >
                   <title>{`${pt.day}: ${pt.val} (${pt.count} present)`}</title>
                 </circle>
@@ -406,8 +410,12 @@ export const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center text-xs text-[var(--text-muted)]">
-                Nothing recent reported.
+              <div className="py-10 text-center space-y-2">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-[var(--bg-surface-muted)] flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-[var(--text-muted)] opacity-50" />
+                </div>
+                <p className="text-xs font-medium text-[var(--text-primary)]">No activity yet today</p>
+                <p className="text-[11px] text-[var(--text-muted)]">Actions taken across the system will appear here.</p>
               </div>
             )}
           </div>
@@ -450,8 +458,12 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-xs text-[var(--text-muted)]">
-              No department data available.
+            <div className="py-10 text-center space-y-2">
+              <div className="w-10 h-10 mx-auto rounded-xl bg-[var(--bg-surface-muted)] flex items-center justify-center">
+                <Users className="w-5 h-5 text-[var(--text-muted)] opacity-40" />
+              </div>
+              <p className="text-xs font-medium text-[var(--text-primary)]">No departments configured</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Go to Settings to add departments and assign employees.</p>
             </div>
           )}
         </div>
