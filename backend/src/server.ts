@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { config } from './config';
 import { query } from './db';
 import { errorHandler } from './middleware/errorHandler';
@@ -15,6 +16,14 @@ app.set('trust proxy', 1);
 // Security Headers
 app.use(helmet());
 app.use(cookieParser());
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // Explicit CORS setup
 const allowedOrigins = config.corsAllowedOrigins.map(o => o.trim().replace(/\/$/, ''));
@@ -40,10 +49,11 @@ const corsOptions: cors.CorsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Rate Limiting
-const apiLimiter = rateLimit({
+// Global API Rate Limiting
+export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 300,
+  skip: (req) => process.env.NODE_ENV === 'test' && req.headers['x-test-enforce-rate-limit'] !== 'true',
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -52,7 +62,23 @@ const apiLimiter = rateLimit({
     code: 'RATE_LIMIT_EXCEEDED'
   }
 });
-app.use('/api/', apiLimiter);
+
+// Strict Auth Rate Limiting (Brute Force Protection)
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per 15 mins for auth routes
+  skip: (req) => process.env.NODE_ENV === 'test' && req.headers['x-test-enforce-rate-limit'] !== 'true',
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many authentication attempts from this IP. Please try again later.',
+    code: 'AUTH_RATE_LIMIT_EXCEEDED'
+  }
+});
+
+app.use('/api/v1/auth', authLimiter);
+app.use('/api/v1/', apiLimiter);
 
 // Body Parsing with 10 MB payload limit for attachments
 app.use(express.json({ limit: '10mb' }));
@@ -89,26 +115,26 @@ import calendarRoutes from './routes/calendarRoutes';
 import userRoutes from './routes/userRoutes';
 import fileRoutes from './routes/fileRoutes';
 
-app.use('/api/auth', authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/employees', employeeRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/leaves', leaveRoutes);
-app.use('/api/holidays', holidayRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/timesheets', timesheetRoutes);
-app.use('/api/assets', assetRoutes);
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/audit-logs', auditRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/files', fileRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/employees', employeeRoutes);
+app.use('/api/v1/attendance', attendanceRoutes);
+app.use('/api/v1/leaves', leaveRoutes);
+app.use('/api/v1/holidays', holidayRoutes);
+app.use('/api/v1/expenses', expenseRoutes);
+app.use('/api/v1/timesheets', timesheetRoutes);
+app.use('/api/v1/assets', assetRoutes);
+app.use('/api/v1/calendar', calendarRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/audit-logs', auditRoutes);
+app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/files', fileRoutes);
 
 // Health Check Endpoint (Verifies real PostgreSQL database ping)
-app.get('/api/health', async (req, res, next) => {
+const healthCheckHandler = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
     const result = await query('SELECT NOW() as now, current_database() as db');
     return res.status(200).json({
@@ -131,7 +157,10 @@ app.get('/api/health', async (req, res, next) => {
       code: 'DATABASE_CONNECTION_ERROR'
     });
   }
-});
+};
+
+app.get('/api/v1/health', healthCheckHandler);
+app.get('/api/health', healthCheckHandler);
 
 // Centralized Error Handling Middleware
 app.use(errorHandler);
@@ -158,7 +187,9 @@ if (require.main === module) {
       const { AttendanceReconciliationService } = require('./services/attendanceReconciliationService');
       AttendanceReconciliationService.startReconciliationCron();
     } catch (err: any) {
-      console.warn(`[SERVER WARN] Database initialization skipped: ${err.message}`);
+      console.error(`[SERVER FATAL] Database initialization/migration failed: ${err.message}`);
+      if (err.stack) console.error(err.stack);
+      process.exit(1);
     }
 
     app.listen(config.port, () => {

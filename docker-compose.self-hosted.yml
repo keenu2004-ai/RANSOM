@@ -67,9 +67,13 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - proxy-net
-      - app-net
-      - internal-net
+      proxy-net:
+        aliases:
+          - hrms-backend
+      app-net:
+        aliases:
+          - hrms-backend
+      internal-net:
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +88,7 @@ services:
       - .env.self-hosted
     volumes:
       - /srv/theiakshi-data/postgres:/var/lib/postgresql/data
+      - /srv/theiakshi-data/secrets/postgres_password:/run/secrets/postgres_password:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
