@@ -286,4 +286,83 @@ describe('POST /api/v1/auth/logout', () => {
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
   });
+
+  it('F16 Challenge: verify auth_version is incremented and previous session invalidated upon logout', async () => {
+    // 1. Create an isolated user for this test
+    const { createTestOrg, createTestUser } = require('./helpers/auth');
+    const org = await createTestOrg('AUTH-VER-LOGOUT');
+    const user = await createTestUser({ orgId: org.orgId, email: `logout-test-${Date.now()}@test.local`, role: 'EMPLOYEE' });
+    
+    // 2. Obtain current auth_version
+    const { testPool } = require('./helpers/testDb');
+    const preRes = await testPool.query('SELECT auth_version FROM users WHERE id = $1', [user.userId]);
+    const initialVersion = preRes.rows[0].auth_version;
+
+    // 3. Logout
+    const resLogout = await request(app)
+      .post(endpoint)
+      .set('Authorization', `Bearer ${user.token}`)
+      .set('Origin', 'http://localhost:5173');
+    
+    expect(resLogout.status).toBe(200);
+
+    // 4. Verify auth_version incremented in DB
+    const postRes = await testPool.query('SELECT auth_version FROM users WHERE id = $1', [user.userId]);
+    const newVersion = postRes.rows[0].auth_version;
+    expect(newVersion).toBeGreaterThan(initialVersion);
+
+    // 5. Attempt to use the original token (must be rejected)
+    const resMe = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${user.token}`);
+    
+    expect(resMe.status).toBe(401);
+  });
+});
+
+describe('POST /api/v1/auth/change-password (F16 Challenge)', () => {
+  const endpoint = `${BASE}/change-password`;
+
+  it('F16 Challenge: verify auth_version is incremented and previous session invalidated upon password change', async () => {
+    const { createTestOrg, createTestUser, loginAs } = require('./helpers/auth');
+    const org = await createTestOrg('AUTH-VER-PWD');
+    const email = `pwd-test-${Date.now()}@test.local`;
+    const user = await createTestUser({ orgId: org.orgId, email, role: 'EMPLOYEE' });
+    
+    const { testPool } = require('./helpers/testDb');
+    const preRes = await testPool.query('SELECT auth_version FROM users WHERE id = $1', [user.userId]);
+    const initialVersion = preRes.rows[0].auth_version;
+
+    const resChange = await request(app)
+      .post(endpoint)
+      .set('Authorization', `Bearer ${user.token}`)
+      .set('Origin', 'http://localhost:5173')
+      .send({
+        currentPassword: 'TestPassword@123',
+        newPassword: 'NewSecurePassword!99',
+        confirmPassword: 'NewSecurePassword!99'
+      });
+    
+    expect(resChange.status).toBe(200);
+
+    const postRes = await testPool.query('SELECT auth_version FROM users WHERE id = $1', [user.userId]);
+    const newVersion = postRes.rows[0].auth_version;
+    expect(newVersion).toBeGreaterThan(initialVersion);
+
+    // Old token must fail
+    const resMe = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${user.token}`);
+    expect(resMe.status).toBe(401);
+
+    // Fresh login must work
+    const newLogin = await loginAs(app, email, 'NewSecurePassword!99');
+    expect(newLogin.token).toBeDefined();
+
+    // Verify new session works
+    const resMeNew = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${newLogin.token}`);
+    expect(resMeNew.status).toBe(200);
+  });
 });

@@ -164,7 +164,8 @@ export class EmployeeRepository {
     return withTransaction(async (client) => {
       // 1. Create or link user account with initial password
       const bcrypt = require('bcryptjs');
-      const rawPassword = data.password || 'ChangeMe@123';
+      const crypto = require('crypto');
+      const rawPassword = data.password || crypto.randomBytes(16).toString('hex');
       const passwordHash = bcrypt.hashSync(rawPassword, 10);
 
       const userRes = await client.query(`

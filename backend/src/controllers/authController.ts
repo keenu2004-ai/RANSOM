@@ -92,17 +92,24 @@ export class AuthController {
     }
   }
 
-  static async logout(req: AuthenticatedRequest, res: Response) {
-    res.clearCookie('theiakshi_session', {
-      httpOnly: true,
-      secure: config.env === 'production',
-      sameSite: 'lax',
-      path: '/'
-    });
-    return res.status(200).json({
-      success: true,
-      data: { message: 'Logged out successfully.' }
-    });
+  static async logout(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (req.user) {
+        await AuthService.logout(req.user.userId);
+      }
+      res.clearCookie('theiakshi_session', {
+        httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'lax',
+        path: '/'
+      });
+      return res.status(200).json({
+        success: true,
+        data: { message: 'Logged out successfully.' }
+      });
+    } catch (error) {
+      return next(error);
+    }
   }
 
   static async changePassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -126,9 +133,17 @@ export class AuthController {
 
       await AuthService.changePassword(req.user.userId, currentPassword, newPassword);
 
+      // Clear the cookie because the auth_version bump will invalidate the current session
+      res.clearCookie('theiakshi_session', {
+        httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'lax',
+        path: '/'
+      });
+
       return res.status(200).json({
         success: true,
-        data: { message: 'Password updated successfully.' }
+        data: { message: 'Password updated successfully. Please log in again.' }
       });
     } catch (error) {
       return next(error);

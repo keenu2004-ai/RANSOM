@@ -94,6 +94,113 @@ describe('GET /api/v1/employees/:id', () => {
   });
 });
 
+describe('GET /api/v1/employees/:id PII / BOLA (F16 Challenge)', () => {
+  let orgA: { orgId: string };
+  let orgB: { orgId: string };
+  let adminA: any;
+  let hrA: any;
+  let empA1: any;
+  let empA2: any;
+  let empB1: any;
+
+  beforeAll(async () => {
+    const { createTestOrg, createTestUser, createTestEmployee, signToken } = require('./helpers/auth');
+    orgA = await createTestOrg('PII-ORG-A');
+    orgB = await createTestOrg('PII-ORG-B');
+    adminA = await createTestUser({ orgId: orgA.orgId, email: `admin-a-${Date.now()}@test.local`, role: 'SUPER_ADMIN' });
+    hrA = await createTestUser({ orgId: orgA.orgId, email: `hr-a-${Date.now()}@test.local`, role: 'HR_MANAGER' });
+    empA1 = await createTestUser({ orgId: orgA.orgId, email: `emp-a1-${Date.now()}@test.local`, role: 'EMPLOYEE' });
+    empA2 = await createTestUser({ orgId: orgA.orgId, email: `emp-a2-${Date.now()}@test.local`, role: 'EMPLOYEE' });
+    empB1 = await createTestUser({ orgId: orgB.orgId, email: `emp-b1-${Date.now()}@test.local`, role: 'EMPLOYEE' });
+
+    empA1.employeeId = await createTestEmployee({ orgId: orgA.orgId, userId: empA1.userId });
+    empA1.token = signToken({ userId: empA1.userId, organizationId: orgA.orgId, email: empA1.email, role: empA1.role, auth_version: empA1.auth_version, employeeId: empA1.employeeId });
+
+    empA2.employeeId = await createTestEmployee({ orgId: orgA.orgId, userId: empA2.userId });
+    empA2.token = signToken({ userId: empA2.userId, organizationId: orgA.orgId, email: empA2.email, role: empA2.role, auth_version: empA2.auth_version, employeeId: empA2.employeeId });
+
+    empB1.employeeId = await createTestEmployee({ orgId: orgB.orgId, userId: empB1.userId });
+    empB1.token = signToken({ userId: empB1.userId, organizationId: orgB.orgId, email: empB1.email, role: empB1.role, auth_version: empB1.auth_version, employeeId: empB1.employeeId });
+
+    // We must manually add dummy PII data to empA2's record via the DB for test assertions
+    const { testPool } = require('./helpers/testDb');
+    await testPool.query(`
+      UPDATE employees 
+      SET pan_number = 'ABCDE1234F', aadhaar_number = '123456789012', bank_account_number = '987654321', bank_ifsc = 'IFSC0001', date_of_birth = '1990-01-01'
+      WHERE id = $1
+    `, [empA2.employeeId]);
+  });
+
+  afterAll(async () => {
+    await deleteTestOrg(orgA.orgId);
+    await deleteTestOrg(orgB.orgId);
+  });
+
+  it('Test A: Employee A requesting Employee B -> sensitive PII must NOT be exposed', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/${empA2.employeeId}`)
+      .set('Authorization', `Bearer ${empA1.token}`);
+    
+    expect(res.status).toBe(200);
+    const emp = res.body.data.employee;
+    expect(emp).toBeDefined();
+    expect(emp.pan_number).toBeUndefined();
+    expect(emp.aadhaar_number).toBeUndefined();
+    expect(emp.bank_account_number).toBeUndefined();
+    expect(emp.bank_ifsc).toBeUndefined();
+    expect(emp.date_of_birth).toBeUndefined();
+  });
+
+  it('Test B: Employee requesting their own record -> expected permitted fields remain available', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/${empA2.employeeId}`)
+      .set('Authorization', `Bearer ${empA2.token}`);
+    
+    expect(res.status).toBe(200);
+    const emp = res.body.data.employee;
+    expect(emp.pan_number).toBe('ABCDE1234F');
+    expect(emp.bank_ifsc).toBe('IFSC0001');
+  });
+
+  it('Test C: HR Manager requesting employee -> permitted PII available according to intended policy', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/${empA2.employeeId}`)
+      .set('Authorization', `Bearer ${hrA.token}`);
+    
+    expect(res.status).toBe(200);
+    const emp = res.body.data.employee;
+    expect(emp.pan_number).toBe('ABCDE1234F');
+  });
+
+  it('Test D: Super Admin requesting employee -> permitted PII available', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/${empA2.employeeId}`)
+      .set('Authorization', `Bearer ${adminA.token}`);
+    
+    expect(res.status).toBe(200);
+    const emp = res.body.data.employee;
+    expect(emp.pan_number).toBe('ABCDE1234F');
+  });
+
+  it('Test E: User from Organization A requesting employee from Organization B -> request must fail', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/${empB1.employeeId}`)
+      .set('Authorization', `Bearer ${empA1.token}`);
+    
+    // Cross-tenant data should be strictly isolated by the repository
+    expect([404, 403]).toContain(res.status);
+  });
+
+  it('Test F: Manipulated employee ID -> no unauthorized access', async () => {
+    const res = await request(app)
+      .get(`/api/v1/employees/../../etc/passwd`)
+      .set('Authorization', `Bearer ${empA1.token}`);
+    
+    expect(res.status).not.toBe(200);
+    expect([400, 404, 403, 500]).toContain(res.status);
+  });
+});
+
 describe('POST /api/v1/employees (create employee)', () => {
   it('401: unauthenticated cannot create employee', async () => {
     const res = await request(app)

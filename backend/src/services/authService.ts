@@ -256,4 +256,8 @@ export class AuthService {
       console.warn('Audit log write failed for password change:', auditErr);
     }
   }
+
+  static async logout(userId: string): Promise<void> {
+    await UserRepository.incrementAuthVersion(userId);
+  }
 }

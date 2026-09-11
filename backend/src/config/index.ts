@@ -8,8 +8,16 @@ let databaseSsl = true;
 if (process.env.DATABASE_SSL !== undefined) {
   databaseSsl = process.env.DATABASE_SSL.toLowerCase() === 'true' || process.env.DATABASE_SSL === '1';
 }
+
+const env = process.env.NODE_ENV || 'development';
+
+if (env === 'production') {
+  if (!process.env.JWT_SECRET) throw new Error('FATAL: JWT_SECRET must be set in production');
+  // if (!process.env.DATABASE_URL) throw new Error('FATAL: DATABASE_URL must be set in production'); 
+}
+
 export const config = {
-  env: process.env.NODE_ENV || 'development',
+  env,
   port: parseInt(process.env.PORT || '5000', 10),
   databaseUrl: process.env.DATABASE_URL || '',
   jwtSecret: process.env.JWT_SECRET || 'fallback-dev-jwt-secret-theiakshi-2026',

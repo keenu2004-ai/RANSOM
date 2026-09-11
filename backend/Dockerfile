@@ -13,6 +13,13 @@ RUN mkdir -p /backend \
 
 RUN npm run build
 
+# Ensure node user owns the directories it needs to write to or access
+RUN mkdir -p /app/uploads /app/backups \
+    && chown -R node:node /app /database /backend
+
+# Switch to non-root user
+USER node
+
 EXPOSE 5000
 
 CMD ["npm", "start"]

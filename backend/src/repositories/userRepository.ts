@@ -438,6 +438,10 @@ export class UserRepository {
     await query('UPDATE users SET status = $1, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newStatus, targetUserId]);
   }
 
+  static async incrementAuthVersion(userId: string): Promise<void> {
+    await query('UPDATE users SET auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [userId]);
+  }
+
   static async updatePassword(userId: string, passwordHash: string): Promise<void> {
     const text = `
       UPDATE users

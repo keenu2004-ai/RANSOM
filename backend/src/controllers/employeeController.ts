@@ -53,6 +53,19 @@ export class EmployeeController {
       const { id } = req.params;
 
       const employee = await EmployeeService.getEmployeeById(id, organizationId);
+
+      const isOwner = req.user!.employeeId === id;
+      const isHrOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(req.user!.role);
+
+      if (!isOwner && !isHrOrAdmin) {
+        // Strip sensitive PII for peers or unauthorized roles
+        delete employee.pan_number;
+        delete employee.aadhaar_number;
+        delete employee.bank_account_number;
+        delete employee.bank_ifsc;
+        delete employee.date_of_birth;
+      }
+
       return res.status(200).json({
         success: true,
         data: { employee }

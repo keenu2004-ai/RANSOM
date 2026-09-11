@@ -90,7 +90,7 @@ EOF
 echo "[$(date)] Local backup created successfully."
 
 echo "[$(date)] Starting Google Drive upload as additional stage..."
-if docker exec theiakshi-hrms-backend npx ts-node src/scripts/upload_gdrive_backup.ts "/app/backups/postgres/hrms-postgres-${TIMESTAMP}.dump" "/app/backups/uploads/hrms-uploads-${TIMESTAMP}.tar.gz" "/app/backups/manifests/hrms-backup-${TIMESTAMP}.manifest"; then
+if docker exec --user root theiakshi-hrms-backend npx ts-node src/scripts/upload_gdrive_backup.ts "/app/backups/postgres/hrms-postgres-${TIMESTAMP}.dump" "/app/backups/uploads/hrms-uploads-${TIMESTAMP}.tar.gz" "/app/backups/manifests/hrms-backup-${TIMESTAMP}.manifest"; then
     echo "[$(date)] Google Drive backup completed successfully."
 else
     echo "[$(date)] ERROR: Google Drive backup failed! Local backups remain intact."

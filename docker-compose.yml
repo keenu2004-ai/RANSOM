@@ -12,6 +12,8 @@ services:
       - /srv/app-data/hrms/uploads:/app/uploads
       - /srv/theiakshi-data/backups:/app/backups:ro
       - /srv/theiakshi-data/secrets/google_drive_backup.env:/app/secrets/google_drive_backup.env:ro
+    security_opt:
+      - no-new-privileges:true
     expose:
       - "5000"
     networks:
@@ -26,6 +28,8 @@ services:
     restart: unless-stopped
     depends_on:
       - hrms-backend
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:8085:80"
     networks:
