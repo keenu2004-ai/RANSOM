@@ -324,7 +324,8 @@ export const Expenses: React.FC = () => {
     endDate: new Date().toISOString().split('T')[0],
     transportMode: 'Flight',
     purpose: '',
-    merchant: '',
+    paymentMode: PAYMENT_MODES[0],
+    paymentDetails: '',
     startLocation: '',
     endLocation: '',
     currency: 'INR',
@@ -910,7 +911,8 @@ export const Expenses: React.FC = () => {
       endDate: activeTrip?.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       transportMode: 'Flight',
       purpose: '',
-      merchant: '',
+      paymentMode: PAYMENT_MODES[0],
+      paymentDetails: '',
       startLocation: activeTrip?.start_point || '',
       endLocation: activeTrip?.end_point || '',
       currency: activeTrip?.currency || 'INR',
@@ -929,7 +931,8 @@ export const Expenses: React.FC = () => {
       endDate: item.end_date ? new Date(item.end_date).toISOString().split('T')[0] : '',
       transportMode: item.transport_mode || 'Flight',
       purpose: item.purpose || '',
-      merchant: item.merchant || '',
+      paymentMode: item.merchant && PAYMENT_MODES.some(m => item.merchant.startsWith(m)) ? PAYMENT_MODES.find(m => item.merchant.startsWith(m))! : PAYMENT_MODES[0],
+      paymentDetails: item.merchant && PAYMENT_MODES.some(m => item.merchant.startsWith(m)) && item.merchant.includes(' - ') ? item.merchant.split(' - ')[1] : (!PAYMENT_MODES.some(m => (item.merchant||'').startsWith(m)) ? item.merchant || '' : ''),
       startLocation: item.start_location || '',
       endLocation: item.end_location || '',
       currency: item.currency || 'INR',
@@ -958,10 +961,15 @@ export const Expenses: React.FC = () => {
 
       const payload = {
         ...travelFormData,
+        merchant: travelFormData.paymentDetails ? `${travelFormData.paymentMode} - ${travelFormData.paymentDetails}` : travelFormData.paymentMode,
         amount,
         attachmentName: attachmentName || undefined,
         receiptUrl: receiptUrl || undefined
       };
+
+      // Clean up internal state fields from payload before sending
+      delete (payload as any).paymentMode;
+      delete (payload as any).paymentDetails;
 
       if (editingChild) {
         await apiFetch(`/expenses/trips/${activeTrip.id}/travel/${editingChild.id}`, {
@@ -3418,8 +3426,14 @@ export const Expenses: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Merchant / Airline</label>
-                  <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Indigo / Air India" />
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Mode</label>
+                  <select value={travelFormData.paymentMode} onChange={e => setTravelFormData({ ...travelFormData, paymentMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]">
+                    {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Details</label>
+                  <input type="text" value={travelFormData.paymentDetails} onChange={e => setTravelFormData({ ...travelFormData, paymentDetails: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Last 4 digits / UPI Ref" />
                 </div>
               </div>
 
