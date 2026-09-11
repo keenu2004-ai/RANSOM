@@ -56,13 +56,15 @@ export class ExpenseRepository {
     const text = `
       INSERT INTO expenses (
         organization_id, employee_id, expense_type, transaction_date, category, merchant,
+        payment_mode, payment_details,
         currency, amount, bucket, transport_mode, start_location, end_location,
         description, attachment_name, receipt_url, status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       )
       RETURNING 
         id, employee_id, expense_type, transaction_date, category, merchant,
+        payment_mode, payment_details,
         currency, amount, bucket, transport_mode, start_location, end_location,
         description, attachment_name, receipt_url, status, created_at, updated_at
     `;
@@ -74,6 +76,8 @@ export class ExpenseRepository {
       transactionDate,
       data.category,
       data.merchant || null,
+      (data as any).paymentMode || null,
+      (data as any).paymentDetails || null,
       currency,
       data.amount,
       data.bucket,
@@ -218,18 +222,20 @@ export class ExpenseRepository {
         transaction_date = COALESCE($1, transaction_date),
         category = COALESCE($2, category),
         merchant = COALESCE($3, merchant),
-        currency = COALESCE($4, currency),
-        amount = COALESCE($5, amount),
-        bucket = COALESCE($6, bucket),
-        transport_mode = COALESCE($7, transport_mode),
-        start_location = COALESCE($8, start_location),
-        end_location = COALESCE($9, end_location),
-        description = COALESCE($10, description),
-        attachment_name = COALESCE($11, attachment_name),
-        receipt_url = COALESCE($12, receipt_url),
-        status = COALESCE($13, status),
+        payment_mode = COALESCE($4, payment_mode),
+        payment_details = COALESCE($5, payment_details),
+        currency = COALESCE($6, currency),
+        amount = COALESCE($7, amount),
+        bucket = COALESCE($8, bucket),
+        transport_mode = COALESCE($9, transport_mode),
+        start_location = COALESCE($10, start_location),
+        end_location = COALESCE($11, end_location),
+        description = COALESCE($12, description),
+        attachment_name = COALESCE($13, attachment_name),
+        receipt_url = COALESCE($14, receipt_url),
+        status = COALESCE($15, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $14 AND organization_id = $15 AND employee_id = $16 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
+      WHERE id = $16 AND organization_id = $17 AND employee_id = $18 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
       RETURNING *
     `;
 
@@ -237,6 +243,8 @@ export class ExpenseRepository {
       data.transactionDate || null,
       data.category || null,
       data.merchant || null,
+      (data as any).paymentMode || null,
+      (data as any).paymentDetails || null,
       data.currency || null,
       data.amount || null,
       data.bucket || null,

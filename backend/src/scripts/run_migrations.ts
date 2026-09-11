@@ -103,6 +103,7 @@ async function setupTables() {
       end_date DATE NOT NULL,
       currency VARCHAR(10) DEFAULT 'INR',
       total_amount NUMERIC(12,2) DEFAULT 0,
+      payment_details TEXT,
       status VARCHAR(20) DEFAULT 'DRAFT',
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -124,6 +125,7 @@ async function setupTables() {
       transport_mode VARCHAR(50),
       start_location VARCHAR(255),
       end_location VARCHAR(255),
+      payment_details TEXT,
       description TEXT,
       receipt_url TEXT,
       attachment_name VARCHAR(255),

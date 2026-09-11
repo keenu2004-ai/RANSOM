@@ -245,11 +245,12 @@ export class AttendanceController {
       const userEmpId = req.user!.employeeId;
 
       const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
-      const targetEmpId = isManager && req.query.employeeId ? (req.query.employeeId as string) : (isManager ? undefined : (userEmpId || undefined));
+      // Strictly derive from session if not manager
+      const targetEmpId = isManager && req.query.employeeId ? (req.query.employeeId as string) : (isManager ? undefined : userEmpId);
       const statusFilter = req.query.status ? (req.query.status as string) : undefined;
 
       const regularizations = await AttendanceRepository.getRegularizations(organizationId, {
-        employeeId: targetEmpId,
+        employeeId: targetEmpId ?? undefined,
         status: statusFilter
       });
 
@@ -309,11 +310,11 @@ export class AttendanceController {
       const result = await AttendanceRepository.findAll(organizationId, {
         year: year ? parseInt(year as string, 10) : undefined,
         month: month ? parseInt(month as string, 10) : undefined,
-        date: date as string,
-        startDate: startDate as string,
-        endDate: endDate as string,
-        employeeId: employeeId as string,
-        departmentId: departmentId as string,
+        date: date ? (date as string) : undefined,
+        startDate: startDate ? (startDate as string) : undefined,
+        endDate: endDate ? (endDate as string) : undefined,
+        employeeId: employeeId ? (employeeId as string) : undefined,
+        departmentId: departmentId ? (departmentId as string) : undefined,
         page: page ? parseInt(page as string, 10) : 1,
         limit: limit ? parseInt(limit as string, 10) : 500
       });
@@ -397,15 +398,17 @@ export class AttendanceController {
       const { startDate, endDate, year, month, page, limit } = req.query;
 
       const isManager = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(userRole);
-      if (!isManager && userEmpId !== employeeId) {
-        return res.status(403).json({
+      const targetEmpId = isManager ? employeeId : userEmpId;
+
+      if (!targetEmpId) {
+        return res.status(400).json({
           success: false,
-          error: 'Access denied: You can only view your own attendance records.',
-          code: 'FORBIDDEN'
+          error: 'Employee profile is required.',
+          code: 'EMPLOYEE_PROFILE_REQUIRED'
         });
       }
 
-      const result = await AttendanceRepository.getEmployeeAttendanceDetails(organizationId, employeeId, {
+      const result = await AttendanceRepository.getEmployeeAttendanceDetails(organizationId, targetEmpId, {
         startDate: startDate as string,
         endDate: endDate as string,
         year: year ? parseInt(year as string, 10) : undefined,

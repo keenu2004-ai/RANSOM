@@ -91,6 +91,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   );
 };
 
+const RootRedirect: React.FC = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center gap-3 text-[var(--primary)] font-medium text-xs">
+        <RefreshCw className="w-6 h-6 animate-spin text-[var(--primary)]" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
+  return <Navigate to={user ? '/dashboard' : '/login'} replace />;
+};
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -116,6 +129,7 @@ export const App: React.FC = () => {
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/admin-control" element={<ProtectedRoute requiredPermission="USER_ROLE_ASSIGN"><AdminControl /></ProtectedRoute>} />
 
+                <Route path="/" element={<RootRedirect />} />
                 <Route path="*" element={<Suspense fallback={<PageSkeleton />}><NotFound /></Suspense>} />
               </Routes>
             </BrowserRouter>

@@ -250,6 +250,22 @@ export class LeaveRepository {
         }
       }
 
+      // LWP (Leave Without Pay) does not require or consume any paid leave balance.
+      // Skip all balance checks and deductions for LWP.
+      if (requestedCode === 'LWP') {
+        const reqRes = await client.query(`
+          INSERT INTO leave_requests (
+            organization_id, employee_id, leave_type_id, requested_leave_type_id,
+            actual_deduction_type, conversion_reason, start_date, end_date, total_days, reason, status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING')
+          RETURNING id, employee_id, leave_type_id, requested_leave_type_id, actual_deduction_type, conversion_reason, start_date, end_date, total_days, status, created_at
+        `, [
+          organizationId, employeeId, targetLeaveTypeId, data.leaveTypeId,
+          'LWP', null, data.startDate, data.endDate, data.totalDays, data.reason
+        ]);
+        return reqRes.rows[0];
+      }
+
       // Check balance for target leave type
       const balRes = await client.query(`
         SELECT id, quota, used, pending, available
@@ -485,23 +501,33 @@ export class LeaveRepository {
       const year = new Date(req.start_date).getFullYear();
 
       if (status === 'APPROVED') {
-        await client.query(`
-          UPDATE leave_balances
-          SET 
-            pending = pending - $1,
-            used = used + $1,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
-        `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
+        // LWP: no paid balance to update
+        const ltCodeRes = await client.query(`SELECT code FROM leave_types WHERE id = $1`, [req.leave_type_id]);
+        const isLWP = ltCodeRes.rows[0]?.code === 'LWP';
+        if (!isLWP) {
+          await client.query(`
+            UPDATE leave_balances
+            SET 
+              pending = pending - $1,
+              used = used + $1,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
+          `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
+        }
       } else if (status === 'REJECTED' || status === 'CANCELLED') {
-        await client.query(`
-          UPDATE leave_balances
-          SET 
-            pending = GREATEST(0, pending - $1),
-            available = available + $1,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
-        `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
+        // LWP: no paid balance to restore
+        const ltCodeRes = await client.query(`SELECT code FROM leave_types WHERE id = $1`, [req.leave_type_id]);
+        const isLWP = ltCodeRes.rows[0]?.code === 'LWP';
+        if (!isLWP) {
+          await client.query(`
+            UPDATE leave_balances
+            SET 
+              pending = GREATEST(0, pending - $1),
+              available = available + $1,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE employee_id::text = $2 AND leave_type_id::text = $3 AND year = $4 AND organization_id::text = $5
+          `, [req.total_days, req.employee_id, req.leave_type_id, year, organizationId]);
+        }
       }
 
       const updatedRes = await client.query(`

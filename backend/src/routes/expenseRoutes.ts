@@ -29,6 +29,8 @@ const createExpenseSchema = z.object({
   transactionDate: z.string().optional(),
   category: z.string().min(1, 'Category is required.'),
   merchant: z.string().optional(),
+  paymentMode: z.string().optional(),
+  paymentDetails: z.string().optional(),
   currency: z.string().default('INR'),
   amount: z.number().gt(0, 'Amount must be greater than 0.'),
   bucket: z.enum(BUCKETS, { errorMap: () => ({ message: 'Invalid expense bucket specified.' }) }),

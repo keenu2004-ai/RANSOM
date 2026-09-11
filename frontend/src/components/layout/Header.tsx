@@ -275,8 +275,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     <button
                       key={n.id}
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setIsNotificationsOpen(false);
+                        if (!n.is_read) {
+                          try {
+                            await apiFetch(`/notifications/${n.id}/read`, { method: 'POST' });
+                            setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+                            setUnreadCount(prev => Math.max(0, prev - 1));
+                          } catch (err) {
+                            console.error('Failed to mark notification read', err);
+                          }
+                        }
                         if (n.link) navigate(n.link);
                       }}
                       aria-label={`${n.is_read ? 'Read' : 'Unread'} notification: ${n.title}`}

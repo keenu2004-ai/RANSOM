@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiFetch, apiDownload } from '../services/api-client';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
@@ -9,15 +10,7 @@ import {
   Filter, Users, UserCheck, UserX, CalendarDays, RefreshCw
 } from 'lucide-react';
 import { SharedCalendar, CalendarEvent } from '../components/calendar/SharedCalendar';
-
-const formatWorkingHours = (decimalHours: number | string | null | undefined): string => {
-  const value = Number(decimalHours || 0);
-  if (!Number.isFinite(value) || value <= 0) return '0h 00m';
-  const totalMinutes = Math.round(value * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
-};
+import { formatDuration } from '../utils/formatters';
 
 export type DatePreset = 'LAST_7_DAYS' | 'LAST_14_DAYS' | 'LAST_30_DAYS' | 'THIS_MONTH' | 'PREV_MONTH' | 'CUSTOM';
 
@@ -192,6 +185,10 @@ export const Attendance: React.FC = () => {
   }, []);
 
   // 2. Fetch Workforce Employee Summaries
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightRegId = searchParams.get('regularize');
+  const regTableRef = useRef<HTMLDivElement>(null);
+
   const fetchWorkforceSummaries = useCallback(async () => {
     if (!isManagerOrAdmin) return;
     setLoadingWorkforce(true);
@@ -234,6 +231,15 @@ export const Attendance: React.FC = () => {
     fetchRegularizations();
     fetchCalendarEvents(currentYear, currentMonth);
   }, [fetchWorkforceSummaries, fetchRegularizations, fetchCalendarEvents, currentYear, currentMonth]);
+
+  // Scroll to regularizations table if 'regularize' param is present and data is loaded
+  useEffect(() => {
+    if (highlightRegId && regularizations.length > 0 && regTableRef.current) {
+      setTimeout(() => {
+        regTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
+  }, [highlightRegId, regularizations.length]);
 
   // When date range changes, invalidate expanded employee details cache & reset active expansion
   useEffect(() => {
@@ -444,6 +450,13 @@ export const Attendance: React.FC = () => {
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [workforceEmployees]);
+
+  // If not manager, automatically fetch the employee's own details
+  useEffect(() => {
+    if (!isManagerOrAdmin && user?.employeeId) {
+      fetchEmployeeDetails(user.employeeId, 1, false);
+    }
+  }, [isManagerOrAdmin, user?.employeeId, activeDateRange, fetchEmployeeDetails]);
 
   const sessions = todaySummary?.sessions || [];
 
@@ -837,7 +850,7 @@ export const Attendance: React.FC = () => {
                           Sessions: <strong className="text-[var(--text-heading)]">{emp.sessionCount}</strong>
                         </span>
                         <span className="px-2.5 py-1 bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] rounded-lg border border-[var(--badge-success-border)]">
-                          Total: <strong className="font-bold">{formatWorkingHours(emp.totalHours)}</strong>
+                          Total: <strong className="font-bold">{formatDuration(emp.totalHours)}</strong>
                         </span>
                         <button
                           type="button"
@@ -911,7 +924,7 @@ export const Attendance: React.FC = () => {
                                         <td className="px-4 py-3 font-mono text-[var(--badge-danger-text)] font-medium">
                                           {a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                                         </td>
-                                        <td className="px-4 py-3 font-mono font-bold text-[var(--text-heading)]">{formatWorkingHours(a.working_hours)}</td>
+                                        <td className="px-4 py-3 font-mono font-bold text-[var(--text-heading)]">{formatDuration(a.working_hours)}</td>
                                         <td className="px-4 py-3">
                                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                             isAbsent || a.status === 'ABSENT'
@@ -996,6 +1009,140 @@ export const Attendance: React.FC = () => {
         </div>
       )}
 
+      {/* My Attendance Records (Employee View) */}
+      {!isManagerOrAdmin && user?.employeeId && (() => {
+        const myDetails = empDetailsMap[user.employeeId];
+        return (
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-xs space-y-4 p-6">
+            <h3 className="font-bold text-sm text-[var(--text-heading)]">My Attendance Records</h3>
+            {myDetails?.loading ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)]">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
+                <span>Loading your attendance history...</span>
+              </div>
+            ) : myDetails?.error ? (
+              <div className="p-3 bg-[var(--action-danger-soft)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] text-xs rounded-xl flex items-center justify-between">
+                <span className="font-semibold">{myDetails.error}</span>
+                <button
+                  type="button"
+                  onClick={() => fetchEmployeeDetails(user.employeeId!, 1, false)}
+                  className="px-3 py-1 bg-[var(--action-danger-bg)] hover:opacity-90 text-[var(--action-danger-text)] rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (myDetails?.records || []).length === 0 ? (
+              <div className="py-6 text-center text-[var(--text-muted)] text-xs italic">
+                No attendance records found for this period.
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+                  <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                    <thead className="bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] font-semibold uppercase text-[10px] tracking-wider border-b border-[var(--border-default)]">
+                      <tr>
+                        <th className="px-4 py-2.5">Date</th>
+                        <th className="px-4 py-2.5">Check In</th>
+                        <th className="px-4 py-2.5">Check Out</th>
+                        <th className="px-4 py-2.5">Hours</th>
+                        <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
+                      {myDetails.records.map((a: any, sIdx: number) => {
+                        const dateStr = a.date ? (typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0]) : 'N/A';
+                        const isAbsent = a.status === 'ABSENT' || a.status === 'ABSENT → Regularize';
+                        const canReg = a.canRegularize || isAbsent;
+
+                        return (
+                          <tr key={a.id || sIdx} className="hover:bg-[var(--bg-surface-hover)]">
+                            <td className="px-4 py-3 font-mono font-medium text-[var(--text-heading)]">{dateStr}</td>
+                            <td className="px-4 py-3 font-mono text-[var(--badge-success-text)] font-medium">
+                              {a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-[var(--badge-danger-text)] font-medium">
+                              {a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 font-mono font-bold text-[var(--text-heading)]">{formatDuration(a.working_hours)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                isAbsent || a.status === 'ABSENT'
+                                  ? 'bg-[var(--badge-danger-bg)] text-[var(--badge-danger-text)] border border-[var(--badge-danger-border)]'
+                                  : a.status?.includes('SHORT LEAVE')
+                                  ? 'bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)] border border-[var(--badge-warning-border)]'
+                                  : a.status?.includes('LATE PRESENT')
+                                  ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)]'
+                                  : a.status === 'HALF DAY'
+                                  ? 'bg-[var(--secondary)]/15 text-[var(--secondary)] border border-[var(--secondary)]/30'
+                                  : a.status === 'HOLIDAY'
+                                  ? 'bg-[var(--badge-info-bg)] text-[var(--badge-info-text)] border border-[var(--badge-info-border)]'
+                                  : a.status === 'PRESENT'
+                                  ? 'bg-[var(--badge-success-bg)] text-[var(--badge-success-text)] border border-[var(--badge-success-border)]'
+                                  : 'bg-[var(--bg-surface-muted)] text-[var(--text-secondary)] border border-[var(--border-default)]'
+                              }`}>
+                                {a.status || 'PRESENT'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {canReg && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openRegularizeForDate(dateStr)}
+                                    className="px-2.5 py-1 bg-[var(--primary)]/15 hover:bg-[var(--primary)]/25 text-[var(--primary)] border border-[var(--primary)]/30 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>Regularize</span>
+                                  </button>
+                                )}
+                                {!a.isSynthesized && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSession(a)}
+                                    className="px-2.5 py-1 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface-hover)] text-[var(--primary)] border border-[var(--border-default)] rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>GPS Details</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Incremental Pagination: Load Older Attendance Button */}
+                {myDetails.hasMore && (
+                  <div className="pt-2 flex justify-center">
+                    <button
+                      type="button"
+                      disabled={myDetails.loadingMore}
+                      onClick={() => fetchEmployeeDetails(user.employeeId!, myDetails.page + 1, true)}
+                      className="px-4 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-muted)] disabled:opacity-50 text-[var(--primary)] border border-[var(--border-default)] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+                    >
+                      {myDetails.loadingMore ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Loading older attendance...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          <span>Load Older Attendance</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Attendance Calendar (Preserved) */}
       <SharedCalendar
         events={calendarEvents}
@@ -1012,7 +1159,7 @@ export const Attendance: React.FC = () => {
 
       {/* Attendance Regularization Queue Table */}
       {regularizations.length > 0 && (
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-xs space-y-2">
+        <div ref={regTableRef} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-xs space-y-2">
           <div className="px-6 py-4 border-b border-[var(--border-default)] font-semibold text-xs text-[var(--text-heading)] flex items-center justify-between">
             <span className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-[var(--primary)]" />
@@ -1038,7 +1185,9 @@ export const Attendance: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {regularizations.map((r) => (
-                  <tr key={r.id} className="hover:bg-[var(--bg-surface-hover)]">
+                  <tr key={r.id} className={`hover:bg-[var(--bg-surface-hover)] transition-colors ${
+                    highlightRegId === r.id ? 'bg-[var(--primary)]/10 border-l-4 border-l-[var(--primary)]' : ''
+                  }`}>
                     <td className="px-6 py-3.5 font-semibold text-[var(--text-heading)]">
                       {r.employee_name}
                       <span className="block text-[10px] text-[var(--text-muted)] font-mono">{r.employee_code || 'EMP'}</span>

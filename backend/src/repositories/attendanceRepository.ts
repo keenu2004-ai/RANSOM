@@ -520,7 +520,7 @@ export class AttendanceRepository {
             hrUser.id,
             'Attendance Regularization Request',
             `${fullName} submitted an attendance regularization request for ${attendanceDate}.`,
-            '/attendance'
+            `/attendance?regularize=${reg.id}`
           ]
         );
       }
@@ -778,7 +778,7 @@ export class AttendanceRepository {
             emp.user_id,
             'Attendance Regularization Approved',
             `Your attendance regularization request for ${dateStr} has been approved.`,
-            '/attendance'
+            `/attendance?regularize=${reg.id}`
           ]
         );
       }
@@ -852,7 +852,7 @@ export class AttendanceRepository {
             emp.user_id,
             'Attendance Regularization Rejected',
             `Your attendance regularization request for ${dateStr} was rejected. Reason: ${rejectionReason || 'Rejected by manager'}.`,
-            '/attendance'
+            `/attendance?regularize=${reg.id}`
           ]
         );
       }

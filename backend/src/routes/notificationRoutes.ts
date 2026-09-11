@@ -36,4 +36,17 @@ router.post('/mark-all-read', async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
+router.post('/:id/read', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    await query(`
+      UPDATE notifications
+      SET is_read = TRUE
+      WHERE organization_id = $1 AND user_id = $2 AND id = $3
+    `, [req.user!.organizationId, req.user!.userId, req.params.id]);
+    return res.status(200).json({ success: true, data: { message: 'Notification marked as read.' } });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 export default router;

@@ -24,6 +24,7 @@ const TRANSPORT_MODES = [
   'Auto', 'Bus', 'Flight', 'Others', 'Public Transportation', 'Taxi', 'Train'
 ];
 const OTHER_EXPENSE_CATEGORIES = ['Food', 'General Expense', 'Other', 'Courier', 'Office Supply', 'Raw Material'];
+const PAYMENT_MODES = ['UPI/Cash', 'Credit Card', 'Company Pay'];
 
 export const Expenses: React.FC = () => {
   const { user } = useAuth();
@@ -297,6 +298,8 @@ export const Expenses: React.FC = () => {
     description: '',
     category: 'Food',
     merchant: '',
+    paymentMode: PAYMENT_MODES[0],
+    paymentDetails: '',
     currency: 'INR',
     amount: '',
     bucket: 'Internal',
@@ -648,6 +651,8 @@ export const Expenses: React.FC = () => {
       description: '',
       category: type === 'BUSINESS' ? BUSINESS_CATEGORIES[0] : LOCAL_TRAVEL_CATEGORIES[0],
       merchant: '',
+      paymentMode: PAYMENT_MODES[0],
+      paymentDetails: '',
       currency: 'INR',
       amount: '',
       bucket: BUCKET_OPTIONS[1],
@@ -669,6 +674,9 @@ export const Expenses: React.FC = () => {
       description: exp.description || '',
       category: exp.category || exp.category_name || (exp.expense_type === 'BUSINESS' ? BUSINESS_CATEGORIES[0] : LOCAL_TRAVEL_CATEGORIES[0]),
       merchant: exp.merchant || '',
+      // Preserve historical payment_mode. If null/undefined, use merchant value if it matches a known mode, else default.
+      paymentMode: exp.payment_mode || (PAYMENT_MODES.includes(exp.merchant) ? exp.merchant : PAYMENT_MODES[0]),
+      paymentDetails: exp.payment_details || '',
       currency: exp.currency || 'INR',
       amount: String(exp.amount || ''),
       bucket: exp.bucket || BUCKET_OPTIONS[1],
@@ -742,7 +750,9 @@ export const Expenses: React.FC = () => {
         expenseType: singleClaimType,
         transactionDate: singleFormData.transactionDate,
         category: singleFormData.category,
-        merchant: singleFormData.merchant ? singleFormData.merchant.trim() : undefined,
+        merchant: singleFormData.paymentMode, // Store payment mode in merchant column for backward compat
+        paymentMode: singleFormData.paymentMode,
+        paymentDetails: singleFormData.paymentDetails || undefined,
         currency: singleFormData.currency,
         amount: numericAmount,
         bucket: singleFormData.bucket,
@@ -2455,13 +2465,23 @@ export const Expenses: React.FC = () => {
               </button>
 
               {activeTrip.status === 'DRAFT' && (
-                <button
-                  type="button"
-                  onClick={handleOpenFinalSubmitModal}
-                  className="px-6 py-2.5 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl text-xs font-extrabold shadow-xs"
-                >
-                  SUBMIT
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTripByEmployee(activeTrip)}
+                    className="px-4 py-2.5 bg-[var(--action-danger-soft)] hover:bg-[var(--action-danger-soft-hover)] border border-[var(--action-danger-bg)]/30 text-[var(--action-danger-bg)] rounded-xl text-xs font-semibold flex items-center gap-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Trip
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenFinalSubmitModal}
+                    className="px-6 py-2.5 bg-[var(--badge-success-bg)] hover:bg-[var(--primary-hover)] text-white rounded-xl text-xs font-extrabold shadow-xs"
+                  >
+                    SUBMIT
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -3143,6 +3163,19 @@ export const Expenses: React.FC = () => {
                 <select value={singleFormData.bucket} onChange={e => setSingleFormData({ ...singleFormData, bucket: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
                   {BUCKET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Mode</label>
+                  <select value={singleFormData.paymentMode} onChange={e => setSingleFormData({ ...singleFormData, paymentMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
+                    {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Details</label>
+                  <input type="text" value={singleFormData.paymentDetails} onChange={e => setSingleFormData({ ...singleFormData, paymentDetails: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="e.g. UPI Ref / Last 4 digits" />
+                </div>
               </div>
 
               {/* ATTACHMENT UPLOAD */}
