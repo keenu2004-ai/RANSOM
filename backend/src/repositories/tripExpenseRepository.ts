@@ -9,6 +9,8 @@ export interface CreateTripDTO {
   startDate: string;
   endDate: string;
   currency?: string;
+  paymentMode?: string;
+  paymentDetails?: string;
 }
 
 export interface CreateTravelExpenseDTO {
@@ -19,7 +21,6 @@ export interface CreateTravelExpenseDTO {
   merchant?: string;
   startLocation: string;
   endLocation: string;
-  distanceKm?: number;
   currency?: string;
   amount: number;
   attachmentName?: string;
@@ -68,13 +69,16 @@ export class TripExpenseRepository {
     const currency = data.currency || 'INR';
     const text = `
       INSERT INTO trip_expenses (
-        organization_id, employee_id, purpose, start_point, end_point, start_date, end_date, currency, status, total_amount
+        organization_id, employee_id, purpose, start_point, end_point, start_date, end_date, currency, payment_mode, payment_details, status, total_amount
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 0.00
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'DRAFT', 0.00
       )
       RETURNING *
     `;
-    const params = [organizationId, employeeId, data.purpose, data.startPoint, data.endPoint, data.startDate, data.endDate, currency];
+    const params = [
+      organizationId, employeeId, data.purpose, data.startPoint, data.endPoint, data.startDate, data.endDate, currency,
+      data.paymentMode || null, data.paymentDetails || null
+    ];
     const res = await query(text, params);
     return res.rows[0];
   }
@@ -139,15 +143,15 @@ export class TripExpenseRepository {
       const text = `
         INSERT INTO trip_travel_expenses (
           trip_expense_id, organization_id, employee_id, start_date, end_date, transport_mode, purpose, merchant,
-          start_location, end_location, distance_km, currency, amount, attachment_name, receipt_url
+          start_location, end_location, currency, amount, attachment_name, receipt_url
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
         )
         RETURNING *
       `;
       const params = [
         tripId, organizationId, employeeId, data.startDate, data.endDate, data.transportMode, data.purpose,
-        data.merchant || null, data.startLocation, data.endLocation, data.distanceKm || 0, data.currency || 'INR',
+        data.merchant || null, data.startLocation, data.endLocation, data.currency || 'INR',
         data.amount, attachmentName, receiptUrl
       ];
       const res = await client.query(text, params);
@@ -171,18 +175,17 @@ export class TripExpenseRepository {
           merchant = COALESCE($5, merchant),
           start_location = COALESCE($6, start_location),
           end_location = COALESCE($7, end_location),
-          distance_km = COALESCE($8, distance_km),
-          currency = COALESCE($9, currency),
-          amount = COALESCE($10, amount),
-          attachment_name = COALESCE($11, attachment_name),
-          receipt_url = COALESCE($12, receipt_url),
+          currency = COALESCE($8, currency),
+          amount = COALESCE($9, amount),
+          attachment_name = COALESCE($10, attachment_name),
+          receipt_url = COALESCE($11, receipt_url),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $13 AND trip_expense_id = $14 AND organization_id = $15 AND employee_id = $16
+        WHERE id = $12 AND trip_expense_id = $13 AND organization_id = $14 AND employee_id = $15
         RETURNING *
       `;
       const params = [
         data.startDate || null, data.endDate || null, data.transportMode || null, data.purpose || null,
-        data.merchant || null, data.startLocation || null, data.endLocation || null, data.distanceKm ?? null,
+        data.merchant || null, data.startLocation || null, data.endLocation || null,
         data.currency || null, data.amount || null, data.attachmentName || null, data.receiptUrl || null,
         id, tripId, organizationId, employeeId
       ];
@@ -395,11 +398,17 @@ export class TripExpenseRepository {
         start_date = COALESCE($4, start_date),
         end_date = COALESCE($5, end_date),
         currency = COALESCE($6, currency),
+        payment_mode = COALESCE($7, payment_mode),
+        payment_details = COALESCE($8, payment_details),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND organization_id = $8 AND employee_id = $9 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
+      WHERE id = $9 AND organization_id = $10 AND employee_id = $11 AND status IN ('DRAFT', 'SUBMITTED', 'PENDING')
       RETURNING *
     `;
-    const params = [data.purpose || null, data.startPoint || null, data.endPoint || null, data.startDate || null, data.endDate || null, data.currency || null, id, organizationId, employeeId];
+    const params = [
+      data.purpose || null, data.startPoint || null, data.endPoint || null, data.startDate || null, data.endDate || null, data.currency || null,
+      data.paymentMode || null, data.paymentDetails || null,
+      id, organizationId, employeeId
+    ];
     const res = await query(text, params);
     return res.rows[0] || null;
   }

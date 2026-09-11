@@ -96,7 +96,9 @@ const createTripSchema = z.object({
   endPoint: z.string().min(1, 'End Point is required.'),
   startDate: z.string().min(1, 'Start Date is required.'),
   endDate: z.string().min(1, 'End Date is required.'),
-  currency: z.string().default('INR')
+  currency: z.string().default('INR'),
+  paymentMode: z.string().optional(),
+  paymentDetails: z.string().optional()
 }).superRefine((data, ctx) => {
   if (data.startDate && data.endDate && new Date(data.endDate) < new Date(data.startDate)) {
     ctx.addIssue({
@@ -116,7 +118,6 @@ const createTravelSchema = z.object({
   merchant: z.string().optional(),
   startLocation: z.string().min(1, 'Start Location is required.'),
   endLocation: z.string().min(1, 'End Location is required.'),
-  distanceKm: z.number().min(0, 'Distance cannot be negative.').optional().default(0),
   currency: z.string().default('INR'),
   amount: z.number().gt(0, 'Amount must be greater than 0.'),
   attachmentName: z.string().optional(),

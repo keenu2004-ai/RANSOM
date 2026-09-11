@@ -94,7 +94,6 @@ async function runExpenseStabilizationE2EScenario() {
       purpose: 'Flight to Mumbai',
       startLocation: 'Delhi Airport',
       endLocation: 'Mumbai Airport',
-      distanceKm: 1150,
       currency: 'INR',
       amount: 5000
     });
@@ -136,7 +135,6 @@ async function runExpenseStabilizationE2EScenario() {
       purpose: 'Airport cab',
       startLocation: 'Hotel',
       endLocation: 'Mumbai Airport',
-      distanceKm: 25,
       currency: 'INR',
       amount: 500
     });

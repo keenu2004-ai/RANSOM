@@ -314,7 +314,9 @@ export const Expenses: React.FC = () => {
     endPoint: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    currency: 'INR'
+    currency: 'INR',
+    paymentMode: PAYMENT_MODES[0],
+    paymentDetails: ''
   });
 
   const [travelFormData, setTravelFormData] = useState({
@@ -325,7 +327,6 @@ export const Expenses: React.FC = () => {
     merchant: '',
     startLocation: '',
     endLocation: '',
-    distanceKm: '0',
     currency: 'INR',
     amount: ''
   });
@@ -803,7 +804,9 @@ export const Expenses: React.FC = () => {
       endPoint: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
-      currency: 'INR'
+      currency: 'INR',
+      paymentMode: PAYMENT_MODES[0],
+      paymentDetails: ''
     });
     setShowCreateTripModal(true);
   };
@@ -861,7 +864,9 @@ export const Expenses: React.FC = () => {
       endPoint: activeTrip.end_point || '',
       startDate: activeTrip.start_date ? new Date(activeTrip.start_date).toISOString().split('T')[0] : '',
       endDate: activeTrip.end_date ? new Date(activeTrip.end_date).toISOString().split('T')[0] : '',
-      currency: activeTrip.currency || 'INR'
+      currency: activeTrip.currency || 'INR',
+      paymentMode: activeTrip.payment_mode || PAYMENT_MODES[0],
+      paymentDetails: activeTrip.payment_details || ''
     });
     setShowEditTripModal(true);
   };
@@ -908,7 +913,6 @@ export const Expenses: React.FC = () => {
       merchant: '',
       startLocation: activeTrip?.start_point || '',
       endLocation: activeTrip?.end_point || '',
-      distanceKm: '0',
       currency: activeTrip?.currency || 'INR',
       amount: ''
     });
@@ -928,7 +932,6 @@ export const Expenses: React.FC = () => {
       merchant: item.merchant || '',
       startLocation: item.start_location || '',
       endLocation: item.end_location || '',
-      distanceKm: item.distance_km ? String(item.distance_km) : '0',
       currency: item.currency || 'INR',
       amount: item.amount ? String(item.amount) : ''
     });
@@ -949,12 +952,6 @@ export const Expenses: React.FC = () => {
       return;
     }
 
-    const dist = parseFloat(travelFormData.distanceKm || '0');
-    if (isNaN(dist) || dist < 0) {
-      setFormError('Distance cannot be negative.');
-      return;
-    }
-
     setSubmitting(true);
     try {
       const { receiptUrl, attachmentName } = await resolveAttachmentUrl('trip_travel');
@@ -962,7 +959,6 @@ export const Expenses: React.FC = () => {
       const payload = {
         ...travelFormData,
         amount,
-        distanceKm: dist,
         attachmentName: attachmentName || undefined,
         receiptUrl: receiptUrl || undefined
       };
@@ -3261,11 +3257,23 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
-                  <option value="INR">Indian Rupee</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Mode *</label>
+                  <select required value={tripFormData.paymentMode} onChange={e => setTripFormData({ ...tripFormData, paymentMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
+                    {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Details</label>
+                  <input type="text" value={tripFormData.paymentDetails} onChange={e => setTripFormData({ ...tripFormData, paymentDetails: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" placeholder="Last 4 digits / UPI Ref" />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
@@ -3325,11 +3333,23 @@ export const Expenses: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
-                <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
-                  <option value="INR">Indian Rupee</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Currency *</label>
+                  <select value={tripFormData.currency} onChange={e => setTripFormData({ ...tripFormData, currency: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
+                    <option value="INR">Indian Rupee</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Mode *</label>
+                  <select required value={tripFormData.paymentMode} onChange={e => setTripFormData({ ...tripFormData, paymentMode: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono">
+                    {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Payment Details</label>
+                  <input type="text" value={tripFormData.paymentDetails} onChange={e => setTripFormData({ ...tripFormData, paymentDetails: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" placeholder="Last 4 digits / UPI Ref" />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
@@ -3400,10 +3420,6 @@ export const Expenses: React.FC = () => {
                 <div>
                   <label className="block text-[var(--text-primary)] mb-1 font-medium">Merchant / Airline</label>
                   <input type="text" value={travelFormData.merchant} onChange={e => setTravelFormData({ ...travelFormData, merchant: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)]" placeholder="Indigo / Air India" />
-                </div>
-                <div>
-                  <label className="block text-[var(--text-primary)] mb-1 font-medium">Distance (Km)</label>
-                  <input type="number" value={travelFormData.distanceKm} onChange={e => setTravelFormData({ ...travelFormData, distanceKm: e.target.value })} className="w-full px-3 py-2 bg-[var(--bg-surface-muted)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] font-mono" placeholder="0" />
                 </div>
               </div>
 
